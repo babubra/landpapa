@@ -1,0 +1,204 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-manrope);
+  --font-heading: var(--font-montserrat);
+  --font-mono: var(--font-geist-mono);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 12px);
+  --radius-4xl: calc(var(--radius) + 16px);
+}
+
+:root {
+  --radius: 0.625rem;
+  /* Основные цвета - светлая тема */
+  --background: #ffffff;
+  --foreground: #1e293b;
+
+  /* Карточки */
+  --card: #ffffff;
+  --card-foreground: #1e293b;
+
+  /* Поповеры */
+  --popover: #ffffff;
+  --popover-foreground: #1e293b;
+
+  /* Акцентный цвет - оливково-зелёный */
+  --primary: #90b329;
+  --primary-foreground: #ffffff;
+
+  /* Вторичные цвета */
+  --secondary: #f1f5f9;
+  --secondary-foreground: #1e293b;
+
+  /* Приглушённые цвета */
+  --muted: #f1f5f9;
+  --muted-foreground: #64748b;
+
+  /* Акцент */
+  --accent: #ecfccb;
+  --accent-foreground: #365314;
+
+  /* Деструктивные действия */
+  --destructive: #ef4444;
+
+  /* Границы и инпуты */
+  --border: #e2e8f0;
+  --input: #e2e8f0;
+  --ring: #90b329;
+
+  /* Графики */
+  --chart-1: #90b329;
+  --chart-2: #22c55e;
+  --chart-3: #14b8a6;
+  --chart-4: #06b6d4;
+  --chart-5: #3b82f6;
+
+  /* Сайдбар */
+  --sidebar: #f8fafc;
+  --sidebar-foreground: #1e293b;
+  --sidebar-primary: #90b329;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #ecfccb;
+  --sidebar-accent-foreground: #365314;
+  --sidebar-border: #e2e8f0;
+  --sidebar-ring: #90b329;
+}
+
+.dark {
+  /* Основные цвета - тёмная тема */
+  --background: #0f172a;
+  --foreground: #f1f5f9;
+
+  /* Карточки */
+  --card: #1e293b;
+  --card-foreground: #f1f5f9;
+
+  /* Поповеры */
+  --popover: #1e293b;
+  --popover-foreground: #f1f5f9;
+
+  /* Акцентный цвет - светлый оливковый для тёмной темы */
+  --primary: #a8c94a;
+  --primary-foreground: #1e293b;
+
+  /* Вторичные цвета */
+  --secondary: #334155;
+  --secondary-foreground: #f1f5f9;
+
+  /* Приглушённые цвета */
+  --muted: #334155;
+  --muted-foreground: #94a3b8;
+
+  /* Акцент */
+  --accent: #365314;
+  --accent-foreground: #ecfccb;
+
+  /* Деструктивные действия */
+  --destructive: #dc2626;
+
+  /* Границы и инпуты */
+  --border: #334155;
+  --input: #334155;
+  --ring: #a8c94a;
+
+  /* Графики */
+  --chart-1: #a8c94a;
+  --chart-2: #4ade80;
+  --chart-3: #2dd4bf;
+  --chart-4: #22d3ee;
+  --chart-5: #60a5fa;
+
+  /* Сайдбар */
+  --sidebar: #1e293b;
+  --sidebar-foreground: #f1f5f9;
+  --sidebar-primary: #a3e635;
+  --sidebar-primary-foreground: #1e293b;
+  --sidebar-accent: #365314;
+  --sidebar-accent-foreground: #ecfccb;
+  --sidebar-border: #334155;
+  --sidebar-ring: #a3e635;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+
+  /* Типографика */
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: var(--font-montserrat), system-ui, sans-serif;
+    @apply font-bold tracking-tight;
+  }
+
+  h1 {
+    @apply text-4xl md:text-5xl lg:text-6xl;
+  }
+
+  h2 {
+    @apply text-3xl md:text-4xl;
+  }
+
+  h3 {
+    @apply text-2xl md:text-3xl;
+  }
+
+  p,
+  span,
+  div,
+  a,
+  button,
+  input,
+  textarea,
+  select,
+  label {
+    font-family: var(--font-manrope), system-ui, sans-serif;
+  }
+}

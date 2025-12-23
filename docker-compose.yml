@@ -1,0 +1,45 @@
+# Docker Compose V2 (не требует version)
+
+services:
+  # База данных PostgreSQL с PostGIS
+  db:
+    image: postgis/postgis:16-3.4
+    container_name: kaliningrad-land-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: kaliningrad_land
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  # Backend (FastAPI)
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: kaliningrad-land-backend
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/kaliningrad_land
+      CORS_ORIGINS: '["http://localhost:3000"]'
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+    restart: unless-stopped
+  # Frontend (Next.js) - для production
+  # frontend:
+  #   build:
+  #     context: ./kaliningrad-land
+  #     dockerfile: Dockerfile
+  #   container_name: kaliningrad-land-frontend
+  #   ports:
+  #     - "3000:3000"
+  #   depends_on:
+  #     - backend
+  #   restart: unless-stopped
+
+volumes:
+  postgres_data:
