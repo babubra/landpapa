@@ -27,6 +27,29 @@ class RealtorItem(BaseModel):
         from_attributes = True
 
 
+# === Location ===
+
+class DistrictItem(BaseModel):
+    """Район."""
+    id: int
+    name: str
+    slug: str
+    
+    class Config:
+        from_attributes = True
+
+
+class SettlementItem(BaseModel):
+    """Населённый пункт."""
+    id: int
+    name: str
+    slug: str
+    district: DistrictItem | None = None
+    
+    class Config:
+        from_attributes = True
+
+
 # === Plot ===
 
 class PlotListItem(BaseModel):
@@ -58,6 +81,7 @@ class ListingListItem(BaseModel):
     plots_count: int
     is_featured: bool
     realtor: RealtorItem
+    settlement: SettlementItem | None = None
     
     class Config:
         from_attributes = True

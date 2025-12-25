@@ -23,7 +23,7 @@ class Plot(Base):
     __tablename__ = "plots"
     
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    listing_id: Mapped[int] = mapped_column(ForeignKey("listings.id"), index=True)
+    listing_id: Mapped[int | None] = mapped_column(ForeignKey("listings.id"), index=True, nullable=True)
     
     # Кадастр
     cadastral_number: Mapped[str | None] = mapped_column(String(50), nullable=True)
@@ -38,6 +38,7 @@ class Plot(Base):
     
     # Геоданные (PostGIS) — WGS84
     polygon = mapped_column(Geometry("POLYGON", srid=4326), nullable=True)
+    centroid = mapped_column(Geometry("POINT", srid=4326), nullable=True)  # Центр полигона
     
     # Цена (публичная)
     price_public: Mapped[int | None] = mapped_column(Integer, nullable=True)  # Полная цена

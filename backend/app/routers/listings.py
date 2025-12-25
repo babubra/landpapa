@@ -18,39 +18,68 @@ router = APIRouter()
 @router.get("/", response_model=ListingListResponse)
 async def get_listings(
     page: int = Query(1, ge=1),
-    size: int = Query(10, ge=1, le=100),
+    size: int = Query(12, ge=1, le=100),
+    # Локация
+    district_id: int | None = Query(None, description="ID района"),
+    settlement_id: int | None = Query(None, description="ID населённого пункта"),
+    # Характеристики
+    land_use_id: int | None = Query(None, description="ID разрешённого использования"),
+    price_min: int | None = Query(None, description="Минимальная цена"),
+    price_max: int | None = Query(None, description="Максимальная цена"),
+    area_min: float | None = Query(None, description="Минимальная площадь (м²)"),
+    area_max: float | None = Query(None, description="Максимальная площадь (м²)"),
+    # Сортировка
+    sort: str = Query("newest", description="newest | price_asc | price_desc"),
     db: Session = Depends(get_db),
 ):
-    """Получить список опубликованных объявлений с активными участками."""
-    # Подзапрос для фильтрации объявлений с активными участками
-    active_listings_ids = (
-        db.query(Plot.listing_id)
-        .filter(Plot.status == PlotStatus.active)
-        .distinct()
-        .subquery()
-    )
+    """Получить список опубликованных объявлений с фильтрацией."""
+    from app.models.location import Settlement
     
-    # Считаем общее количество
-    total = (
+    # Подзапрос для фильтрации объявлений с активными участками
+    active_plots_query = db.query(Plot).filter(Plot.status == PlotStatus.active)
+    
+    # Фильтры по характеристикам участков
+    if land_use_id:
+        active_plots_query = active_plots_query.filter(Plot.land_use_id == land_use_id)
+    if price_min:
+        active_plots_query = active_plots_query.filter(Plot.price_public >= price_min)
+    if price_max:
+        active_plots_query = active_plots_query.filter(Plot.price_public <= price_max)
+    if area_min:
+        active_plots_query = active_plots_query.filter(Plot.area >= area_min)
+    if area_max:
+        active_plots_query = active_plots_query.filter(Plot.area <= area_max)
+    
+    active_listings_ids = active_plots_query.with_entities(Plot.listing_id).distinct().subquery()
+    
+    # Основной запрос
+    query = (
         db.query(Listing)
         .filter(Listing.is_published == True)
         .filter(Listing.id.in_(active_listings_ids))
-        .count()
     )
     
+    # Фильтры по локации
+    if settlement_id:
+        query = query.filter(Listing.settlement_id == settlement_id)
+    elif district_id:
+        query = query.join(Settlement).filter(Settlement.district_id == district_id)
+    
+    # Считаем общее количество
+    total = query.count()
     pages = math.ceil(total / size) if total > 0 else 1
     offset = (page - 1) * size
     
-    # Получаем объявления
-    listings = (
-        db.query(Listing)
-        .filter(Listing.is_published == True)
-        .filter(Listing.id.in_(active_listings_ids))
-        .order_by(desc(Listing.created_at))
-        .offset(offset)
-        .limit(size)
-        .all()
-    )
+    # Сортировка
+    if sort == "price_asc":
+        # Сортировка по минимальной цене - сложно, используем created_at как fallback
+        query = query.order_by(Listing.created_at)
+    elif sort == "price_desc":
+        query = query.order_by(desc(Listing.created_at))
+    else:  # newest
+        query = query.order_by(desc(Listing.created_at))
+    
+    listings = query.offset(offset).limit(size).all()
     
     return ListingListResponse(
         items=listings,

@@ -26,6 +26,9 @@ class Listing(Base):
     # Публикация
     is_published: Mapped[bool] = mapped_column(Boolean, default=False)
     is_featured: Mapped[bool] = mapped_column(Boolean, default=False)  # Специальное предложение
+
+    # Локация
+    settlement_id: Mapped[int | None] = mapped_column(ForeignKey("settlements.id"), nullable=True)
     
     # SEO
     meta_title: Mapped[str | None] = mapped_column(String(255), nullable=True)
@@ -39,6 +42,7 @@ class Listing(Base):
     
     # Связи
     realtor: Mapped["Realtor"] = relationship("Realtor", lazy="joined")
+    settlement: Mapped["Settlement"] = relationship("Settlement", lazy="joined")
     plots: Mapped[list["Plot"]] = relationship("Plot", back_populates="listing", lazy="selectin")
     
     def __repr__(self) -> str:
@@ -71,3 +75,4 @@ class Listing(Base):
 # Импорт для relationship
 from app.models.realtor import Realtor
 from app.models.plot import Plot
+from app.models.location import Settlement

@@ -1,122 +1,188 @@
-# КалининградЗем — Инструкция по запуску
+# КалининградЗем — Сайт продажи земельных участков
+
+Сайт для продажи земельных участков в Калининградской области.
 
 ## Структура проекта
 
 ```
 Test1/
-├── backend/              # FastAPI (Python)
-├── kaliningrad-land/     # Next.js (Frontend)
-├── docker-compose.yml    # PostgreSQL + PostGIS
-└── .gitignore
+├── backend/                 # FastAPI бэкенд (порт 8000)
+│   ├── app/
+│   │   ├── models/          # SQLAlchemy модели
+│   │   ├── routers/         # API эндпоинты
+│   │   ├── schemas/         # Pydantic схемы
+│   │   ├── main.py          # Точка входа FastAPI
+│   │   ├── database.py      # Подключение к БД
+│   │   ├── config.py        # Настройки (.env)
+│   │   ├── auth.py          # JWT + Argon2
+│   │   └── seed.py          # Тестовые данные
+│   ├── requirements.txt
+│   └── venv/
+├── kaliningrad-land/        # Next.js фронтенд (порт 3000)
+│   ├── src/
+│   │   ├── app/             # Страницы (App Router)
+│   │   ├── components/      # React компоненты
+│   │   └── lib/             # Утилиты
+│   └── package.json
+├── admin/                   # Next.js админ-панель (порт 3001)
+│   ├── src/
+│   │   ├── app/             # Страницы
+│   │   ├── components/      # UI компоненты
+│   │   └── lib/auth.tsx     # AuthContext
+│   └── package.json
+└── docker-compose.yml       # PostgreSQL + PostGIS
 ```
 
 ---
 
-## 1. Запуск базы данных (PostgreSQL + PostGIS)
+## 🚀 Быстрый запуск (после перезагрузки)
 
+### 1. База данных
 ```bash
 cd c:\Users\babubra\TestProjects\Test1
-docker compose up -d db
+docker-compose up -d
 ```
 
-Проверка:
-```bash
-docker compose ps
-```
-
----
-
-## 2. Запуск Backend (FastAPI)
-
-```bash
-cd c:\Users\babubra\TestProjects\Test1\backend
-
-# Активация venv
-.\venv\Scripts\activate
-
-# Установка зависимостей (если первый запуск)
-pip install -r requirements.txt
-
-# Создание .env (если первый запуск)
-copy .env.example .env
-
-# Создание таблиц и наполнение данными (если первый запуск)
-python -m app.seed
-
-# Запуск сервера
-uvicorn app.main:app --reload --port 8000
-```
-
-API: http://localhost:8000
-Swagger: http://localhost:8000/docs
-
----
-
-## 3. Запуск Frontend (Next.js)
-
-```bash
-cd c:\Users\babubra\TestProjects\Test1\kaliningrad-land
-
-# Установка зависимостей (если первый запуск)
-npm install
-
-# Запуск dev-сервера
-npm run dev
-```
-
-Сайт: http://localhost:3000
-
----
-
-## Быстрый старт (все команды)
-
-**Терминал 1 (DB):**
-```bash
-cd c:\Users\babubra\TestProjects\Test1
-docker compose up -d db
-```
-
-**Терминал 2 (Backend):**
+### 2. Backend (терминал 1)
 ```bash
 cd c:\Users\babubra\TestProjects\Test1\backend
 .\venv\Scripts\activate
 uvicorn app.main:app --reload
 ```
+**API:** http://localhost:8000
 
-**Терминал 3 (Frontend):**
+### 3. Публичный сайт (терминал 2)
 ```bash
 cd c:\Users\babubra\TestProjects\Test1\kaliningrad-land
 npm run dev
 ```
+**Сайт:** http://localhost:3000
+
+### 4. Админ-панель (терминал 3)
+```bash
+cd c:\Users\babubra\TestProjects\Test1\admin
+npm run dev -- -p 3001
+```
+**Админка:** http://localhost:3001
 
 ---
 
-## Полезные команды
+## 🔐 Авторизация (Админка)
 
+**Тестовый аккаунт:**
+- Логин: `admin`
+- Пароль: `admin123`
+
+### API эндпоинты авторизации
+
+| Метод | URL | Описание |
+|-------|-----|----------|
+| POST | `/api/auth/login` | Логин → JWT токен |
+| GET | `/api/auth/me` | Текущий пользователь |
+
+---
+
+## 📦 Первоначальная установка (с нуля)
+
+### 1. База данных
 ```bash
-# Пересоздать таблицы и данные
-cd c:\Users\babubra\TestProjects\Test1\backend
-.\venv\Scripts\activate
-python -c "from app.database import engine, Base; from app.models import *; Base.metadata.drop_all(bind=engine); Base.metadata.create_all(bind=engine)"
-python -m app.seed
+docker-compose up -d db          # только db, без бэкенда
+```
 
-# Git коммит
-cd c:\Users\babubra\TestProjects\Test1
-git add .
-git commit -m "описание изменений"
-git push
+### 2. Backend
+```bash
+cd backend
+python -m venv venv              # ⚠️ только при ПЕРВОМ запуске
+.\venv\Scripts\activate
+pip install -r requirements.txt  # ⚠️ только при ПЕРВОМ запуске или после изменения requirements.txt
+python -m app.seed               # ⚠️ только при ПЕРВОМ запуске или для пересоздания данных
+uvicorn app.main:app --reload
+```
+
+### 3. Публичный сайт
+```bash
+cd kaliningrad-land
+npm install                      # ⚠️ только при ПЕРВОМ запуске или после изменения package.json
+npm run dev
+```
+
+### 4. Админ-панель
+```bash
+cd admin
+npm install                      # ⚠️ только при ПЕРВОМ запуске или после изменения package.json
+npx next dev --port 3001
 ```
 
 ---
 
-## Технологии
+## База данных (PostgreSQL + PostGIS)
 
-- **Frontend:** Next.js 14, TypeScript, Tailwind CSS, shadcn/ui
-- **Backend:** FastAPI, SQLAlchemy, PostgreSQL + PostGIS
-- **Infrastructure:** Docker Compose
+### Модели
+
+| Модель | Описание |
+|--------|----------|
+| `News` | Новости (slug, title, content, is_published) |
+| `Reference` | Справочники (type: land_use, land_category) |
+| `Realtor` | Риэлторы (name, phone, email, company) |
+| `Owner` | Владельцы участков (приватно) |
+| `District` | Районы (name, slug) |
+| `Settlement` | Населённые пункты (district_id, name, slug) |
+| `Listing` | Объявления (title, description, realtor_id, settlement_id) |
+| `Plot` | Участки (listing_id, cadastral_number, area, price, geometry) |
+| `AdminUser` | Администраторы (username, password_hash) |
+
+### Единицы измерения
+
+- **Площадь**: хранится в **м²**, отображается в **сотках** (÷100)
+- **Цена**: рубли
 
 ---
 
-## GitHub
+## Backend API
 
-https://github.com/babubra/landpapa
+### Публичные эндпоинты
+
+| Метод | URL | Описание |
+|-------|-----|----------|
+| GET | `/api/news` | Список новостей |
+| GET | `/api/news/{slug}` | Новость по slug |
+| GET | `/api/listings` | Каталог объявлений (с фильтрами) |
+| GET | `/api/listings/{slug}` | Детальное объявление |
+| GET | `/api/locations/districts` | Районы с количеством объявлений |
+| GET | `/api/locations/settlements` | Населённые пункты |
+| GET | `/api/references?type=` | Справочники |
+
+### Фильтры `/api/listings`
+
+| Параметр | Тип | Описание |
+|----------|-----|----------|
+| `page` | int | Номер страницы |
+| `size` | int | Размер страницы (макс 100) |
+| `district_id` | int | Фильтр по району |
+| `settlement_id` | int | Фильтр по нас. пункту |
+| `land_use_id` | int | Фильтр по назначению |
+| `price_min` / `price_max` | int | Диапазон цены |
+| `area_min` / `area_max` | float | Диапазон площади (м²) |
+| `sort` | str | newest / price_asc / price_desc |
+
+---
+
+## Тестовые данные (seed)
+
+- 3 района: Зеленоградский, Светлогорский, Гусевский
+- 6 населённых пунктов
+- 2 риэлтора
+- 4 объявления с участками
+- 6 новостей
+- Справочники: land_use (ИЖС, ЛПХ, СНТ...), land_category
+- **Админ:** admin / admin123
+
+---
+
+## TODO
+
+- [ ] Карта с полигонами (React Leaflet)
+- [ ] Загрузка изображений
+- [ ] CRUD в админке
+- [ ] Страница /map (общая карта)
+- [ ] SEO: sitemap, robots.txt

@@ -13,8 +13,11 @@ from app.models.news import News
 from app.models.reference import Reference
 from app.models.realtor import Realtor
 from app.models.owner import Owner
+from app.models.location import District, Settlement
 from app.models.listing import Listing
 from app.models.plot import Plot, PlotStatus
+from app.models.admin_user import AdminUser
+from app.auth import hash_password
 
 
 # === Справочники ===
@@ -104,6 +107,36 @@ OWNERS_DATA = [
 ]
 
 
+# === Районы и населённые пункты ===
+
+DISTRICTS_DATA = [
+    {
+        "name": "Зеленоградский район",
+        "slug": "zelenogradsk",
+        "settlements": [
+            {"name": "г. Зеленоградск", "slug": "zelenogradsk-city"},
+            {"name": "пос. Озёрный", "slug": "ozerny"},
+            {"name": "пос. Куково", "slug": "kukovo"},
+        ],
+    },
+    {
+        "name": "Светлогорский район",
+        "slug": "svetlogorsk",
+        "settlements": [
+            {"name": "г. Светлогорск", "slug": "svetlogorsk-city"},
+            {"name": "пос. Янтарный", "slug": "yantarny"},
+        ],
+    },
+    {
+        "name": "Гусевский район",
+        "slug": "gusev",
+        "settlements": [
+            {"name": "г. Гусев", "slug": "gusev-city"},
+        ],
+    },
+]
+
+
 def seed_references(db: Session):
     """Наполнить справочники."""
     existing = db.query(Reference).count()
@@ -175,6 +208,37 @@ def seed_owners(db: Session):
     print(f"Создано {len(OWNERS_DATA)} владельцев.")
 
 
+def seed_locations(db: Session):
+    """Создать районы и населённые пункты."""
+    existing = db.query(District).count()
+    if existing > 0:
+        print(f"Районы уже есть ({existing}). Пропускаем.")
+        return
+    
+    print("Создаём районы и населённые пункты...")
+    
+    for i, district_data in enumerate(DISTRICTS_DATA):
+        district = District(
+            name=district_data["name"],
+            slug=district_data["slug"],
+            sort_order=i,
+        )
+        db.add(district)
+        db.flush()
+        
+        for j, settlement_data in enumerate(district_data["settlements"]):
+            settlement = Settlement(
+                district_id=district.id,
+                name=settlement_data["name"],
+                slug=settlement_data["slug"],
+                sort_order=j,
+            )
+            db.add(settlement)
+    
+    db.commit()
+    print(f"Создано {len(DISTRICTS_DATA)} районов.")
+
+
 def seed_listings(db: Session):
     """Создать объявления с участками."""
     existing = db.query(Listing).count()
@@ -187,10 +251,15 @@ def seed_listings(db: Session):
     # Получаем справочники
     izhs = db.query(Reference).filter(Reference.code == "izhs").first()
     lph = db.query(Reference).filter(Reference.code == "lph").first()
-    settlement = db.query(Reference).filter(Reference.code == "settlement").first()
+    land_category = db.query(Reference).filter(Reference.code == "settlement").first()
     
     realtor = db.query(Realtor).first()
     owner = db.query(Owner).first()
+    
+    # Получаем населённые пункты
+    ozerny = db.query(Settlement).filter(Settlement.slug == "ozerny").first()
+    svetlogorsk_city = db.query(Settlement).filter(Settlement.slug == "svetlogorsk-city").first()
+    gusev_city = db.query(Settlement).filter(Settlement.slug == "gusev-city").first()
     
     # Объявление 1: Один участок
     listing1 = Listing(
@@ -198,8 +267,9 @@ def seed_listings(db: Session):
         title="Участок у озера в Зеленоградском районе",
         description="<p>Прекрасный участок с видом на озеро. Идеально для строительства загородного дома.</p>",
         realtor_id=realtor.id,
+        settlement_id=ozerny.id if ozerny else None,
         is_published=True,
-        is_featured=True,  # Специальное предложение
+        is_featured=True,
         meta_title="Участок у озера — Зеленоградск",
         meta_description="Продажа участка у озера в Зеленоградском районе.",
     )
@@ -210,8 +280,8 @@ def seed_listings(db: Session):
         listing_id=listing1.id,
         cadastral_number="39:05:010101:123",
         land_use_id=izhs.id if izhs else None,
-        land_category_id=settlement.id if settlement else None,
-        area=15.0,
+        land_category_id=land_category.id if land_category else None,
+        area=1500.0,  # 15 соток = 1500 м²
         address="Зеленоградский район, пос. Озёрный",
         price_public=1500000,
         price_per_sotka=100000,
@@ -228,8 +298,9 @@ def seed_listings(db: Session):
         title="Массив из 3 участков в Светлогорске",
         description="<p>Три смежных участка у моря. Можно приобрести вместе или по отдельности.</p>",
         realtor_id=realtor.id,
+        settlement_id=svetlogorsk_city.id if svetlogorsk_city else None,
         is_published=True,
-        is_featured=True,  # Специальное предложение
+        is_featured=True,
         meta_title="3 участка в Светлогорске",
         meta_description="Массив участков у моря.",
     )
@@ -241,8 +312,8 @@ def seed_listings(db: Session):
             listing_id=listing2.id,
             cadastral_number=f"39:11:020202:{200 + i}",
             land_use_id=izhs.id if izhs else None,
-            land_category_id=settlement.id if settlement else None,
-            area=10.0 + i * 2,
+            land_category_id=land_category.id if land_category else None,
+            area=(10 + i * 2) * 100,  # сотки → м²
             address=f"Светлогорский район, участок №{i + 1}",
             price_public=1800000 + i * 200000,
             price_per_sotka=150000,
@@ -256,8 +327,9 @@ def seed_listings(db: Session):
         title="Фермерский участок в Гусевском районе",
         description="<p>Большой участок для ведения фермерского хозяйства.</p>",
         realtor_id=realtor.id,
+        settlement_id=gusev_city.id if gusev_city else None,
         is_published=True,
-        is_featured=True,  # Специальное предложение
+        is_featured=True,
     )
     db.add(listing3)
     db.flush()
@@ -265,7 +337,7 @@ def seed_listings(db: Session):
     plot3 = Plot(
         listing_id=listing3.id,
         land_use_id=lph.id if lph else None,
-        area=50.0,
+        area=5000.0,  # 50 соток = 5000 м²
         address="Гусевский район",
         price_public=2000000,
         price_per_sotka=40000,
@@ -296,6 +368,25 @@ def seed_listings(db: Session):
     print("Создано 4 объявления с участками.")
 
 
+def seed_admin(db: Session):
+    """Создать тестового администратора."""
+    existing = db.query(AdminUser).count()
+    if existing > 0:
+        print(f"Админы уже есть ({existing}). Пропускаем.")
+        return
+    
+    print("Создаём администратора...")
+    admin = AdminUser(
+        username="admin",
+        password_hash=hash_password("admin123"),
+        display_name="Администратор",
+        is_active=True,
+    )
+    db.add(admin)
+    db.commit()
+    print("Создан админ: admin / admin123")
+
+
 def main():
     """Главная функция."""
     print("Создаём таблицы...")
@@ -307,7 +398,9 @@ def main():
         seed_news(db)
         seed_realtors(db)
         seed_owners(db)
+        seed_locations(db)
         seed_listings(db)
+        seed_admin(db)
     finally:
         db.close()
     
