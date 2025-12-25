@@ -27,6 +27,8 @@ import {
     updatePlot,
     getReferences,
     fetchGeometry,
+    checkCadastralNumber,
+    CadastralCheckResult,
     Reference,
 } from "@/lib/api";
 
@@ -68,6 +70,10 @@ export function PlotFormModal({
     // Состояние
     const [isLoading, setIsLoading] = useState(false);
     const [isLoadingRefs, setIsLoadingRefs] = useState(false);
+
+    // Предупреждение о дубликате
+    const [duplicateWarning, setDuplicateWarning] = useState<CadastralCheckResult | null>(null);
+    const [forceCreate, setForceCreate] = useState(false);
 
     // Загрузка справочников
     useEffect(() => {
@@ -134,10 +140,23 @@ export function PlotFormModal({
         setIsLoading(true);
 
         try {
+            // Проверка дубликата кадастрового номера (только при создании)
+            if (!isEditing && cadastralNumber && !forceCreate) {
+                const check = await checkCadastralNumber(cadastralNumber);
+                if (check.exists) {
+                    setDuplicateWarning(check);
+                    setIsLoading(false);
+                    return;
+                }
+            }
+
+            // Сбрасываем предупреждение
+            setDuplicateWarning(null);
+            setForceCreate(false);
             const data: PlotCreate = {
-                cadastral_number: cadastralNumber || null,
+                cadastral_number: cadastralNumber?.trim() || null,
                 area: area ? parseFloat(area) * 100 : null, // Сотки → м²
-                address: address || null,
+                address: address?.trim() || null,
                 price_public: pricePublic ? parseInt(pricePublic) : null,
                 price_per_sotka: pricePerSotka ? parseInt(pricePerSotka) : null,
                 price_private: pricePrivate ? parseInt(pricePrivate) : null,
@@ -188,6 +207,52 @@ export function PlotFormModal({
                         {isEditing ? "Редактирование участка" : "Новый участок"}
                     </DialogTitle>
                 </DialogHeader>
+
+                {/* Предупреждение о дубликате */}
+                {duplicateWarning && (
+                    <div className="bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
+                        <div className="flex items-start gap-3">
+                            <div className="text-amber-600 dark:text-amber-400 text-xl">⚠️</div>
+                            <div className="flex-1">
+                                <h4 className="font-semibold text-amber-800 dark:text-amber-200">
+                                    Участок с таким кадастровым номером уже существует
+                                </h4>
+                                <p className="text-sm text-amber-700 dark:text-amber-300 mt-1">
+                                    ID: {duplicateWarning.plot_id}
+                                    {duplicateWarning.address && ` • ${duplicateWarning.address}`}
+                                    {duplicateWarning.status && ` • Статус: ${duplicateWarning.status}`}
+                                </p>
+                                <div className="flex gap-2 mt-3">
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => {
+                                            setDuplicateWarning(null);
+                                            setForceCreate(false);
+                                        }}
+                                    >
+                                        Отмена
+                                    </Button>
+                                    <Button
+                                        type="button"
+                                        variant="default"
+                                        size="sm"
+                                        onClick={() => {
+                                            setForceCreate(true);
+                                            setDuplicateWarning(null);
+                                            // Повторно отправляем форму
+                                            const form = document.querySelector('form');
+                                            form?.requestSubmit();
+                                        }}
+                                    >
+                                        Всё равно создать
+                                    </Button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
 
                 <form onSubmit={handleSubmit} className="space-y-4">
                     {/* Адрес */}

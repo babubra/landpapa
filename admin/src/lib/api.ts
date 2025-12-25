@@ -128,6 +128,27 @@ export async function getPlot(id: number): Promise<PlotListItem> {
   return response.json();
 }
 
+export interface CadastralCheckResult {
+  exists: boolean;
+  plot_id?: number;
+  address?: string;
+  status?: string;
+}
+
+export async function checkCadastralNumber(
+  cadastralNumber: string,
+  excludeId?: number
+): Promise<CadastralCheckResult> {
+  const params = new URLSearchParams({ cadastral_number: cadastralNumber });
+  if (excludeId) params.set("exclude_id", String(excludeId));
+
+  const response = await fetchWithAuth(`/api/admin/plots/check-cadastral?${params.toString()}`);
+  if (!response.ok) {
+    throw new Error("Ошибка проверки кадастрового номера");
+  }
+  return response.json();
+}
+
 export async function createPlot(data: PlotCreate): Promise<PlotListItem> {
   const response = await fetchWithAuth("/api/admin/plots/", {
     method: "POST",

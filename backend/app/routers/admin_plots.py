@@ -56,6 +56,36 @@ def plot_to_list_item(plot: Plot) -> dict:
     }
 
 
+@router.get("/check-cadastral")
+async def check_cadastral_number(
+    cadastral_number: str = Query(..., description="Кадастровый номер для проверки"),
+    exclude_id: int | None = Query(None, description="ID участка для исключения (при редактировании)"),
+    db: Session = Depends(get_db),
+    current_user: AdminUser = Depends(get_current_user),
+):
+    """
+    Проверить существование участка с таким кадастровым номером.
+    
+    Возвращает информацию о дубликате если найден.
+    """
+    query = db.query(Plot).filter(Plot.cadastral_number == cadastral_number)
+    
+    if exclude_id:
+        query = query.filter(Plot.id != exclude_id)
+    
+    existing = query.first()
+    
+    if existing:
+        return {
+            "exists": True,
+            "plot_id": existing.id,
+            "address": existing.address,
+            "status": existing.status.value if existing.status else None,
+        }
+    
+    return {"exists": False}
+
+
 @router.get("/", response_model=PlotListResponse)
 async def get_plots(
     page: int = Query(1, ge=1),

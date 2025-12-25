@@ -3,7 +3,7 @@
 import { useEffect, useState, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { RowSelectionState } from "@tanstack/react-table";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 
 import { useAuth } from "@/lib/auth";
@@ -147,15 +147,24 @@ export default function PlotsPage() {
     if (!user) return null;
 
     return (
-        <div className="min-h-screen bg-slate-100 dark:bg-slate-900 p-8">
+        <div className="min-h-screen bg-background p-8">
             <div className="max-w-7xl mx-auto space-y-6">
                 {/* Header */}
                 <div className="flex items-center justify-between">
-                    <div>
-                        <h1 className="text-3xl font-bold">Участки</h1>
-                        <p className="text-muted-foreground">
-                            Управление земельными участками
-                        </p>
+                    <div className="flex items-center gap-4">
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => router.push("/")}
+                        >
+                            <ArrowLeft className="h-5 w-5" />
+                        </Button>
+                        <div>
+                            <h1 className="text-3xl font-bold">Участки</h1>
+                            <p className="text-muted-foreground">
+                                Управление земельными участками
+                            </p>
+                        </div>
                     </div>
                     <Button onClick={handleCreate}>
                         <Plus className="mr-2 h-4 w-4" />
