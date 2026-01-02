@@ -12,6 +12,7 @@ class District(Base):
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     name: Mapped[str] = mapped_column(String(255))  # "Зеленоградский район"
     slug: Mapped[str] = mapped_column(String(100), unique=True, index=True)  # "zelenogradsk"
+    fias_id: Mapped[str | None] = mapped_column(String(36), unique=True, index=True, nullable=True)
     sort_order: Mapped[int] = mapped_column(Integer, default=0)
 
     # Связи
@@ -32,6 +33,8 @@ class Settlement(Base):
     district_id: Mapped[int] = mapped_column(ForeignKey("districts.id"), index=True)
     name: Mapped[str] = mapped_column(String(255))  # "пос. Янтарный"
     slug: Mapped[str] = mapped_column(String(100), index=True)  # "yantarny"
+    fias_id: Mapped[str | None] = mapped_column(String(36), unique=True, index=True, nullable=True)
+    type: Mapped[str | None] = mapped_column(String(20), nullable=True)  # "г", "пос", "с"
     sort_order: Mapped[int] = mapped_column(Integer, default=0)
 
     # Связи

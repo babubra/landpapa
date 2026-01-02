@@ -19,7 +19,8 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { Loader2 } from "lucide-react";
+import { Loader2, ExternalLink } from "lucide-react";
+import Link from "next/link";
 import {
     PlotListItem,
     PlotCreate,
@@ -36,7 +37,10 @@ interface PlotFormModalProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     plot?: PlotListItem | null; // null = создание, объект = редактирование
-    onSuccess: (plot: PlotListItem) => void;
+    onSuccess?: (plot: PlotListItem) => void;
+    // Новые пропсы для использования из формы объявления
+    initialCadastralNumber?: string;  // Предзаполнение кадастрового номера
+    onPlotCreated?: (plot: PlotListItem) => void;  // Callback после создания (для привязки к объявлению)
 }
 
 export function PlotFormModal({
@@ -44,6 +48,8 @@ export function PlotFormModal({
     onOpenChange,
     plot,
     onSuccess,
+    initialCadastralNumber,
+    onPlotCreated,
 }: PlotFormModalProps) {
     const isEditing = !!plot;
 
@@ -126,6 +132,13 @@ export function PlotFormModal({
         }
     }, [plot, open]);
 
+    // Применяем initialCadastralNumber при открытии модала для создания
+    useEffect(() => {
+        if (open && !plot && initialCadastralNumber) {
+            setCadastralNumber(initialCadastralNumber);
+        }
+    }, [open, plot, initialCadastralNumber]);
+
     // Автоматический расчёт цены за сотку
     useEffect(() => {
         const areaNum = parseFloat(area);
@@ -190,7 +203,8 @@ export function PlotFormModal({
                 }
             }
 
-            onSuccess(result);
+            onSuccess?.(result);
+            onPlotCreated?.(result);
             onOpenChange(false);
         } catch (error: any) {
             toast.error(error.message || "Ошибка сохранения");
@@ -250,6 +264,26 @@ export function PlotFormModal({
                                     </Button>
                                 </div>
                             </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Ссылка на объявление (если участок привязан) */}
+                {isEditing && plot?.listing && (
+                    <div className="bg-muted/50 border rounded-lg p-3">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <span className="text-sm text-muted-foreground">Объявление:</span>
+                                <span className="ml-2 font-medium">{plot.listing.title}</span>
+                            </div>
+                            <Link
+                                href={`/listings?edit=${plot.listing.id}`}
+                                className="inline-flex items-center gap-1 text-sm text-primary hover:underline"
+                                onClick={() => onOpenChange(false)}
+                            >
+                                <ExternalLink className="h-3 w-3" />
+                                Открыть
+                            </Link>
                         </div>
                     </div>
                 )}

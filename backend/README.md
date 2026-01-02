@@ -32,15 +32,15 @@ cp .env.example .env
 ## Запуск
 
 ```bash
-# Для разработки
-uvicorn app.main:app --reload --port 8000
+# Для разработки (с подробным логированием)
+uvicorn app.main:app --reload --port 8001 --log-level debug
 ```
 
-API будет доступен по адресу: http://localhost:8000
+API будет доступен по адресу: http://localhost:8001
 
 Документация:
-- Swagger UI: http://localhost:8000/docs
-- ReDoc: http://localhost:8000/redoc
+- Swagger UI: http://localhost:8001/docs
+- ReDoc: http://localhost:8001/redoc
 
 ## Структура
 

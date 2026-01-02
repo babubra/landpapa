@@ -3,6 +3,7 @@ import Link from "next/link";
 import { MapPin, Maximize } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { API_URL } from "@/lib/config";
 
 interface Realtor {
     id: number;
@@ -24,7 +25,7 @@ interface Listing {
 
 async function getPopularListings(): Promise<Listing[]> {
     try {
-        const res = await fetch("http://localhost:8000/api/listings/popular?limit=4", {
+        const res = await fetch(`${API_URL}/api/listings/popular?limit=4`, {
             next: { revalidate: 60 },
         });
 

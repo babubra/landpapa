@@ -85,9 +85,37 @@ async def get_districts(db: Session = Depends(get_db)):
 @router.get("/settlements", response_model=list[SettlementItem])
 async def get_settlements(
     district_id: int | None = Query(None, description="ID района для фильтрации"),
+    all: bool = Query(False, description="Если True, возвращать все населённые пункты (для админки)"),
     db: Session = Depends(get_db),
 ):
     """Получить список населённых пунктов с количеством объявлений."""
+    
+    if all:
+        # Режим для админки: все населённые пункты
+        query = db.query(Settlement)
+        if district_id:
+            query = query.filter(Settlement.district_id == district_id)
+        
+        settlements = query.order_by(Settlement.sort_order, Settlement.name).all()
+        
+        # Подсчёт объявлений для каждого населённого пункта
+        listing_counts = dict(
+            db.query(Listing.settlement_id, func.count(Listing.id))
+            .group_by(Listing.settlement_id)
+            .all()
+        )
+        
+        return [
+            SettlementItem(
+                id=s.id, 
+                name=s.name, 
+                slug=s.slug, 
+                listings_count=listing_counts.get(s.id, 0)
+            )
+            for s in settlements
+        ]
+    
+    # Режим по умолчанию: только с активными объявлениями
     # Подзапрос: объявления с активными участками
     active_listing_ids = (
         db.query(Plot.listing_id)
@@ -120,4 +148,95 @@ async def get_settlements(
     return [
         SettlementItem(id=r.id, name=r.name, slug=r.slug, listings_count=r.listings_count)
         for r in results
+    ]
+
+
+class SettlementGroupItem(BaseModel):
+    """Населённый пункт в группе (без slug)."""
+    id: int
+    name: str
+    listings_count: int
+
+    class Config:
+        from_attributes = True
+
+
+class DistrictGroup(BaseModel):
+    """Район с вложенными населёнными пунктами."""
+    id: int
+    name: str
+    listings_count: int  # сумма по всем населённым пунктам
+    settlements: list[SettlementGroupItem]
+
+    class Config:
+        from_attributes = True
+
+
+@router.get("/settlements-grouped", response_model=list[DistrictGroup])
+async def get_settlements_grouped(db: Session = Depends(get_db)):
+    """
+    Получить населённые пункты, сгруппированные по районам.
+    
+    Используется для фильтра местоположения с множественным выбором.
+    Сортировка: города без районов (sort_order=0) первыми, затем по алфавиту.
+    Показываются только населённые пункты с активными объявлениями.
+    """
+    # Подзапрос: объявления с активными участками
+    active_listing_ids = (
+        db.query(Plot.listing_id)
+        .filter(Plot.status == PlotStatus.active)
+        .distinct()
+        .subquery()
+    )
+
+    # Получаем населённые пункты с количеством объявлений
+    settlements_data = (
+        db.query(
+            Settlement.id,
+            Settlement.name,
+            Settlement.district_id,
+            func.count(Listing.id).label("listings_count"),
+        )
+        .join(Listing, Settlement.id == Listing.settlement_id)
+        .filter(Listing.is_published == True)
+        .filter(Listing.id.in_(active_listing_ids))
+        .group_by(Settlement.id, Settlement.name, Settlement.district_id)
+        .order_by(Settlement.name)
+        .all()
+    )
+
+    # Группируем по районам
+    districts_map: dict[int, dict] = {}
+    
+    for s in settlements_data:
+        district_id = s.district_id
+        if district_id not in districts_map:
+            district = db.query(District).filter(District.id == district_id).first()
+            districts_map[district_id] = {
+                "id": district.id,
+                "name": district.name,
+                "sort_order": district.sort_order,
+                "listings_count": 0,
+                "settlements": []
+            }
+        
+        districts_map[district_id]["listings_count"] += s.listings_count
+        districts_map[district_id]["settlements"].append(
+            SettlementGroupItem(id=s.id, name=s.name, listings_count=s.listings_count)
+        )
+
+    # Сортировка: sort_order, затем по алфавиту
+    sorted_districts = sorted(
+        districts_map.values(), 
+        key=lambda d: (d["sort_order"], d["name"])
+    )
+
+    return [
+        DistrictGroup(
+            id=d["id"],
+            name=d["name"],
+            listings_count=d["listings_count"],
+            settlements=d["settlements"]
+        )
+        for d in sorted_districts
     ]

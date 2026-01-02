@@ -7,29 +7,29 @@ import { Plus, Trash2, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 
 import { useAuth } from "@/lib/auth";
-import { getPlots, bulkDeletePlots, PlotListItem, PlotFilters } from "@/lib/api";
+import { getListings, bulkDeleteListings, ListingListItem, ListingFilters } from "@/lib/api";
 import { Button } from "@/components/ui/button";
-import { PlotsTable } from "@/components/plots/plots-table";
-import { getColumns } from "@/components/plots/plots-columns";
-import { PlotsFilters } from "@/components/plots/plots-filters";
-import { PlotsPagination } from "@/components/plots/plots-pagination";
-import { PlotFormModal } from "@/components/plots/plot-form-modal";
+import { ListingsTable } from "@/components/listings/listings-table";
+import { getColumns } from "@/components/listings/listings-columns";
+import { ListingsFilters } from "@/components/listings/listings-filters";
+import { ListingsPagination } from "@/components/listings/listings-pagination";
+import { ListingFormModal } from "@/components/listings/listing-form-modal";
 
-export default function PlotsPage() {
+export default function ListingsPage() {
     const { user, isLoading: authLoading } = useAuth();
     const router = useRouter();
     const searchParams = useSearchParams();
 
-    const [plots, setPlots] = useState<PlotListItem[]>([]);
+    const [listings, setListings] = useState<ListingListItem[]>([]);
     const [isLoading, setIsLoading] = useState(true);
-    const [filters, setFilters] = useState<PlotFilters>({ page: 1, size: 20 });
+    const [filters, setFilters] = useState<ListingFilters>({ page: 1, size: 20 });
     const [total, setTotal] = useState(0);
     const [pages, setPages] = useState(1);
     const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
 
     // Модальное окно
     const [modalOpen, setModalOpen] = useState(false);
-    const [editingPlot, setEditingPlot] = useState<PlotListItem | null>(null);
+    const [editingListingId, setEditingListingId] = useState<number | null>(null);
 
     // Проверка авторизации
     useEffect(() => {
@@ -39,16 +39,16 @@ export default function PlotsPage() {
     }, [user, authLoading, router]);
 
     // Загрузка данных
-    const loadPlots = useCallback(async () => {
+    const loadListings = useCallback(async () => {
         if (!user) return;
         setIsLoading(true);
         try {
-            const response = await getPlots(filters);
-            setPlots(response.items);
+            const response = await getListings(filters);
+            setListings(response.items);
             setTotal(response.total);
             setPages(response.pages);
         } catch (error) {
-            toast.error("Ошибка загрузки участков");
+            toast.error("Ошибка загрузки объявлений");
             console.error(error);
         } finally {
             setIsLoading(false);
@@ -56,52 +56,49 @@ export default function PlotsPage() {
     }, [user, filters]);
 
     useEffect(() => {
-        loadPlots();
-    }, [loadPlots]);
+        loadListings();
+    }, [loadListings]);
 
     // Обработка query параметра edit для открытия модала редактирования
     useEffect(() => {
         const editId = searchParams.get("edit");
-        if (editId && plots.length > 0) {
-            const plotToEdit = plots.find(p => p.id === parseInt(editId));
-            if (plotToEdit) {
-                setEditingPlot(plotToEdit);
-                setModalOpen(true);
-                // Очищаем URL
-                router.replace("/plots", { scroll: false });
-            }
+        if (editId) {
+            setEditingListingId(parseInt(editId));
+            setModalOpen(true);
+            // Очищаем URL
+            router.replace("/listings", { scroll: false });
         }
-    }, [searchParams, plots, router]);
+    }, [searchParams, router]);
 
     // Обработчики
-    const handleEdit = useCallback((plot: PlotListItem) => {
-        setEditingPlot(plot);
+    const handleEdit = useCallback((listing: ListingListItem) => {
+        setEditingListingId(listing.id);
         setModalOpen(true);
     }, []);
 
-    const handleDelete = useCallback(async (plot: PlotListItem) => {
-        if (!confirm(`Удалить участок ${plot.cadastral_number || plot.id}?`)) return;
+    const handleDelete = useCallback(async (listing: ListingListItem) => {
+        if (!confirm(`Удалить объявление "${listing.title}"?`)) return;
 
         try {
-            await bulkDeletePlots([plot.id]);
-            toast.success("Участок удалён");
-            loadPlots();
+            await bulkDeleteListings([listing.id]);
+            toast.success("Объявление удалено");
+            loadListings();
         } catch (error) {
             toast.error("Ошибка удаления");
         }
-    }, [loadPlots]);
+    }, [loadListings]);
 
     const handleBulkDelete = async () => {
         const selectedIds = Object.keys(rowSelection).map(Number);
         if (selectedIds.length === 0) return;
 
-        if (!confirm(`Удалить ${selectedIds.length} участков?`)) return;
+        if (!confirm(`Удалить ${selectedIds.length} объявлений?`)) return;
 
         try {
-            const result = await bulkDeletePlots(selectedIds);
+            const result = await bulkDeleteListings(selectedIds);
             toast.success(`Удалено: ${result.deleted_count}`);
             setRowSelection({});
-            loadPlots();
+            loadListings();
         } catch (error) {
             toast.error("Ошибка массового удаления");
         }
@@ -130,12 +127,12 @@ export default function PlotsPage() {
     }, [filters]);
 
     const handleCreate = () => {
-        setEditingPlot(null);
+        setEditingListingId(null);
         setModalOpen(true);
     };
 
     const handleModalSuccess = () => {
-        loadPlots();
+        loadListings();
     };
 
     // Колонки с обработчиками
@@ -175,20 +172,20 @@ export default function PlotsPage() {
                             <ArrowLeft className="h-5 w-5" />
                         </Button>
                         <div>
-                            <h1 className="text-3xl font-bold">Участки</h1>
+                            <h1 className="text-3xl font-bold">Объявления</h1>
                             <p className="text-muted-foreground">
-                                Управление земельными участками
+                                Управление объявлениями о продаже
                             </p>
                         </div>
                     </div>
                     <Button onClick={handleCreate}>
                         <Plus className="mr-2 h-4 w-4" />
-                        Добавить участок
+                        Добавить объявление
                     </Button>
                 </div>
 
                 {/* Filters */}
-                <PlotsFilters filters={filters} onFiltersChange={setFilters} />
+                <ListingsFilters filters={filters} onFiltersChange={setFilters} />
 
                 {/* Bulk actions */}
                 {selectedCount > 0 && (
@@ -204,16 +201,17 @@ export default function PlotsPage() {
                 )}
 
                 {/* Table */}
-                <PlotsTable
+                <ListingsTable
                     columns={columns}
-                    data={plots}
+                    data={listings}
                     isLoading={isLoading}
                     rowSelection={rowSelection}
                     onRowSelectionChange={setRowSelection}
+                    onRowDoubleClick={handleEdit}
                 />
 
                 {/* Pagination */}
-                <PlotsPagination
+                <ListingsPagination
                     page={filters.page || 1}
                     pages={pages}
                     total={total}
@@ -222,13 +220,12 @@ export default function PlotsPage() {
             </div>
 
             {/* Modal */}
-            <PlotFormModal
+            <ListingFormModal
                 open={modalOpen}
                 onOpenChange={setModalOpen}
-                plot={editingPlot}
+                listingId={editingListingId}
                 onSuccess={handleModalSuccess}
             />
         </div>
     );
 }
-

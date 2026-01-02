@@ -13,14 +13,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { LocationFilter } from "@/components/filters/LocationFilter";
 import { Search, MapPin } from "lucide-react";
-
-interface District {
-  id: number;
-  name: string;
-  slug: string;
-  listings_count: number;
-}
+import { API_URL } from "@/lib/config";
 
 interface Reference {
   id: number;
@@ -32,11 +27,10 @@ export function SearchFilter() {
   const router = useRouter();
 
   // Данные из API
-  const [districts, setDistricts] = useState<District[]>([]);
   const [landUseOptions, setLandUseOptions] = useState<Reference[]>([]);
 
   // Значения фильтров
-  const [districtId, setDistrictId] = useState("");
+  const [settlementIds, setSettlementIds] = useState<number[]>([]);
   const [landUseId, setLandUseId] = useState("");
   const [areaMin, setAreaMin] = useState("");
   const [areaMax, setAreaMax] = useState("");
@@ -45,12 +39,7 @@ export function SearchFilter() {
 
   // Загрузка данных при монтировании
   useEffect(() => {
-    fetch("http://localhost:8000/api/locations/districts")
-      .then((res) => res.json())
-      .then(setDistricts)
-      .catch(console.error);
-
-    fetch("http://localhost:8000/api/references?type=land_use")
+    fetch(`${API_URL}/api/references?type=land_use`)
       .then((res) => res.json())
       .then(setLandUseOptions)
       .catch(console.error);
@@ -58,7 +47,7 @@ export function SearchFilter() {
 
   const handleSearch = () => {
     const params = new URLSearchParams();
-    if (districtId) params.set("district", districtId);
+    if (settlementIds.length > 0) params.set("settlements", settlementIds.join(","));
     if (landUseId) params.set("land_use", landUseId);
     if (areaMin) params.set("area_min", (parseFloat(areaMin) * 100).toString()); // сотки → м²
     if (areaMax) params.set("area_max", (parseFloat(areaMax) * 100).toString());
@@ -80,19 +69,12 @@ export function SearchFilter() {
       <CardContent className="space-y-3">
         {/* Местоположение */}
         <div className="space-y-2">
-          <Label htmlFor="location">Район</Label>
-          <Select value={districtId} onValueChange={setDistrictId}>
-            <SelectTrigger id="location">
-              <SelectValue placeholder="Все районы" />
-            </SelectTrigger>
-            <SelectContent>
-              {districts.map((d) => (
-                <SelectItem key={d.id} value={d.id.toString()}>
-                  {d.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <Label>Район</Label>
+          <LocationFilter
+            value={settlementIds}
+            onChange={setSettlementIds}
+            placeholder="Все районы"
+          />
         </div>
 
         {/* Площадь */}

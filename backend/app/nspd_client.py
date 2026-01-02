@@ -125,9 +125,11 @@ class NspdClient:
                     logger.warning("NSPD: Circuit HALF-OPEN, trying request...")
                 else:
                     logger.warning(f"NSPD: Circuit OPEN, failing fast for {cadastral_number}")
+                    print(f"[NSPD DEBUG] Circuit OPEN, failing fast")
                     return None
 
         logger.info(f"NSPD: Querying cadastral number: {cadastral_number}")
+        print(f"[NSPD DEBUG] Querying cadastral number: {cadastral_number}")
         
         params = {"thematicSearchId": 1, "query": cadastral_number}
         url = f"/api/geoportal/v2/search/geoportal?{urlencode(params)}"
@@ -142,6 +144,7 @@ class NspdClient:
 
             if not data.get("data") or not data["data"].get("features"):
                 logger.info(f"NSPD: Object {cadastral_number} not found")
+                print(f"[NSPD DEBUG] Object NOT found in response: {data}")
                 return None
 
             feature = data["data"]["features"][0]
@@ -184,10 +187,12 @@ class NspdClient:
 
         except (httpx.TimeoutException, httpx.ConnectError, httpx.HTTPStatusError) as e:
             logger.error(f"NSPD: Network error: {type(e).__name__}")
+            print(f"[NSPD DEBUG] Network error: {type(e).__name__} - {e}")
             await self._handle_failure()
             return None
         except Exception as e:
             logger.error(f"NSPD: Unexpected error: {e}")
+            print(f"[NSPD DEBUG] Unexpected error: {e}")
             return None
 
     async def _handle_success(self):

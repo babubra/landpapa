@@ -53,10 +53,12 @@ export default function DashboardPage() {
             </p>
 
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              <Card className="p-4 bg-slate-50 dark:bg-slate-800 opacity-50">
-                <h3 className="font-semibold mb-1">📋 Объявления</h3>
-                <p className="text-sm text-muted-foreground">Скоро</p>
-              </Card>
+              <Link href="/listings">
+                <Card className="p-4 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
+                  <h3 className="font-semibold mb-1">📋 Объявления</h3>
+                  <p className="text-sm text-muted-foreground">Управление объявлениями</p>
+                </Card>
+              </Link>
 
               <Link href="/plots">
                 <Card className="p-4 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">

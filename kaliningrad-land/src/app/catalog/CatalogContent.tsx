@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { ListingCard, ListingData } from "@/components/catalog/ListingCard";
 import { CatalogFilters } from "@/components/catalog/CatalogFilters";
 import { Pagination } from "@/components/ui/pagination";
+import { API_URL } from "@/lib/config";
 
 interface ListingsResponse {
     items: ListingData[];
@@ -32,6 +33,7 @@ export function CatalogContent() {
         searchParams.forEach((value, key) => {
             if (key === "district") params.set("district_id", value);
             else if (key === "settlement") params.set("settlement_id", value);
+            else if (key === "settlements") params.set("settlements", value); // список settlements передаём как есть
             else if (key === "land_use") params.set("land_use_id", value);
             else params.set(key, value);
         });
@@ -40,7 +42,7 @@ export function CatalogContent() {
         if (!params.has("size")) params.set("size", "12");
 
         try {
-            const res = await fetch(`http://localhost:8000/api/listings?${params.toString()}`);
+            const res = await fetch(`${API_URL}/api/listings?${params.toString()}`);
             const data: ListingsResponse = await res.json();
 
             setListings(data.items);

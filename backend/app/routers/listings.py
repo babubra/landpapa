@@ -21,7 +21,8 @@ async def get_listings(
     size: int = Query(12, ge=1, le=100),
     # Локация
     district_id: int | None = Query(None, description="ID района"),
-    settlement_id: int | None = Query(None, description="ID населённого пункта"),
+    settlement_id: int | None = Query(None, description="ID населённого пункта (устаревший, используйте settlements)"),
+    settlements: str | None = Query(None, description="Список ID населённых пунктов через запятую"),
     # Характеристики
     land_use_id: int | None = Query(None, description="ID разрешённого использования"),
     price_min: int | None = Query(None, description="Минимальная цена"),
@@ -60,7 +61,13 @@ async def get_listings(
     )
     
     # Фильтры по локации
-    if settlement_id:
+    # Приоритет: settlements (новый) > settlement_id (старый) > district_id
+    if settlements:
+        # Парсим список ID из строки "7,8,9"
+        settlement_ids = [int(s.strip()) for s in settlements.split(",") if s.strip().isdigit()]
+        if settlement_ids:
+            query = query.filter(Listing.settlement_id.in_(settlement_ids))
+    elif settlement_id:
         query = query.filter(Listing.settlement_id == settlement_id)
     elif district_id:
         query = query.join(Settlement).filter(Settlement.district_id == district_id)

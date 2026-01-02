@@ -2,7 +2,8 @@
  * API клиент для админки.
  */
 
-const API_URL = "http://localhost:8000";
+// Используем переменную окружения для API URL, с fallback на localhost для разработки
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8001";
 
 /**
  * Получить токен из localStorage.
@@ -96,6 +97,33 @@ export interface PlotCreate {
   price_per_sotka_private?: number | null;
   status?: "active" | "sold" | "reserved";
   owner_id?: number | null;
+}
+
+// === Гео API ===
+
+export interface DaDataSuggestion {
+  value: string;
+  unrestricted_value: string;
+  data: any;
+}
+
+export interface ResolveData {
+  name: string;
+  type?: string | null;
+  district_name?: string | null;
+  district_fias_id?: string | null;
+  settlement_fias_id?: string | null;
+  region_name?: string | null;
+}
+
+export interface SettlementResolved {
+  id: number;
+  name: string;
+  full_name: string;
+}
+
+export interface SuggestionResponse {
+  suggestions: DaDataSuggestion[];
 }
 
 // === API функции ===
@@ -252,3 +280,243 @@ export async function updateSetting(key: string, value: string | null): Promise<
   }
   return response.json();
 }
+
+// === Объявления (Listings) ===
+
+export interface DistrictItem {
+  id: number;
+  name: string;
+  slug: string;
+}
+
+export interface SettlementItem {
+  id: number;
+  name: string;
+  slug: string;
+  district: DistrictItem | null;
+}
+
+export interface RealtorItem {
+  id: number;
+  name: string;
+  phone: string;
+  company: string | null;
+}
+
+export interface PlotShortItem {
+  id: number;
+  cadastral_number: string | null;
+  area: number | null;
+  address: string | null;
+  price_public: number | null;
+  status: string;
+  land_use: { id: number; code: string; name: string } | null;
+}
+
+export interface ListingListItem {
+  id: number;
+  slug: string;
+  title: string;
+  cadastral_numbers: string[];
+  is_published: boolean;
+  is_featured: boolean;
+  settlement: SettlementItem | null;
+  realtor: RealtorItem;
+  plots_count: number;
+  total_area: number | null;
+  price_min: number | null;
+  price_max: number | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ListingDetail {
+  id: number;
+  slug: string;
+  title: string;
+  description: string | null;
+  is_published: boolean;
+  is_featured: boolean;
+  settlement_id: number | null;
+  settlement: SettlementItem | null;
+  realtor_id: number;
+  realtor: RealtorItem;
+  meta_title: string | null;
+  meta_description: string | null;
+  plots: PlotShortItem[];
+  plots_count: number;
+  total_area: number | null;
+  price_min: number | null;
+  price_max: number | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ListingListResponse {
+  items: ListingListItem[];
+  total: number;
+  page: number;
+  size: number;
+  pages: number;
+}
+
+export interface ListingFilters {
+  search?: string;
+  cadastral_search?: string;
+  settlement_id?: number;
+  is_published?: boolean;
+  is_featured?: boolean;
+  sort?: string;
+  page?: number;
+  size?: number;
+}
+
+export interface ListingCreate {
+  title: string;
+  description?: string | null;
+  realtor_id: number;
+  settlement_id?: number | null;
+  is_published?: boolean;
+  is_featured?: boolean;
+  meta_title?: string | null;
+  meta_description?: string | null;
+  plot_ids?: number[];
+}
+
+export interface ListingUpdate {
+  title?: string;
+  description?: string | null;
+  realtor_id?: number;
+  settlement_id?: number | null;
+  is_published?: boolean;
+  is_featured?: boolean;
+  meta_title?: string | null;
+  meta_description?: string | null;
+  plot_ids?: number[];
+}
+
+export async function getListings(filters: ListingFilters = {}): Promise<ListingListResponse> {
+  const params = new URLSearchParams();
+
+  if (filters.search) params.set("search", filters.search);
+  if (filters.cadastral_search) params.set("cadastral_search", filters.cadastral_search);
+  if (filters.settlement_id) params.set("settlement_id", String(filters.settlement_id));
+  if (filters.is_published !== undefined) params.set("is_published", String(filters.is_published));
+  if (filters.is_featured !== undefined) params.set("is_featured", String(filters.is_featured));
+  if (filters.sort) params.set("sort", filters.sort);
+  if (filters.page) params.set("page", String(filters.page));
+  if (filters.size) params.set("size", String(filters.size));
+
+  const response = await fetchWithAuth(`/api/admin/listings/?${params.toString()}`);
+  if (!response.ok) {
+    throw new Error("Ошибка загрузки объявлений");
+  }
+  return response.json();
+}
+
+export async function getListing(id: number): Promise<ListingDetail> {
+  const response = await fetchWithAuth(`/api/admin/listings/${id}`);
+  if (!response.ok) {
+    throw new Error("Объявление не найдено");
+  }
+  return response.json();
+}
+
+export async function createListing(data: ListingCreate): Promise<ListingDetail> {
+  const response = await fetchWithAuth("/api/admin/listings/", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.detail || "Ошибка создания объявления");
+  }
+  return response.json();
+}
+
+export async function updateListing(id: number, data: ListingUpdate): Promise<ListingDetail> {
+  const response = await fetchWithAuth(`/api/admin/listings/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.detail || "Ошибка обновления объявления");
+  }
+  return response.json();
+}
+
+export async function deleteListing(id: number): Promise<void> {
+  const response = await fetchWithAuth(`/api/admin/listings/${id}`, {
+    method: "DELETE",
+  });
+  if (!response.ok) {
+    throw new Error("Ошибка удаления объявления");
+  }
+}
+
+export async function bulkDeleteListings(ids: number[]): Promise<{ deleted_count: number }> {
+  const response = await fetchWithAuth("/api/admin/listings/bulk-delete", {
+    method: "POST",
+    body: JSON.stringify({ ids }),
+  });
+  if (!response.ok) {
+    throw new Error("Ошибка массового удаления");
+  }
+  return response.json();
+}
+
+export async function searchPlots(query: string, listingId?: number): Promise<PlotShortItem[]> {
+  const params = new URLSearchParams({ q: query });
+  if (listingId) params.set("listing_id", String(listingId));
+
+  const response = await fetchWithAuth(`/api/admin/listings/search-plots?${params.toString()}`);
+  if (!response.ok) {
+    throw new Error("Ошибка поиска участков");
+  }
+  return response.json();
+}
+
+// === Справочники для форм ===
+
+export async function getSettlements(): Promise<SettlementItem[]> {
+  // Параметр all=true возвращает все населённые пункты, включая те, у которых нет объявлений
+  const response = await fetch(`${API_URL}/api/locations/settlements?all=true`);
+  if (!response.ok) {
+    throw new Error("Ошибка загрузки населённых пунктов");
+  }
+  return response.json();
+}
+
+
+export async function getRealtors(): Promise<RealtorItem[]> {
+  const response = await fetchWithAuth("/api/admin/listings/realtors");
+  if (!response.ok) {
+    // Fallback: пробуем публичный эндпоинт если есть
+    throw new Error("Ошибка загрузки риэлторов");
+  }
+  return response.json();
+}
+
+export async function suggestSettlements(query: string): Promise<DaDataSuggestion[]> {
+  const params = new URLSearchParams({ query });
+  const response = await fetchWithAuth(`/api/admin/geo/suggest?${params.toString()}`);
+  if (!response.ok) {
+    console.error("Geo suggest error");
+    return [];
+  }
+  const data: SuggestionResponse = await response.json();
+  return data.suggestions;
+}
+
+export async function resolveSettlement(data: ResolveData): Promise<SettlementResolved> {
+  const response = await fetchWithAuth("/api/admin/geo/resolve", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+  if (!response.ok) {
+    throw new Error("Ошибка сохранения населенного пункта");
+  }
+  return response.json();
+}
+
