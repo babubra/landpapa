@@ -86,11 +86,6 @@ def seed_settings(db: Session):
             "value": "30",
             "description": "Таймаут для NSPD запросов в секундах"
         },
-        {
-            "key": "nspd_circuit_breaker_timeout",
-            "value": "300",
-            "description": "Время блокировки запросов к NSPD после ошибки (секунды)"
-        },
     ]
     
     created = 0
