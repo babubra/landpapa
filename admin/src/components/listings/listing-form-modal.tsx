@@ -42,7 +42,9 @@ import {
     RealtorItem,
     PlotShortItem,
     SettlementResolved,
+    Image as ImageType,
 } from "@/lib/api";
+import { ImageUpload } from "@/components/image-upload";
 
 interface ListingFormModalProps {
     open: boolean;
@@ -69,9 +71,11 @@ export function ListingFormModal({
 
     const [isPublished, setIsPublished] = useState(false);
     const [isFeatured, setIsFeatured] = useState(false);
+    const [titleAuto, setTitleAuto] = useState(true);  // Автогенерация названия
     const [metaTitle, setMetaTitle] = useState("");
     const [metaDescription, setMetaDescription] = useState("");
     const [selectedPlots, setSelectedPlots] = useState<PlotShortItem[]>([]);
+    const [images, setImages] = useState<ImageType[]>([]); // Изображения
 
     // Справочники
     const [realtors, setRealtors] = useState<RealtorItem[]>([]);
@@ -103,9 +107,11 @@ export function ListingFormModal({
 
                         setIsPublished(listing.is_published);
                         setIsFeatured(listing.is_featured);
+                        setTitleAuto(listing.title_auto ?? true);
                         setMetaTitle(listing.meta_title || "");
                         setMetaDescription(listing.meta_description || "");
                         setSelectedPlots(listing.plots || []);
+                        setImages(listing.images || []);
                     } else {
                         // Сброс формы
                         resetForm();
@@ -129,18 +135,18 @@ export function ListingFormModal({
         setSelectedSettlement(null);
         setIsPublished(false);
         setIsFeatured(false);
+        setTitleAuto(true);
         setMetaTitle("");
         setMetaDescription("");
         setSelectedPlots([]);
+        setImages([]);
     };
-
-
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        // Валидация
-        if (!title.trim()) {
+        // Валидация: название обязательно только если не авто-режим
+        if (!titleAuto && !title.trim()) {
             toast.error("Введите название объявления");
             return;
         }
@@ -152,16 +158,21 @@ export function ListingFormModal({
         setIsLoading(true);
 
         try {
+            // При авто-режиме отправляем временное название — бэкенд перегенерирует его
+            const finalTitle = titleAuto ? (title.trim() || "Продажа участка") : title.trim();
+
             const data: ListingCreate = {
-                title: title.trim(),
+                title: finalTitle,
                 description: description || null,
                 realtor_id: parseInt(realtorId),
                 settlement_id: selectedSettlement ? selectedSettlement.id : null,
                 is_published: isPublished,
                 is_featured: isFeatured,
+                title_auto: titleAuto,
                 meta_title: metaTitle.trim() || null,
                 meta_description: metaDescription.trim() || null,
                 plot_ids: selectedPlots.map(p => p.id),
+                image_ids: images.map(i => i.id),
             };
 
             if (isEditing && listingId) {
@@ -197,8 +208,9 @@ export function ListingFormModal({
                 ) : (
                     <form onSubmit={handleSubmit} className="space-y-6">
                         <Tabs defaultValue="main" className="w-full">
-                            <TabsList className="grid w-full grid-cols-3">
+                            <TabsList className="grid w-full grid-cols-4">
                                 <TabsTrigger value="main">Основное</TabsTrigger>
+                                <TabsTrigger value="media">Фото</TabsTrigger>
                                 <TabsTrigger value="plots">Участки</TabsTrigger>
                                 <TabsTrigger value="seo">SEO</TabsTrigger>
                             </TabsList>
@@ -207,14 +219,33 @@ export function ListingFormModal({
                             <TabsContent value="main" className="space-y-4 mt-4">
                                 {/* Название */}
                                 <div className="space-y-2">
-                                    <Label htmlFor="title">Название *</Label>
+                                    <div className="flex items-center justify-between">
+                                        <Label htmlFor="title">Название *</Label>
+                                        <div className="flex items-center gap-2">
+                                            <Switch
+                                                id="title_auto"
+                                                checked={titleAuto}
+                                                onCheckedChange={setTitleAuto}
+                                            />
+                                            <Label htmlFor="title_auto" className="text-sm text-muted-foreground cursor-pointer">
+                                                Авто
+                                            </Label>
+                                        </div>
+                                    </div>
                                     <Input
                                         id="title"
-                                        placeholder="Земельный участок у моря в Янтарном"
+                                        placeholder={titleAuto ? "Будет сгенерировано автоматически" : "Земельный участок у моря в Янтарном"}
                                         value={title}
                                         onChange={(e) => setTitle(e.target.value)}
-                                        required
+                                        disabled={titleAuto}
+                                        required={!titleAuto}
+                                        className={titleAuto ? "bg-muted" : ""}
                                     />
+                                    {titleAuto && (
+                                        <p className="text-xs text-muted-foreground">
+                                            Название будет сгенерировано на основе привязанных участков
+                                        </p>
+                                    )}
                                 </div>
 
                                 {/* Описание */}
@@ -249,7 +280,7 @@ export function ListingFormModal({
                                         <Label>Населённый пункт</Label>
                                         <SettlementSelect
                                             value={selectedSettlement}
-                                            onSelect={(settlement) => setSelectedSettlement(settlement as any)} // Cast needed because SettlementResolved is slightly different from SettlementItem but compatible enough for UI display logic in Select
+                                            onSelect={(settlement) => setSelectedSettlement(settlement as any)}
                                         />
                                     </div>
                                 </div>
@@ -277,6 +308,20 @@ export function ListingFormModal({
                                             Спецпредложение
                                         </Label>
                                     </div>
+                                </div>
+                            </TabsContent>
+
+                            {/* Фото */}
+                            <TabsContent value="media" className="mt-4 space-y-4">
+                                <div className="space-y-2">
+                                    <Label>Фотографии</Label>
+                                    <p className="text-sm text-muted-foreground mb-4">
+                                        Загрузите изображения. Перетаскивайте для изменения порядка.
+                                    </p>
+                                    <ImageUpload
+                                        value={images}
+                                        onChange={setImages}
+                                    />
                                 </div>
                             </TabsContent>
 

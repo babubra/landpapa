@@ -38,6 +38,8 @@ interface LocationFilterProps {
     value: number[];
     /** Callback при изменении выбора */
     onChange: (ids: number[]) => void;
+    /** Callback для применения фильтров сразу (передаёт новые значения) */
+    onApply?: (ids: number[]) => void;
     /** Placeholder когда ничего не выбрано */
     placeholder?: string;
     /** Кнопка-триггер растягивается на всю ширину */
@@ -51,6 +53,7 @@ interface LocationFilterProps {
 export function LocationFilter({
     value,
     onChange,
+    onApply,
     placeholder = "Все районы",
     fullWidth = true,
 }: LocationFilterProps) {
@@ -67,9 +70,10 @@ export function LocationFilter({
     // Маппинг ID → имя для отображения выбранных
     const [settlementNames, setSettlementNames] = useState<Record<number, string>>({});
 
-    // Загрузка данных при открытии модального окна
+    // Загрузка данных при открытии модального окна ИЛИ если есть выбранные значения
     useEffect(() => {
-        if (open && districts.length === 0) {
+        const shouldLoad = (open || value.length > 0) && districts.length === 0;
+        if (shouldLoad) {
             setLoading(true);
             fetch(`${API_URL}/api/locations/settlements-grouped`)
                 .then((res) => res.json())
@@ -89,7 +93,7 @@ export function LocationFilter({
                 .catch(console.error)
                 .finally(() => setLoading(false));
         }
-    }, [open, districts.length]);
+    }, [open, districts.length, value.length]);
 
     // Синхронизация локального выбора с внешним value
     useEffect(() => {
@@ -145,6 +149,10 @@ export function LocationFilter({
     const handleApply = () => {
         onChange(localSelection);
         setOpen(false);
+        // Автоматически применяем фильтры если передан onApply (передаём новые значения)
+        if (onApply) {
+            onApply(localSelection);
+        }
     };
 
     // Сбросить выбор

@@ -24,9 +24,11 @@ interface Reference {
 
 interface CatalogFiltersProps {
     onFiltersChange: (filters: Record<string, string>) => void;
+    baseUrl?: string;  // По умолчанию /catalog
+    total?: number;    // Количество найденных
 }
 
-export function CatalogFilters({ onFiltersChange }: CatalogFiltersProps) {
+export function CatalogFilters({ onFiltersChange, baseUrl = "/catalog", total }: CatalogFiltersProps) {
     const router = useRouter();
     const searchParams = useSearchParams();
 
@@ -79,9 +81,24 @@ export function CatalogFilters({ onFiltersChange }: CatalogFiltersProps) {
         if (areaMax) params.set("area_max", areaMax);
         if (sort && sort !== "newest") params.set("sort", sort);
 
-        router.push(`/catalog?${params.toString()}`);
+        router.push(`${baseUrl}?${params.toString()}`);
         onFiltersChange(Object.fromEntries(params));
-    }, [settlementIds, landUseId, priceMin, priceMax, areaMin, areaMax, sort, router, onFiltersChange]);
+    }, [settlementIds, landUseId, priceMin, priceMax, areaMin, areaMax, sort, router, onFiltersChange, baseUrl]);
+
+    // Применить фильтры с новым значением settlementIds (для LocationFilter)
+    const applyFiltersWithSettlements = useCallback((newSettlementIds: number[]) => {
+        const params = new URLSearchParams();
+        if (newSettlementIds.length > 0) params.set("settlements", newSettlementIds.join(","));
+        if (landUseId) params.set("land_use", landUseId);
+        if (priceMin) params.set("price_min", priceMin);
+        if (priceMax) params.set("price_max", priceMax);
+        if (areaMin) params.set("area_min", areaMin);
+        if (areaMax) params.set("area_max", areaMax);
+        if (sort && sort !== "newest") params.set("sort", sort);
+
+        router.push(`${baseUrl}?${params.toString()}`);
+        onFiltersChange(Object.fromEntries(params));
+    }, [landUseId, priceMin, priceMax, areaMin, areaMax, sort, router, onFiltersChange, baseUrl]);
 
     const resetFilters = () => {
         setSettlementIds([]);
@@ -91,14 +108,21 @@ export function CatalogFilters({ onFiltersChange }: CatalogFiltersProps) {
         setAreaMin("");
         setAreaMax("");
         setSort("newest");
-        router.push("/catalog");
+        router.push(baseUrl);
         onFiltersChange({});
     };
 
     return (
         <Card>
-            <CardHeader>
-                <CardTitle className="text-lg">Фильтры</CardTitle>
+            <CardHeader className="pb-2">
+                <div className="flex items-center justify-between">
+                    <CardTitle className="text-lg">Фильтры</CardTitle>
+                    {total !== undefined && (
+                        <span className="text-sm text-muted-foreground">
+                            Объявлений: <span className="font-medium text-foreground">{total}</span>
+                        </span>
+                    )}
+                </div>
             </CardHeader>
             <CardContent className="space-y-4">
                 {/* Местоположение */}
@@ -107,6 +131,7 @@ export function CatalogFilters({ onFiltersChange }: CatalogFiltersProps) {
                     <LocationFilter
                         value={settlementIds}
                         onChange={setSettlementIds}
+                        onApply={applyFiltersWithSettlements}
                         placeholder="Все районы"
                     />
                 </div>

@@ -1,21 +1,15 @@
-fastapi>=0.109.0
-uvicorn[standard]>=0.27.0
-sqlalchemy>=2.0.0
-psycopg2-binary>=2.9.9
-pydantic>=2.0.0
-pydantic-settings>=2.0.0
-python-dotenv>=1.0.0
-alembic>=1.13.0
-geoalchemy2>=0.14.0
-# Auth
-argon2-cffi>=23.1.0
-python-jose[cryptography]>=3.3.0
-python-multipart>=0.0.6
-# NSPD Client
-httpx>=0.25.0
-pyproj>=3.6.0
+fastapi[standard]
+uvicorn
+sqlalchemy
+psycopg2-binary
+alembic
+pydantic
+pydantic-settings
+python-jose[cryptography]
+passlib[bcrypt]
+python-multipart
+httpx
+Pillow>=10.0.0
 shapely>=2.0.0
-# DaData
-aiohttp>=3.9.0
-# Slug generation
 unidecode>=1.4.0
+geoalchemy2

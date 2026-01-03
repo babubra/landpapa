@@ -2,6 +2,7 @@ import { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { ListingGallery } from "@/components/listing/ListingGallery";
 import { ListingSidebar } from "@/components/listing/ListingSidebar";
+import { ListingMap } from "@/components/listing/ListingMap";
 import { BackButton } from "@/components/ui/back-button";
 import { API_URL } from "@/lib/config";
 
@@ -18,6 +19,10 @@ interface Plot {
     status: string;
     land_use: { name: string } | null;
     land_category: { name: string } | null;
+    // Геоданные
+    latitude: number | null;
+    longitude: number | null;
+    polygon: [number, number][] | null;
 }
 
 interface Realtor {
@@ -29,6 +34,11 @@ interface Settlement {
     district?: { name: string };
 }
 
+interface ImageType {
+    url: string;
+    thumbnail_url: string | null;
+}
+
 interface ListingDetail {
     id: number;
     slug: string;
@@ -37,10 +47,13 @@ interface ListingDetail {
     price_min: number | null;
     price_max: number | null;
     total_area: number | null;
+    area_min: number | null;
+    area_max: number | null;
     plots_count: number;
     realtor: Realtor;
     settlement?: Settlement | null;
     plots: Plot[];
+    images: ImageType[];
     meta_title: string | null;
     meta_description: string | null;
 }
@@ -93,7 +106,7 @@ export default async function ListingPage({ params }: ListingPageProps) {
 
     return (
         <div className="min-h-screen bg-background">
-            <div className="container mx-auto px-4 py-8">
+            <div className="container mx-auto px-4 py-8 max-w-6xl">
                 {/* Назад */}
                 <div className="mb-6">
                     <BackButton />
@@ -107,7 +120,7 @@ export default async function ListingPage({ params }: ListingPageProps) {
                     {/* Левая колонка: галерея + описание */}
                     <div className="lg:col-span-2 space-y-8">
                         {/* Галерея */}
-                        <ListingGallery images={[]} title={listing.title} />
+                        <ListingGallery images={listing.images} title={listing.title} />
 
                         {/* Описание */}
                         {listing.description && (
@@ -120,14 +133,10 @@ export default async function ListingPage({ params }: ListingPageProps) {
                             </div>
                         )}
 
-                        {/* Карта (заглушка) */}
+                        {/* Карта */}
                         <div>
                             <h2 className="text-xl font-semibold mb-4">Расположение на карте</h2>
-                            <div className="aspect-video rounded-lg bg-muted flex items-center justify-center">
-                                <p className="text-muted-foreground">
-                                    Карта будет здесь (React Leaflet)
-                                </p>
-                            </div>
+                            <ListingMap plots={listing.plots} />
                         </div>
                     </div>
 
@@ -139,9 +148,12 @@ export default async function ListingPage({ params }: ListingPageProps) {
                                 priceMin={listing.price_min}
                                 priceMax={listing.price_max}
                                 totalArea={listing.total_area}
+                                areaMin={listing.area_min}
+                                areaMax={listing.area_max}
                                 plotsCount={listing.plots_count}
                                 landUse={landUse}
                                 location={location}
+                                plots={listing.plots}
                             />
                         </div>
                     </div>

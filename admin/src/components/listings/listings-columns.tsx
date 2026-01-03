@@ -156,10 +156,29 @@ export function getColumns({
             accessorKey: "total_area",
             header: "Площадь",
             cell: ({ row }) => {
-                const area = row.getValue("total_area") as number | null;
-                if (!area) return <span className="text-muted-foreground">—</span>;
-                const sotki = area / 100;
-                return <span>{sotki.toFixed(2)} сот.</span>;
+                const areaMin = row.original.area_min;
+                const areaMax = row.original.area_max;
+
+                if (!areaMin && !areaMax) {
+                    return <span className="text-muted-foreground">—</span>;
+                }
+
+                const formatArea = (area: number) => {
+                    const sotki = area / 100;
+                    return `${sotki.toFixed(2)} сот.`;
+                };
+
+                // Если одинаковые или только одно значение — показываем одно число
+                if (areaMin === areaMax || !areaMax) {
+                    return <span>{formatArea(areaMin!)}</span>;
+                }
+
+                // Показываем диапазон
+                return (
+                    <span>
+                        {formatArea(areaMin!)} — {formatArea(areaMax)}
+                    </span>
+                );
             },
         },
 

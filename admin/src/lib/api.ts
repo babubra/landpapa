@@ -23,9 +23,12 @@ async function fetchWithAuth(
   const token = getToken();
 
   const headers: HeadersInit = {
-    "Content-Type": "application/json",
     ...options.headers,
   };
+
+  if (!(options.body instanceof FormData)) {
+    (headers as Record<string, string>)["Content-Type"] = "application/json";
+  }
 
   if (token) {
     (headers as Record<string, string>)["Authorization"] = `Bearer ${token}`;
@@ -324,10 +327,25 @@ export interface ListingListItem {
   realtor: RealtorItem;
   plots_count: number;
   total_area: number | null;
+  area_min: number | null;
+  area_max: number | null;
   price_min: number | null;
   price_max: number | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface Image {
+  id: number;
+  url: string;
+  thumbnail_url: string | null;
+  original_filename: string | null;
+  mime_type: string | null;
+  size: number | null;
+  width: number | null;
+  height: number | null;
+  sort_order: number;
+  created_at: string;
 }
 
 export interface ListingDetail {
@@ -337,6 +355,7 @@ export interface ListingDetail {
   description: string | null;
   is_published: boolean;
   is_featured: boolean;
+  title_auto: boolean;
   settlement_id: number | null;
   settlement: SettlementItem | null;
   realtor_id: number;
@@ -344,6 +363,7 @@ export interface ListingDetail {
   meta_title: string | null;
   meta_description: string | null;
   plots: PlotShortItem[];
+  images: Image[];
   plots_count: number;
   total_area: number | null;
   price_min: number | null;
@@ -378,9 +398,11 @@ export interface ListingCreate {
   settlement_id?: number | null;
   is_published?: boolean;
   is_featured?: boolean;
+  title_auto?: boolean;
   meta_title?: string | null;
   meta_description?: string | null;
   plot_ids?: number[];
+  image_ids?: number[];
 }
 
 export interface ListingUpdate {
@@ -390,9 +412,11 @@ export interface ListingUpdate {
   settlement_id?: number | null;
   is_published?: boolean;
   is_featured?: boolean;
+  title_auto?: boolean;
   meta_title?: string | null;
   meta_description?: string | null;
   plot_ids?: number[];
+  image_ids?: number[];
 }
 
 export async function getListings(filters: ListingFilters = {}): Promise<ListingListResponse> {
@@ -520,3 +544,18 @@ export async function resolveSettlement(data: ResolveData): Promise<SettlementRe
   return response.json();
 }
 
+export async function uploadImage(file: File): Promise<Image> {
+  const formData = new FormData();
+  formData.append('file', file);
+
+  const response = await fetchWithAuth('/api/admin/images/upload', {
+    method: 'POST',
+    body: formData,
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.detail || 'Ошибка загрузки изображения');
+  }
+  return response.json();
+}

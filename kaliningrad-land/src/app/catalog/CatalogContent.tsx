@@ -75,17 +75,11 @@ export function CatalogContent() {
         <div className="flex flex-col lg:flex-row gap-8">
             {/* Сайдбар с фильтрами */}
             <aside className="w-full lg:w-80 flex-shrink-0">
-                <CatalogFilters onFiltersChange={handleFiltersChange} />
+                <CatalogFilters onFiltersChange={handleFiltersChange} total={total} />
             </aside>
 
             {/* Основной контент */}
             <main className="flex-1">
-                {/* Заголовок с количеством */}
-                <div className="mb-6">
-                    <p className="text-muted-foreground">
-                        Найдено объявлений: <span className="font-medium text-foreground">{total}</span>
-                    </p>
-                </div>
 
                 {/* Список карточек */}
                 {loading ? (

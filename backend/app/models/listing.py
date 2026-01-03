@@ -1,6 +1,6 @@
 from datetime import datetime
-from sqlalchemy import String, Text, Boolean, Integer, DateTime, ForeignKey
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy import String, Text, Boolean, Integer, DateTime, ForeignKey, and_
+from sqlalchemy.orm import Mapped, mapped_column, relationship, foreign
 
 from app.database import Base
 
@@ -26,6 +26,7 @@ class Listing(Base):
     # Публикация
     is_published: Mapped[bool] = mapped_column(Boolean, default=False)
     is_featured: Mapped[bool] = mapped_column(Boolean, default=False)  # Специальное предложение
+    title_auto: Mapped[bool] = mapped_column(Boolean, default=True)  # Автогенерация названия
 
     # Локация
     settlement_id: Mapped[int | None] = mapped_column(ForeignKey("settlements.id"), nullable=True)
@@ -44,6 +45,13 @@ class Listing(Base):
     realtor: Mapped["Realtor"] = relationship("Realtor", lazy="joined")
     settlement: Mapped["Settlement"] = relationship("Settlement", lazy="joined")
     plots: Mapped[list["Plot"]] = relationship("Plot", back_populates="listing", lazy="selectin")
+    images: Mapped[list["Image"]] = relationship(
+        "Image",
+        primaryjoin="and_(foreign(Image.entity_type)=='listing', foreign(Image.entity_id)==Listing.id)",
+        order_by="Image.sort_order",
+        lazy="selectin",
+        viewonly=True,  # Для безопасности будем управлять привязкой вручную через сервис, хотя можно и разрешить запись
+    )
     
     def __repr__(self) -> str:
         return f"<Listing(id={self.id}, slug='{self.slug}')>"
@@ -61,6 +69,18 @@ class Listing(Base):
         return max(p.price_public for p in active_plots) if active_plots else None
     
     @property
+    def area_min(self) -> float | None:
+        """Минимальная площадь среди активных участков."""
+        active_plots = [p for p in self.plots if p.status == "active" and p.area]
+        return min(p.area for p in active_plots) if active_plots else None
+    
+    @property
+    def area_max(self) -> float | None:
+        """Максимальная площадь среди активных участков."""
+        active_plots = [p for p in self.plots if p.status == "active" and p.area]
+        return max(p.area for p in active_plots) if active_plots else None
+    
+    @property
     def total_area(self) -> float | None:
         """Общая площадь активных участков."""
         active_plots = [p for p in self.plots if p.status == "active" and p.area]
@@ -72,7 +92,43 @@ class Listing(Base):
         return len([p for p in self.plots if p.status == "active"])
 
 
+    @property
+    def main_image(self) -> "Image | None":
+        """Главное изображение: сначала ищем с is_main=True, иначе первое в списке."""
+        if not self.images:
+            return None
+        # Сначала ищем изображение с флагом is_main=True
+        for img in self.images:
+            if img.is_main:
+                return img
+        # Если нет is_main, возвращаем первое
+        return self.images[0]
+
+    @property
+    def coordinates(self) -> list[list[float]]:
+        """Координаты центроидов всех активных участков."""
+        coords = []
+        for plot in self.plots:
+            if plot.status == "active" and plot.latitude and plot.longitude:
+                coords.append([plot.latitude, plot.longitude])
+        return coords
+
+    @property
+    def area_min(self) -> float | None:
+        """Минимальная площадь среди активных участков."""
+        areas = [p.area for p in self.plots if p.status == "active" and p.area]
+        return min(areas) if areas else None
+
+    @property
+    def area_max(self) -> float | None:
+        """Максимальная площадь среди активных участков."""
+        areas = [p.area for p in self.plots if p.status == "active" and p.area]
+        return max(areas) if areas else None
+
+
 # Импорт для relationship
 from app.models.realtor import Realtor
 from app.models.plot import Plot
 from app.models.location import Settlement
+from app.models.image import Image
+

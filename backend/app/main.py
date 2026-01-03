@@ -1,14 +1,24 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+import os
 
 from app.config import settings
-from app.routers import news, listings, locations, references, auth, admin_plots, admin_settings, admin_listings, admin_geo
+from app.routers import news, listings, locations, references, auth, admin_plots, admin_settings, admin_listings, admin_geo, images, admin_references
 
 app = FastAPI(
     title="КалининградЗем API",
     description="API для сайта продажи земельных участков",
     version="1.0.0",
 )
+
+# Админские роутеры
+app.include_router(admin_plots.router, prefix="/api/admin/plots", tags=["admin-plots"])
+app.include_router(admin_settings.router, prefix="/api/admin/settings", tags=["admin-settings"])
+app.include_router(admin_listings.router, prefix="/api/admin/listings", tags=["admin-listings"])
+app.include_router(admin_geo.router, prefix="/api/admin/geo", tags=["admin-geo"])
+app.include_router(images.router, prefix="/api/admin/images", tags=["admin-images"])
+app.include_router(admin_references.router, prefix="/api/admin/references", tags=["admin-references"])
 
 # CORS configuration
 print(f"DEBUG: Loaded CORS origins: {settings.cors_origins}")
@@ -20,6 +30,12 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Создаем папку загрузок если нет
+if not os.path.exists(settings.upload_dir):
+    os.makedirs(settings.upload_dir)
+
+app.mount("/uploads", StaticFiles(directory=settings.upload_dir), name="uploads")
 
 # Публичные роутеры
 app.include_router(auth.router, prefix="/api/auth", tags=["auth"])

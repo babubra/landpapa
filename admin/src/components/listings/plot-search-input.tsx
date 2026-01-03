@@ -83,8 +83,12 @@ export function PlotSearchInput({
     };
 
     const handlePlotCreated = (plot: PlotShortItem) => {
-        addPlot(plot);
+        // Сначала закрываем модал участка
         setPlotModalOpen(false);
+        // Добавляем участок с микрозадержкой для предотвращения конфликта рендеринга
+        setTimeout(() => {
+            addPlot(plot);
+        }, 50);
     };
 
     const formatArea = (area: number | null) => {
@@ -260,6 +264,7 @@ export function PlotSearchInput({
                 plot={null}
                 initialCadastralNumber={initialCadastral}
                 onPlotCreated={handlePlotCreated}
+                listingId={listingId}
             />
         </div>
     );

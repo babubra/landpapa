@@ -4,6 +4,7 @@ Pydantic схемы для админского API объявлений.
 
 from datetime import datetime
 from pydantic import BaseModel, Field
+from app.schemas.image import ImageItem
 
 
 # === Reference Schemas ===
@@ -84,6 +85,8 @@ class ListingAdminListItem(BaseModel):
     realtor: RealtorItem
     plots_count: int
     total_area: float | None = None
+    area_min: float | None = None
+    area_max: float | None = None
     price_min: int | None = None
     price_max: int | None = None
     created_at: datetime
@@ -101,6 +104,7 @@ class ListingAdminDetail(BaseModel):
     description: str | None = None
     is_published: bool
     is_featured: bool
+    title_auto: bool = True
     settlement_id: int | None = None
     settlement: SettlementItem | None = None
     realtor_id: int
@@ -108,6 +112,7 @@ class ListingAdminDetail(BaseModel):
     meta_title: str | None = None
     meta_description: str | None = None
     plots: list[PlotShortItem] = []
+    images: list[ImageItem] = []
     plots_count: int
     total_area: float | None = None
     price_min: int | None = None
@@ -127,9 +132,11 @@ class ListingCreate(BaseModel):
     settlement_id: int | None = None
     is_published: bool = False
     is_featured: bool = False
+    title_auto: bool = True
     meta_title: str | None = Field(None, max_length=255)
     meta_description: str | None = None
     plot_ids: list[int] = []  # ID участков для привязки
+    image_ids: list[int] = []  # ID изображений для привязки
 
 
 class ListingUpdate(BaseModel):
@@ -140,9 +147,11 @@ class ListingUpdate(BaseModel):
     settlement_id: int | None = None
     is_published: bool | None = None
     is_featured: bool | None = None
+    title_auto: bool | None = None
     meta_title: str | None = Field(None, max_length=255)
     meta_description: str | None = None
     plot_ids: list[int] | None = None  # ID участков для привязки
+    image_ids: list[int] | None = None  # ID изображений для привязки
 
 
 class ListingListResponse(BaseModel):
@@ -164,3 +173,4 @@ class BulkDeleteRequest(BaseModel):
 class BulkDeleteResponse(BaseModel):
     """Ответ на массовое удаление."""
     deleted_count: int
+

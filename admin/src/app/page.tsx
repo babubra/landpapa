@@ -72,10 +72,12 @@ export default function DashboardPage() {
                 <p className="text-sm text-muted-foreground">Управление новостями</p>
               </Card>
 
-              <Card className="p-4 bg-slate-50 dark:bg-slate-800">
-                <h3 className="font-semibold mb-1">📚 Справочники</h3>
-                <p className="text-sm text-muted-foreground">Районы, назначения</p>
-              </Card>
+              <Link href="/references">
+                <Card className="p-4 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
+                  <h3 className="font-semibold mb-1">📚 Справочники</h3>
+                  <p className="text-sm text-muted-foreground">Районы, назначения</p>
+                </Card>
+              </Link>
 
               <Card className="p-4 bg-slate-50 dark:bg-slate-800">
                 <h3 className="font-semibold mb-1">👥 Риэлторы</h3>

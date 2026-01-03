@@ -72,6 +72,35 @@ class Plot(Base):
     )
     owner: Mapped["Owner"] = relationship("Owner", lazy="joined")
     
+    @property
+    def latitude(self) -> float | None:
+        """Широта центроида участка."""
+        if self.centroid is None:
+            return None
+        from shapely import wkb
+        point = wkb.loads(bytes(self.centroid.data))
+        return point.y
+    
+    @property
+    def longitude(self) -> float | None:
+        """Долгота центроида участка."""
+        if self.centroid is None:
+            return None
+        from shapely import wkb
+        point = wkb.loads(bytes(self.centroid.data))
+        return point.x
+    
+    @property
+    def polygon_coords(self) -> list[list[float]] | None:
+        """Координаты полигона участка [[lat, lon], ...]."""
+        if self.polygon is None:
+            return None
+        from shapely import wkb
+        poly = wkb.loads(bytes(self.polygon.data))
+        # Возвращаем внешнее кольцо полигона
+        coords = list(poly.exterior.coords)
+        return [[coord[1], coord[0]] for coord in coords]  # [lat, lon]
+    
     def __repr__(self) -> str:
         return f"<Plot(id={self.id}, cadastral='{self.cadastral_number}')>"
 

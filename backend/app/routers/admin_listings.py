@@ -8,10 +8,14 @@ from sqlalchemy.orm import Session
 from sqlalchemy import desc, or_
 
 from app.database import get_db
+from app.config import settings
 from app.models.listing import Listing
 from app.models.plot import Plot, PlotStatus
+from app.models.image import Image
 from app.models.admin_user import AdminUser
+import os
 from app.routers.auth import get_current_user
+from app.utils.title_generator import generate_listing_title
 from app.schemas.admin_listing import (
     ListingAdminListItem,
     ListingAdminDetail,
@@ -59,6 +63,8 @@ def listing_to_list_item(listing: Listing) -> dict:
         "realtor": listing.realtor,
         "plots_count": listing.plots_count,
         "total_area": listing.total_area,
+        "area_min": listing.area_min,
+        "area_max": listing.area_max,
         "price_min": listing.price_min,
         "price_max": listing.price_max,
         "created_at": listing.created_at,
@@ -75,6 +81,7 @@ def listing_to_detail(listing: Listing) -> dict:
         "description": listing.description,
         "is_published": listing.is_published,
         "is_featured": listing.is_featured,
+        "title_auto": listing.title_auto,
         "settlement_id": listing.settlement_id,
         "settlement": listing.settlement,
         "realtor_id": listing.realtor_id,
@@ -82,6 +89,7 @@ def listing_to_detail(listing: Listing) -> dict:
         "meta_title": listing.meta_title,
         "meta_description": listing.meta_description,
         "plots": listing.plots,
+        "images": listing.images,
         "plots_count": listing.plots_count,
         "total_area": listing.total_area,
         "price_min": listing.price_min,
@@ -236,7 +244,7 @@ async def create_listing(
             raise HTTPException(status_code=400, detail="Населённый пункт не найден")
     
     # Создаём объявление (сначала без slug, чтобы получить ID)
-    listing_data = data.model_dump(exclude={"plot_ids"})
+    listing_data = data.model_dump(exclude={"plot_ids", "image_ids"})
     listing = Listing(**listing_data)
     listing.slug = "temp"  # Временный slug
     db.add(listing)
@@ -250,9 +258,28 @@ async def create_listing(
         plots = db.query(Plot).filter(Plot.id.in_(data.plot_ids)).all()
         for plot in plots:
             plot.listing_id = listing.id
+
+    # Привязываем изображения
+    if data.image_ids:
+        # Находим изображения
+        images = db.query(Image).filter(Image.id.in_(data.image_ids)).all()
+        # Сортируем в соответствии с переданным списком
+        images_map = {img.id: img for img in images}
+        for index, img_id in enumerate(data.image_ids):
+            img = images_map.get(img_id)
+            if img:
+                img.entity_type = 'listing'
+                img.entity_id = listing.id
+                img.sort_order = index
     
     db.commit()
     db.refresh(listing)
+    
+    # Перегенерируем название если включён авто-режим
+    if listing.title_auto and listing.plots:
+        listing.title = generate_listing_title(listing.plots)
+        db.commit()
+        db.refresh(listing)
     
     return listing_to_detail(listing)
 
@@ -264,8 +291,7 @@ async def update_listing(
     db: Session = Depends(get_db),
     current_user: AdminUser = Depends(get_current_user),
 ):
-    """Обновить объявление. Slug регенерируется при изменении title."""
-    from app.slug_utils import generate_slug
+    """Обновить объявление. Slug остаётся неизменным (создаётся один раз при создании)."""
     
     listing = db.query(Listing).filter(Listing.id == listing_id).first()
     if not listing:
@@ -285,14 +311,12 @@ async def update_listing(
         if not settlement:
             raise HTTPException(status_code=400, detail="Населённый пункт не найден")
     
-    # Обновляем поля (кроме plot_ids)
+    # Обновляем поля (кроме plot_ids и slug — slug неизменен после создания)
     update_data = data.model_dump(exclude_unset=True, exclude={"plot_ids"})
     for key, value in update_data.items():
         setattr(listing, key, value)
     
-    # Регенерируем slug если title изменился
-    if data.title:
-        listing.slug = generate_slug(data.title, listing.id)
+    # Примечание: slug не регенерируем — он создаётся один раз при создании объявления
     
     # Обновляем привязку участков если передано
     if data.plot_ids is not None:
@@ -306,6 +330,27 @@ async def update_listing(
             new_plots = db.query(Plot).filter(Plot.id.in_(data.plot_ids)).all()
             for plot in new_plots:
                 plot.listing_id = listing_id
+
+    # Обновляем привязку изображений
+    if data.image_ids is not None:
+        # Отвязываем текущие
+        current_images = db.query(Image).filter(
+            Image.entity_type == 'listing',
+            Image.entity_id == listing_id
+        ).all()
+        for img in current_images:
+            img.entity_type = None
+            img.entity_id = None
+        
+        # Привязываем новые
+        if data.image_ids:
+            images = db.query(Image).filter(Image.id.in_(data.image_ids)).all()
+            images_map = {img.id: img for img in images}
+            for index, img_id in enumerate(data.image_ids):
+                img = images_map.get(img_id)
+                img.entity_type = 'listing'
+                img.entity_id = listing_id
+                img.sort_order = index
     
     db.commit()
     db.refresh(listing)
@@ -328,6 +373,30 @@ async def delete_listing(
     plots = db.query(Plot).filter(Plot.listing_id == listing_id).all()
     for plot in plots:
         plot.listing_id = None
+        
+    # Удаляем изображения физически и из БД
+    images = db.query(Image).filter(
+        Image.entity_type == 'listing',
+        Image.entity_id == listing_id
+    ).all()
+    
+    for img in images:
+        try:
+            if img.url:
+                filename = os.path.basename(img.url)
+                filepath = os.path.join(settings.upload_dir, filename)
+                if os.path.exists(filepath):
+                    os.remove(filepath)
+            
+            if img.thumbnail_url:
+                thumb_name = os.path.basename(img.thumbnail_url)
+                thumb_path = os.path.join(settings.upload_dir, thumb_name)
+                if os.path.exists(thumb_path):
+                    os.remove(thumb_path)
+            
+            db.delete(img)
+        except Exception as e:
+            print(f"Error deleting image {img.id}: {e}")
     
     db.delete(listing)
     db.commit()

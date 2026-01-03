@@ -9,8 +9,10 @@ from sqlalchemy import desc, func
 
 from app.database import get_db
 from app.models.plot import Plot, PlotStatus
+from app.models.listing import Listing
 from app.models.admin_user import AdminUser
 from app.routers.auth import get_current_user
+from app.utils.title_generator import generate_listing_title
 from app.schemas.admin_plot import (
     PlotAdminListItem,
     PlotAdminDetail,
@@ -23,6 +25,24 @@ from app.schemas.admin_plot import (
 
 
 router = APIRouter()
+
+
+def regenerate_listing_title(db: Session, listing_id: int | None) -> None:
+    """Перегенерировать название объявления если title_auto=True."""
+    if not listing_id:
+        return
+    
+    listing = db.query(Listing).filter(Listing.id == listing_id).first()
+    if not listing or not listing.title_auto:
+        return
+    
+    # Получаем все участки объявления
+    plots = db.query(Plot).filter(Plot.listing_id == listing_id).all()
+    
+    # Генерируем новое название
+    new_title = generate_listing_title(plots)
+    listing.title = new_title
+    db.commit()
 
 
 def plot_to_list_item(plot: Plot) -> dict:
@@ -190,6 +210,9 @@ async def create_plot(
     db.commit()
     db.refresh(plot)
     
+    # Перегенерируем название объявления
+    regenerate_listing_title(db, plot.listing_id)
+    
     return {
         **plot_to_list_item(plot),
         "listing_id": plot.listing_id,
@@ -218,6 +241,9 @@ async def update_plot(
     db.commit()
     db.refresh(plot)
     
+    # Перегенерируем название объявления
+    regenerate_listing_title(db, plot.listing_id)
+    
     return {
         **plot_to_list_item(plot),
         "listing_id": plot.listing_id,
@@ -238,8 +264,13 @@ async def delete_plot(
     if not plot:
         raise HTTPException(status_code=404, detail="Участок не найден")
     
+    listing_id = plot.listing_id  # Сохраняем до удаления
     db.delete(plot)
     db.commit()
+    
+    # Перегенерируем название объявления
+    regenerate_listing_title(db, listing_id)
+    
     return None
 
 

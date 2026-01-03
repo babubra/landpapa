@@ -167,6 +167,17 @@
     @apply bg-background text-foreground;
   }
 
+  /* Скрытие стрелок у input[type="number"] */
+  input[type="number"]::-webkit-outer-spin-button,
+  input[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+
+  input[type="number"] {
+    -moz-appearance: textfield;
+  }
+
   /* Типографика */
   h1,
   h2,
@@ -201,4 +212,20 @@
   label {
     font-family: var(--font-manrope), system-ui, sans-serif;
   }
+}
+
+/* Стили для подписей на полигонах карты */
+.polygon-label {
+  background: rgba(0, 0, 0, 0.7) !important;
+  border: none !important;
+  border-radius: 4px !important;
+  padding: 2px 6px !important;
+  color: white !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3) !important;
+}
+
+.polygon-label::before {
+  display: none !important;
 }

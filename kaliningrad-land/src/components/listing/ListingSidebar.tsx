@@ -1,6 +1,6 @@
 "use client";
 
-import { Phone, MapPin, Info } from "lucide-react";
+import { Phone, MapPin, Info, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -10,14 +10,24 @@ import {
     TooltipTrigger,
 } from "@/components/ui/tooltip";
 
+interface Plot {
+    id: number;
+    cadastral_number: string | null;
+    area: number | null;
+    price_public: number | null;
+}
+
 interface ListingSidebarProps {
     phone: string;
     priceMin: number | null;
     priceMax: number | null;
     totalArea: number | null;
+    areaMin: number | null;
+    areaMax: number | null;
     plotsCount: number;
     landUse?: string;
     location?: string;
+    plots?: Plot[];  // Новый пропс для списка участков
 }
 
 function formatPrice(price: number): string {
@@ -34,56 +44,122 @@ function formatPriceRange(min: number | null, max: number | null): string {
     return `от ${formatPrice(min!)} до ${formatPrice(max!)} ₽`;
 }
 
+function scrollToMap() {
+    const mapSection = document.querySelector('h2');
+    if (mapSection) {
+        // Ищем заголовок "Расположение на карте"
+        const headings = document.querySelectorAll('h2');
+        headings.forEach(h => {
+            if (h.textContent?.includes('Расположение')) {
+                h.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        });
+    }
+}
+
 export function ListingSidebar({
     phone,
     priceMin,
     priceMax,
     totalArea,
+    areaMin,
+    areaMax,
     plotsCount,
     landUse,
     location,
+    plots,
 }: ListingSidebarProps) {
     const handleCall = () => {
         window.location.href = `tel:${phone.replace(/\D/g, "")}`;
     };
 
+    const hasMultiplePlots = plotsCount > 1 && plots && plots.length > 1;
+
     return (
         <Card>
             <CardContent className="p-6 space-y-6">
-                {/* Цена */}
-                <div>
-                    <p className="text-3xl font-bold text-primary">
-                        {formatPriceRange(priceMin, priceMax)}
-                    </p>
-                </div>
+                {/* Для нескольких участков — список */}
+                {hasMultiplePlots ? (
+                    <div className="space-y-4">
+                        {/* Информационная надпись */}
+                        <div className="bg-primary/10 rounded-lg p-3">
+                            <p className="text-sm font-medium text-primary">
+                                ⚡ Доступно {plotsCount} участка
+                            </p>
+                            <p className="text-xs text-muted-foreground mt-1">
+                                Выберите участок на карте ниже
+                            </p>
+                        </div>
 
-                {/* Характеристики */}
-                <div className="space-y-3">
-                    {totalArea && (
-                        <div className="flex justify-between">
-                            <span className="text-muted-foreground">Площадь</span>
-                            <span className="font-medium">{formatArea(totalArea)} соток</span>
+                        {/* Список участков */}
+                        <div className="space-y-2">
+                            {plots.map((plot) => (
+                                <button
+                                    key={plot.id}
+                                    onClick={scrollToMap}
+                                    className="w-full text-left p-3 rounded-lg border hover:bg-muted/50 transition-colors group"
+                                >
+                                    <div className="flex items-center justify-between">
+                                        <div className="space-y-1">
+                                            {plot.cadastral_number && (
+                                                <p className="font-medium text-sm">
+                                                    📍 {plot.cadastral_number}
+                                                </p>
+                                            )}
+                                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                                {plot.area && (
+                                                    <span>{formatArea(plot.area)} сот.</span>
+                                                )}
+                                                {plot.area && plot.price_public && (
+                                                    <span>•</span>
+                                                )}
+                                                {plot.price_public && (
+                                                    <span className="font-semibold text-foreground">
+                                                        {formatPrice(plot.price_public)} ₽
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
+                                        <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
+                                    </div>
+                                </button>
+                            ))}
                         </div>
-                    )}
-                    {plotsCount > 1 && (
-                        <div className="flex justify-between">
-                            <span className="text-muted-foreground">Участков</span>
-                            <span className="font-medium">{plotsCount}</span>
+                    </div>
+                ) : (
+                    <>
+                        {/* Цена (для 1 участка) */}
+                        <div>
+                            <p className="text-3xl font-bold text-primary">
+                                {formatPriceRange(priceMin, priceMax)}
+                            </p>
                         </div>
-                    )}
-                    {landUse && (
-                        <div className="flex justify-between">
-                            <span className="text-muted-foreground">Назначение</span>
-                            <span className="font-medium">{landUse}</span>
+
+                        {/* Характеристики */}
+                        <div className="space-y-3">
+                            {totalArea && (
+                                <div className="flex justify-between">
+                                    <span className="text-muted-foreground">Площадь участков</span>
+                                    <span className="font-medium">{formatArea(totalArea)} соток</span>
+                                </div>
+                            )}
+                            {landUse && (
+                                <div className="flex justify-between">
+                                    <span className="text-muted-foreground">Назначение</span>
+                                    <span className="font-medium">{landUse}</span>
+                                </div>
+                            )}
                         </div>
-                    )}
-                    {location && (
-                        <div className="flex items-start gap-2 text-sm pt-2 border-t">
-                            <MapPin className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-0.5" />
-                            <span>{location}</span>
-                        </div>
-                    )}
-                </div>
+                    </>
+                )}
+
+                {/* Локация (всегда показываем) */}
+                {location && (
+                    <div className="flex items-start gap-2 text-sm pt-2 border-t">
+                        <MapPin className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-0.5" />
+                        <span>{location}</span>
+                    </div>
+                )}
 
                 {/* Контакт */}
                 <div className="space-y-3 pt-4 border-t">

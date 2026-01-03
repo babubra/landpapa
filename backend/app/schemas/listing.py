@@ -1,5 +1,6 @@
 from datetime import datetime
 from pydantic import BaseModel, Field
+from app.schemas.image import ImageItem
 
 
 # === Reference ===
@@ -63,9 +64,14 @@ class PlotListItem(BaseModel):
     status: str
     land_use: ReferenceItem | None
     land_category: ReferenceItem | None
+    # Геоданные
+    latitude: float | None = None      # Центроид — широта
+    longitude: float | None = None     # Центроид — долгота
+    polygon: list[list[float]] | None = Field(default=None, validation_alias="polygon_coords")
     
     class Config:
         from_attributes = True
+        populate_by_name = True
 
 
 # === Listing ===
@@ -78,13 +84,19 @@ class ListingListItem(BaseModel):
     price_min: int | None
     price_max: int | None
     total_area: float | None  # м²
+    area_min: float | None = None  # Минимальная площадь участка
+    area_max: float | None = None  # Максимальная площадь участка
     plots_count: int
     is_featured: bool
     realtor: RealtorItem
     settlement: SettlementItem | None = None
+    image: ImageItem | None = Field(default=None, validation_alias="main_image")
+    # Координаты для карты (все участки)
+    coordinates: list[list[float]] = []  # [[lat, lon], [lat, lon], ...]
     
     class Config:
         from_attributes = True
+        populate_by_name = True
 
 
 class ListingDetail(BaseModel):
@@ -96,9 +108,12 @@ class ListingDetail(BaseModel):
     price_min: int | None
     price_max: int | None
     total_area: float | None
+    area_min: float | None = None  # Минимальная площадь участка
+    area_max: float | None = None  # Максимальная площадь участка
     plots_count: int
     realtor: RealtorItem
     plots: list[PlotListItem]
+    images: list[ImageItem] = []
     meta_title: str | None
     meta_description: str | None
     created_at: datetime
@@ -114,3 +129,4 @@ class ListingListResponse(BaseModel):
     page: int
     size: int
     pages: int
+

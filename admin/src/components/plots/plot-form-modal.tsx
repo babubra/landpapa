@@ -41,6 +41,7 @@ interface PlotFormModalProps {
     // Новые пропсы для использования из формы объявления
     initialCadastralNumber?: string;  // Предзаполнение кадастрового номера
     onPlotCreated?: (plot: PlotListItem) => void;  // Callback после создания (для привязки к объявлению)
+    listingId?: number;  // ID объявления для автоматической привязки при создании
 }
 
 export function PlotFormModal({
@@ -50,6 +51,7 @@ export function PlotFormModal({
     onSuccess,
     initialCadastralNumber,
     onPlotCreated,
+    listingId,
 }: PlotFormModalProps) {
     const isEditing = !!plot;
 
@@ -176,6 +178,7 @@ export function PlotFormModal({
                 status,
                 land_use_id: landUseId ? parseInt(landUseId) : null,
                 land_category_id: landCategoryId ? parseInt(landCategoryId) : null,
+                listing_id: listingId || null,  // Привязка к объявлению при создании
             };
 
             let result: PlotListItem;
@@ -215,7 +218,11 @@ export function PlotFormModal({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="w-[95vw] max-w-5xl max-h-[90vh] overflow-y-auto">
+            <DialogContent
+                className="w-[95vw] max-w-5xl max-h-[90vh] overflow-y-auto"
+                onPointerDownOutside={(e) => e.preventDefault()}
+                onInteractOutside={(e) => e.preventDefault()}
+            >
                 <DialogHeader>
                     <DialogTitle>
                         {isEditing ? "Редактирование участка" : "Новый участок"}

@@ -10,6 +10,7 @@ export function HeroSection() {
         alt="Земельные участки в Калининградской области"
         fill
         className="object-cover"
+        sizes="100vw"
         priority
       />
 
