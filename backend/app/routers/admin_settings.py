@@ -85,6 +85,10 @@ async def update_setting(
     if key.startswith("nspd_"):
         _invalidate_nspd_client()
     
+    # Сбрасываем кеш DaData клиента при изменении его настроек
+    if key.startswith("dadata_"):
+        _invalidate_dadata_client()
+    
     return setting
 
 
@@ -101,3 +105,9 @@ def _invalidate_nspd_client():
         except Exception:
             pass
         nspd_module._nspd_client = None
+
+
+def _invalidate_dadata_client():
+    """Сброс DaData клиента для применения новых настроек."""
+    from app.dadata_client import reset_dadata_client
+    reset_dadata_client()
