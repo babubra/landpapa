@@ -7,8 +7,10 @@ pydantic
 pydantic-settings
 python-jose[cryptography]
 passlib[bcrypt]
+argon2-cffi
 python-multipart
 httpx
+aiohttp
 Pillow>=10.0.0
 shapely>=2.0.0
 unidecode>=1.4.0

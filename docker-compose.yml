@@ -25,7 +25,7 @@ services:
       DATABASE_URL: postgresql://postgres:postgres@db:5432/kaliningrad_land
       CORS_ORIGINS: '["http://localhost:3000"]'
     ports:
-      - "8000:8000"
+      - "8001:8000"
     depends_on:
       - db
     restart: unless-stopped
