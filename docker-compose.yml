@@ -23,7 +23,7 @@ services:
     container_name: kaliningrad-land-backend
     environment:
       DATABASE_URL: postgresql://postgres:postgres@db:5432/kaliningrad_land
-      CORS_ORIGINS: '["http://localhost:3000"]'
+      CORS_ORIGINS: '["http://localhost:3000", "http://localhost:3001"]'
     ports:
       - "8001:8000"
     depends_on:
