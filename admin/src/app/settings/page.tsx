@@ -76,6 +76,7 @@ export default function SettingsPage() {
         const labels: Record<string, string> = {
             nspd_proxy: "Прокси для NSPD",
             nspd_timeout: "Таймаут NSPD (сек)",
+            dadata_api_key: "API ключ DaData",
         };
         return labels[key] || key;
     };
@@ -84,6 +85,7 @@ export default function SettingsPage() {
         const placeholders: Record<string, string> = {
             nspd_proxy: "user:pass@host:port",
             nspd_timeout: "10",
+            dadata_api_key: "Введите API ключ от dadata.ru",
         };
         return placeholders[key] || "";
     };
@@ -176,10 +178,62 @@ export default function SettingsPage() {
                             </div>
                         </div>
 
+                        {/* DaData Section */}
+                        <div className="bg-card rounded-lg border p-6">
+                            <h2 className="text-lg font-semibold mb-4">
+                                Интеграция DaData
+                            </h2>
+                            <p className="text-sm text-muted-foreground mb-6">
+                                API ключ для поиска населённых пунктов через сервис dadata.ru.
+                            </p>
+
+                            <div className="space-y-4">
+                                {settings
+                                    .filter((s) => s.key.startsWith("dadata_"))
+                                    .map((setting) => (
+                                        <div key={setting.key} className="space-y-2">
+                                            <Label htmlFor={setting.key}>
+                                                {getSettingLabel(setting.key)}
+                                            </Label>
+                                            <div className="flex gap-2">
+                                                <Input
+                                                    id={setting.key}
+                                                    value={values[setting.key] || ""}
+                                                    placeholder={getPlaceholder(setting.key)}
+                                                    onChange={(e) =>
+                                                        setValues((prev) => ({
+                                                            ...prev,
+                                                            [setting.key]: e.target.value,
+                                                        }))
+                                                    }
+                                                    className="flex-1"
+                                                    type={setting.key.includes("key") ? "password" : "text"}
+                                                />
+                                                <Button
+                                                    onClick={() => handleSave(setting.key)}
+                                                    disabled={saving === setting.key}
+                                                >
+                                                    {saving === setting.key ? (
+                                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                                    ) : (
+                                                        <Save className="h-4 w-4" />
+                                                    )}
+                                                </Button>
+                                            </div>
+                                            {setting.description && (
+                                                <p className="text-xs text-muted-foreground">
+                                                    {setting.description}
+                                                </p>
+                                            )}
+                                        </div>
+                                    ))}
+                            </div>
+                        </div>
+
                         {/* Info */}
                         <div className="bg-blue-50 dark:bg-blue-950 rounded-lg border border-blue-200 dark:border-blue-800 p-4">
                             <p className="text-sm text-blue-700 dark:text-blue-300">
-                                <strong>Важно:</strong> После изменения настроек NSPD клиент будет пересоздан при следующем запросе координат.
+                                <strong>Важно:</strong> После изменения настроек клиенты будут пересозданы при следующем запросе.
                             </p>
                         </div>
                     </div>
