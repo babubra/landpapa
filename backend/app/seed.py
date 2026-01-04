@@ -86,6 +86,11 @@ def seed_settings(db: Session):
             "value": "30",
             "description": "Таймаут для NSPD запросов в секундах"
         },
+        {
+            "key": "dadata_api_key",
+            "value": "",
+            "description": "API ключ для DaData (получить на dadata.ru)"
+        },
     ]
     
     created = 0

@@ -31,16 +31,12 @@ class Settings(BaseSettings):
     # Приложение
     debug: bool = True
 
-    # DaData
-    dadata_api_key: str | None = None
-    dadata_secret_key: str | None = None
-
     # Uploads
     upload_dir: str = "uploads"
     max_upload_size: int = 5 * 1024 * 1024  # 5 MB
 
     
-    model_config = SettingsConfigDict(env_file=".env", case_sensitive=False)
+    model_config = SettingsConfigDict(env_file=".env", case_sensitive=False, extra="ignore")
 
 
 settings = Settings()

@@ -8,14 +8,29 @@ class DaDataSuggestion(BaseModel):
     unrestricted_value: str
     data: dict
 
-from app.config import settings
+
+def _get_dadata_api_key_from_db() -> Optional[str]:
+    """Получить API ключ DaData из базы данных."""
+    try:
+        from app.database import SessionLocal
+        from app.models.setting import Setting
+        
+        db = SessionLocal()
+        try:
+            setting = db.query(Setting).filter(Setting.key == "dadata_api_key").first()
+            return setting.value if setting and setting.value else None
+        finally:
+            db.close()
+    except Exception as e:
+        print(f"Warning: Failed to load dadata_api_key from DB: {e}")
+        return None
+
 
 class DaDataClient:
     BASE_URL = "https://suggestions.dadata.ru/suggestions/api/4_1/rs"
 
     def __init__(self):
-        self.api_key = settings.dadata_api_key
-        self.secret_key = settings.dadata_secret_key
+        self.api_key = _get_dadata_api_key_from_db()
 
     async def suggest_settlement(self, query: str, count: int = 10) -> List[DaDataSuggestion]:
         """
@@ -23,7 +38,7 @@ class DaDataClient:
         Ограничиваем поиск Калининградской областью по умолчанию (kladr_id 39).
         """
         if not self.api_key:
-            print("Warning: DADATA_API_KEY not found")
+            print("Warning: DADATA_API_KEY not found in settings")
             return []
 
         url = f"{self.BASE_URL}/suggest/address"
@@ -64,3 +79,10 @@ def get_dadata_client() -> DaDataClient:
     if not _dadata_client:
         _dadata_client = DaDataClient()
     return _dadata_client
+
+
+def reset_dadata_client():
+    """Сбросить клиент DaData (вызывать после изменения настроек)."""
+    global _dadata_client
+    _dadata_client = None
+
