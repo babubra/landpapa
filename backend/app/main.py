@@ -46,12 +46,6 @@ app.include_router(locations.router, prefix="/api/locations", tags=["locations"]
 app.include_router(references.router, prefix="/api/references", tags=["references"])
 app.include_router(public_settings.router, prefix="/api/settings", tags=["settings"])
 
-# Админские роутеры
-app.include_router(admin_plots.router, prefix="/api/admin/plots", tags=["admin-plots"])
-app.include_router(admin_settings.router, prefix="/api/admin/settings", tags=["admin-settings"])
-app.include_router(admin_listings.router, prefix="/api/admin/listings", tags=["admin-listings"])
-app.include_router(admin_geo.router, prefix="/api/admin/geo", tags=["admin-geo"])
-
 
 @app.get("/")
 async def root():

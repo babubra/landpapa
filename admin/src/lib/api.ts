@@ -147,7 +147,7 @@ export async function getPlots(filters: PlotFilters = {}): Promise<PlotListRespo
   if (filters.page) params.set("page", String(filters.page));
   if (filters.size) params.set("size", String(filters.size));
 
-  const response = await fetchWithAuth(`/api/admin/plots?${params.toString()}`);
+  const response = await fetchWithAuth(`/api/admin/plots/?${params.toString()}`);
   if (!response.ok) {
     throw new Error("Ошибка загрузки участков");
   }
@@ -217,7 +217,7 @@ export async function deletePlot(id: number): Promise<void> {
 }
 
 export async function bulkDeletePlots(ids: number[]): Promise<{ deleted_count: number }> {
-  const response = await fetchWithAuth("/api/admin/plots/bulk-delete", {
+  const response = await fetchWithAuth("/api/admin/plots/bulk-delete/", {
     method: "POST",
     body: JSON.stringify({ ids }),
   });
@@ -504,7 +504,7 @@ export async function deleteListing(id: number): Promise<void> {
 }
 
 export async function bulkDeleteListings(ids: number[]): Promise<{ deleted_count: number }> {
-  const response = await fetchWithAuth("/api/admin/listings/bulk-delete", {
+  const response = await fetchWithAuth("/api/admin/listings/bulk-delete/", {
     method: "POST",
     body: JSON.stringify({ ids }),
   });
