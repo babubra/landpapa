@@ -3,7 +3,7 @@
  * Использует переменную окружения NEXT_PUBLIC_API_URL с fallback на localhost для разработки.
  */
 
-export const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8001";
+export const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
 export const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 
 /**

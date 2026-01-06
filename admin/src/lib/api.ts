@@ -3,7 +3,7 @@
  */
 
 // Используем переменную окружения для API URL, с fallback на localhost для разработки
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8001";
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
 
 /**
  * Получить токен из localStorage.
