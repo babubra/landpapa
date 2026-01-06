@@ -44,8 +44,13 @@ fi
 
 # 4. Настройка переменных окружения
 if [ ! -f .env ]; then
-    log "Файл .env не найден. Создаем из примера..."
-    cp .env.example .env
+    log "Настройка .env..."
+    if [ -f .env.example ]; then
+        cp .env.example .env
+    else
+        log "ВНИМАНИЕ: .env.example не найден. Создаем пустой .env"
+        touch .env
+    fi
     
     log "Сейчас откроется редактор nano для настройки .env."
     log "1. Укажите домены (NEXT_PUBLIC_SITE_URL)"
