@@ -4,7 +4,12 @@
  */
 
 const IS_SERVER = typeof window === "undefined";
-export const API_URL = IS_SERVER ? (process.env.NEXT_PUBLIC_API_URL || "http://backend:8000") : "";
+
+// Внутренний URL для запросов сервер-сервер (внутри Docker)
+const INTERNAL_API_URL = "http://backend:8000";
+
+// Публичный URL для браузера
+export const API_URL = IS_SERVER ? INTERNAL_API_URL : "";
 export const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 
 /**
@@ -55,5 +60,6 @@ export async function getSiteSettings(): Promise<SiteSettings> {
 export function getImageUrl(url: string | null | undefined, fallback: string = "/hero-bg.jpg"): string {
     if (!url) return fallback;
     if (url.startsWith("http")) return url;
-    return `${API_URL}${url}`;
+    // Всегда возвращаем относительный путь, так как Nginx проксирует /uploads/
+    return url.startsWith("/") ? url : `/${url}`;
 }
