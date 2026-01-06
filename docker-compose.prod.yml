@@ -29,8 +29,8 @@ services:
       context: ./kaliningrad-land
       # Передаем аргументы сборки для Next.js (чтобы запечь ENV переменные)
       args:
-        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-https://landpapa.ru/api}
-        NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-https://landpapa.ru}
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-https://rkkland.ru/api}
+        NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-https://rkkland.ru}
     container_name: landpapa_frontend
     restart: always
     env_file: .env
@@ -41,7 +41,7 @@ services:
     build:
       context: ./admin
       args:
-        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-https://landpapa.ru/api}
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-https://rkkland.ru/api}
     container_name: landpapa_admin
     restart: always
     env_file: .env
