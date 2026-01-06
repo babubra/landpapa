@@ -3,7 +3,8 @@
  * Использует переменную окружения NEXT_PUBLIC_API_URL с fallback на localhost для разработки.
  */
 
-export const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
+const IS_SERVER = typeof window === "undefined";
+export const API_URL = IS_SERVER ? (process.env.NEXT_PUBLIC_API_URL || "http://backend:8000") : "";
 export const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 
 /**

@@ -3,7 +3,8 @@
  */
 
 // Используем переменную окружения для API URL, с fallback на localhost для разработки
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
+const IS_SERVER = typeof window === "undefined";
+const API_URL = IS_SERVER ? (process.env.NEXT_PUBLIC_API_URL || "http://backend:8000") : "";
 
 /**
  * Получить токен из localStorage.
