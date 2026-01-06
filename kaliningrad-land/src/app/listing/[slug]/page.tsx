@@ -2,7 +2,11 @@ import { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { ListingGallery } from "@/components/listing/ListingGallery";
 import { ListingSidebar } from "@/components/listing/ListingSidebar";
-import { ListingMap } from "@/components/listing/ListingMap";
+import dynamic from "next/dynamic";
+const ListingMap = dynamic(() => import("@/components/listing/ListingMap").then((mod) => mod.ListingMap), {
+    ssr: false,
+    loading: () => <div className="aspect-video rounded-lg bg-muted flex items-center justify-center">Загрузка карты...</div>,
+});
 import { BackButton } from "@/components/ui/back-button";
 import { API_URL } from "@/lib/config";
 
