@@ -33,7 +33,7 @@ interface ListingSidebarProps {
     plots?: Plot[];  // Новый пропс для списка участков
 }
 
-const ITEMS_PER_PAGE = 15;
+const ITEMS_PER_PAGE = 10;
 
 function formatPrice(price: number): string {
     return new Intl.NumberFormat("ru-RU").format(price);
