@@ -2,11 +2,7 @@ import { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { ListingGallery } from "@/components/listing/ListingGallery";
 import { ListingSidebar } from "@/components/listing/ListingSidebar";
-import dynamic from "next/dynamic";
-const ListingMap = dynamic(() => import("@/components/listing/ListingMap").then((mod) => mod.ListingMap), {
-    ssr: false,
-    loading: () => <div className="aspect-video rounded-lg bg-muted flex items-center justify-center">Загрузка карты...</div>,
-});
+import { ListingMapClient } from "@/components/listing/ListingMapClient";
 import { BackButton } from "@/components/ui/back-button";
 import { API_URL } from "@/lib/config";
 
@@ -188,7 +184,7 @@ export default async function ListingPage({ params }: ListingPageProps) {
                         {/* Карта */}
                         <div>
                             <h2 className="text-xl font-semibold mb-4">Расположение на карте</h2>
-                            <ListingMap plots={listing.plots} />
+                            <ListingMapClient plots={listing.plots} />
                         </div>
                     </div>
 

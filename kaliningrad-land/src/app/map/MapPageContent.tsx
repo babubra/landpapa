@@ -3,11 +3,7 @@
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { CatalogFilters } from "@/components/catalog/CatalogFilters";
-import dynamic from "next/dynamic";
-const ListingsMap = dynamic(() => import("@/components/map/ListingsMap").then((mod) => mod.ListingsMap), {
-    ssr: false,
-    loading: () => <div className="h-full flex items-center justify-center bg-muted">Загрузка карты...</div>,
-});
+import { ListingsMapClient } from "@/components/map/ListingsMapClient";
 import { ListingPreview } from "@/components/map/ListingPreview";
 import { API_URL } from "@/lib/config";
 import type { ListingData } from "@/types/listing";
@@ -98,7 +94,7 @@ export function MapPageContent() {
                                 <p className="text-muted-foreground">Загрузка карты...</p>
                             </div>
                         ) : (
-                            <ListingsMap
+                            <ListingsMapClient
                                 listings={listingsWithCoords}
                                 selectedId={selectedListing?.id}
                                 onMarkerClick={handleMarkerClick}
