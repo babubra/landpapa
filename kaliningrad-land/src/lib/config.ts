@@ -5,8 +5,9 @@
 
 const IS_SERVER = typeof window === "undefined";
 
-// Внутренний URL для запросов сервер-сервер (внутри Docker)
-const INTERNAL_API_URL = "http://backend:8000";
+// Внутренний URL для запросов сервер-сервер
+// В Docker это http://backend:8000, локально http://localhost:8001
+const INTERNAL_API_URL = process.env.INTERNAL_API_URL || "http://localhost:8001";
 
 // Публичный URL для браузера
 export const API_URL = IS_SERVER ? INTERNAL_API_URL : "";
