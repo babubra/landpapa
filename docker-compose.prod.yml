@@ -41,7 +41,7 @@ services:
     build:
       context: ./admin
       args:
-        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-https://rkkland.ru/api}
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-https://rkkland.ru}
     container_name: landpapa_admin
     restart: always
     env_file: .env
