@@ -1,0 +1,70 @@
+services:
+  # Наш PostgreSQL (такой же как в dev, но с restart: always)
+  db:
+    image: postgis/postgis:16-3.4
+    container_name: landpapa_db
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-kaliningrad_land}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  backend:
+    build:
+      context: ./backend
+    container_name: landpapa_backend
+    restart: always
+    env_file: .env
+    depends_on:
+      - db
+    volumes:
+      - uploads_data:/app/uploads
+    # Запуск без --reload и с 4 воркерами для производительности
+    command: [ "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4" ]
+
+  frontend:
+    build:
+      context: ./kaliningrad-land
+      # Передаем аргументы сборки для Next.js (чтобы запечь ENV переменные)
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-https://landpapa.ru/api}
+        NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-https://landpapa.ru}
+    container_name: landpapa_frontend
+    restart: always
+    env_file: .env
+    depends_on:
+      - backend
+
+  admin:
+    build:
+      context: ./admin
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-https://landpapa.ru/api}
+    container_name: landpapa_admin
+    restart: always
+    env_file: .env
+    depends_on:
+      - backend
+
+  nginx:
+    image: nginx:alpine
+    container_name: landpapa_nginx
+    restart: always
+    ports:
+      - "80:80"
+      # - "443:443" # Раскомментируйте после настройки SSL
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      # Для SSL сертификатов (Certbot):
+      # - ./certbot/conf:/etc/letsencrypt
+      # - ./certbot/www:/var/www/certbot
+    depends_on:
+      - frontend
+      - admin
+      - backend
+
+volumes:
+  postgres_data:
+  uploads_data:
