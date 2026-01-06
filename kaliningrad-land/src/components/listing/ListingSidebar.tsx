@@ -1,6 +1,7 @@
 "use client";
 
-import { Phone, MapPin, Info, ChevronRight } from "lucide-react";
+import { useState } from "react";
+import { Phone, MapPin, Info, ChevronRight, ChevronLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -32,6 +33,8 @@ interface ListingSidebarProps {
     plots?: Plot[];  // Новый пропс для списка участков
 }
 
+const ITEMS_PER_PAGE = 15;
+
 function formatPrice(price: number): string {
     return new Intl.NumberFormat("ru-RU").format(price);
 }
@@ -47,16 +50,12 @@ function formatPriceRange(min: number | null, max: number | null): string {
 }
 
 function scrollToMap() {
-    const mapSection = document.querySelector('h2');
-    if (mapSection) {
-        // Ищем заголовок "Расположение на карте"
-        const headings = document.querySelectorAll('h2');
-        headings.forEach(h => {
-            if (h.textContent?.includes('Расположение')) {
-                h.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }
-        });
-    }
+    const headings = document.querySelectorAll('h2');
+    headings.forEach(h => {
+        if (h.textContent?.includes('Расположение')) {
+            h.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+    });
 }
 
 export function ListingSidebar({
@@ -73,11 +72,19 @@ export function ListingSidebar({
     location,
     plots,
 }: ListingSidebarProps) {
+    const [currentPage, setCurrentPage] = useState(1);
+
     const handleCall = () => {
         window.location.href = `tel:${phone.replace(/\D/g, "")}`;
     };
 
     const hasMultiplePlots = plotsCount > 1 && plots && plots.length > 1;
+
+    // Пагинация
+    const allPlots = plots || [];
+    const totalPages = Math.ceil(allPlots.length / ITEMS_PER_PAGE);
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    const paginatedPlots = allPlots.slice(startIndex, startIndex + ITEMS_PER_PAGE);
 
     return (
         <Card>
@@ -97,7 +104,7 @@ export function ListingSidebar({
 
                         {/* Список участков */}
                         <div className="space-y-2">
-                            {plots.map((plot) => (
+                            {paginatedPlots.map((plot) => (
                                 <button
                                     key={plot.id}
                                     onClick={scrollToMap}
@@ -129,6 +136,35 @@ export function ListingSidebar({
                                 </button>
                             ))}
                         </div>
+
+                        {/* Управление страницами */}
+                        {totalPages > 1 && (
+                            <div className="flex items-center justify-between pt-2 border-t">
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                                    disabled={currentPage === 1}
+                                    className="h-8 px-2"
+                                >
+                                    <ChevronLeft className="h-4 w-4 mr-1" />
+                                    Назад
+                                </Button>
+                                <span className="text-xs text-muted-foreground">
+                                    {currentPage} / {totalPages}
+                                </span>
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                                    disabled={currentPage === totalPages}
+                                    className="h-8 px-2"
+                                >
+                                    Вперед
+                                    <ChevronRight className="h-4 w-4 ml-1" />
+                                </Button>
+                            </div>
+                        )}
                     </div>
                 ) : (
                     <>
