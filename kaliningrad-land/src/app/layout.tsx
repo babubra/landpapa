@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Montserrat, Manrope } from "next/font/google";
 import { ThemeProvider } from "@/components/providers/ThemeProvider";
+import { SiteSettingsProvider } from "@/contexts/SiteSettingsContext";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import "./globals.css";
@@ -17,10 +18,42 @@ const manrope = Manrope({
   weight: ["400", "500", "600", "700"],
 });
 
-export const metadata: Metadata = {
-  title: "Земельные участки в Калининградской области",
-  description: "Продажа земельных участков в Калининградской области. Широкий выбор участков для строительства дома, ведения хозяйства и инвестиций.",
-};
+import { getSiteSettings, SITE_URL } from "@/lib/config";
+
+export async function generateMetadata(): Promise<Metadata> {
+  const settings = await getSiteSettings();
+  const title = settings.site_title || "КалининградЗем";
+  const description = settings.site_subtitle || "Продажа земельных участков в Калининградской области. Широкий выбор участков для строительства дома, ведения хозяйства и инвестиций.";
+
+  return {
+    metadataBase: new URL(SITE_URL),
+    title: {
+      default: title,
+      template: `%s | ${title}`,
+    },
+    description: description,
+    openGraph: {
+      type: "website",
+      siteName: title,
+      locale: "ru_RU",
+      url: SITE_URL,
+    },
+    robots: {
+      index: true,
+      follow: true,
+      googleBot: {
+        index: true,
+        follow: true,
+        "max-video-preview": -1,
+        "max-image-preview": "large",
+        "max-snippet": -1,
+      },
+    },
+    icons: {
+      icon: "/api/site-icon",
+    },
+  };
+}
 
 export default function RootLayout({
   children,
@@ -38,11 +71,13 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <div className="flex min-h-screen flex-col">
-            <Header />
-            <main className="flex-1">{children}</main>
-            <Footer />
-          </div>
+          <SiteSettingsProvider>
+            <div className="flex min-h-screen flex-col">
+              <Header />
+              <main className="flex-1">{children}</main>
+              <Footer />
+            </div>
+          </SiteSettingsProvider>
         </ThemeProvider>
       </body>
     </html>

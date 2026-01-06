@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Loader2, Save, ArrowLeft, Settings as SettingsIcon } from "lucide-react";
+import { ImageSettingUpload } from "@/components/settings/ImageSettingUpload";
 
 export default function SettingsPage() {
     const { user, isLoading: authLoading } = useAuth();
@@ -72,11 +73,27 @@ export default function SettingsPage() {
         }
     };
 
+    const handleImageUpdate = (key: string, newUrl: string) => {
+        setValues((prev) => ({ ...prev, [key]: newUrl }));
+        setSettings((prev) =>
+            prev.map((s) => (s.key === key ? { ...s, value: newUrl } : s))
+        );
+    };
+
+    const handleTextUpdate = (key: string, value: string) => {
+        setValues((prev) => ({ ...prev, [key]: value }));
+    };
+
     const getSettingLabel = (key: string) => {
         const labels: Record<string, string> = {
             nspd_proxy: "Прокси для NSPD",
             nspd_timeout: "Таймаут NSPD (сек)",
             dadata_api_key: "API ключ DaData",
+            site_title: "Название сайта",
+            site_subtitle: "Подзаголовок",
+            site_phone: "Телефон",
+            hero_title: "Заголовок Hero",
+            hero_subtitle: "Подзаголовок Hero",
         };
         return labels[key] || key;
     };
@@ -86,8 +103,55 @@ export default function SettingsPage() {
             nspd_proxy: "user:pass@host:port",
             nspd_timeout: "10",
             dadata_api_key: "Введите API ключ от dadata.ru",
+            site_title: "КалининградЗем",
+            site_subtitle: "Земельные участки",
+            site_phone: "+7 (4012) 12-34-56",
+            hero_title: "Земельные участки в Калининградской области",
+            hero_subtitle: "Найдите идеальный участок...",
         };
         return placeholders[key] || "";
+    };
+
+    // Рендер текстового поля настройки
+    const renderTextSetting = (key: string) => {
+        const setting = settings.find((s) => s.key === key);
+        if (!setting) return null;
+
+        return (
+            <div key={key} className="space-y-2">
+                <Label htmlFor={key}>{getSettingLabel(key)}</Label>
+                <div className="flex gap-2">
+                    <Input
+                        id={key}
+                        value={values[key] || ""}
+                        placeholder={getPlaceholder(key)}
+                        onChange={(e) =>
+                            setValues((prev) => ({
+                                ...prev,
+                                [key]: e.target.value,
+                            }))
+                        }
+                        className="flex-1"
+                        type={key.includes("key") ? "password" : "text"}
+                    />
+                    <Button
+                        onClick={() => handleSave(key)}
+                        disabled={saving === key}
+                    >
+                        {saving === key ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                            <Save className="h-4 w-4" />
+                        )}
+                    </Button>
+                </div>
+                {setting.description && (
+                    <p className="text-xs text-muted-foreground">
+                        {setting.description}
+                    </p>
+                )}
+            </div>
+        );
     };
 
     if (authLoading || !user) {
@@ -127,6 +191,113 @@ export default function SettingsPage() {
                     </div>
                 ) : (
                     <div className="max-w-2xl space-y-8">
+                        {/* Site Settings Section */}
+                        <div className="bg-card rounded-lg border p-6">
+                            <h2 className="text-lg font-semibold mb-4">
+                                Общие настройки сайта
+                            </h2>
+                            <p className="text-sm text-muted-foreground mb-6">
+                                Название, подзаголовок и контактный телефон сайта.
+                            </p>
+
+                            <div className="space-y-4">
+                                {renderTextSetting("site_title")}
+                                {renderTextSetting("site_subtitle")}
+                                {renderTextSetting("site_phone")}
+
+                                <div className="space-y-2">
+                                    <div className="flex items-center justify-between">
+                                        <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                                            Логотип (SVG код)
+                                        </label>
+                                        <Button
+                                            onClick={() => handleSave("site_logo")}
+                                            disabled={saving === "site_logo"}
+                                            size="sm"
+                                            className="h-7 px-3"
+                                        >
+                                            {saving === "site_logo" ? (
+                                                <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                                            ) : (
+                                                <Save className="h-3 w-3 mr-1" />
+                                            )}
+                                            Сохранить
+                                        </Button>
+                                    </div>
+                                    <div className="grid gap-4 md:grid-cols-2">
+                                        <div className="space-y-2">
+                                            <p className="text-xs text-muted-foreground">
+                                                Вставьте код &lt;svg&gt;...&lt;/svg&gt; сюда.
+                                                Убедитесь, что в коде есть <code>fill="currentColor"</code> для
+                                                автоматической смены цвета.
+                                            </p>
+                                            <textarea
+                                                className="flex min-h-[120px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 font-mono"
+                                                value={values["site_logo"] || ""}
+                                                onChange={(e) => handleTextUpdate("site_logo", e.target.value)}
+                                                placeholder='<svg viewBox="0 0 24 24" fill="currentColor">...'
+                                            />
+                                        </div>
+                                        <div className="flex flex-col gap-2">
+                                            <p className="text-xs text-muted-foreground">Предпросмотр:</p>
+                                            <div className="flex items-center justify-center h-[120px] rounded-md border border-dashed bg-muted/50 p-4">
+                                                {values["site_logo"] ? (
+                                                    <div
+                                                        className="h-10 w-auto text-foreground"
+                                                        dangerouslySetInnerHTML={{ __html: values["site_logo"] }}
+                                                    />
+                                                ) : (
+                                                    <span className="text-sm text-muted-foreground">Нет логотипа</span>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Hero Section */}
+                        <div className="bg-card rounded-lg border p-6">
+                            <h2 className="text-lg font-semibold mb-4">
+                                Главная страница
+                            </h2>
+                            <p className="text-sm text-muted-foreground mb-6">
+                                Заголовок, подзаголовок и фоновое изображение Hero-секции.
+                            </p>
+
+                            <div className="space-y-4">
+                                {renderTextSetting("hero_title")}
+                                {renderTextSetting("hero_subtitle")}
+                                <ImageSettingUpload
+                                    settingKey="hero_image"
+                                    label="Фоновое изображение Hero"
+                                    description="Рекомендуемый размер: 1920x1080px"
+                                    currentValue={values["hero_image"] || ""}
+                                    onUpdate={(url) => handleImageUpdate("hero_image", url)}
+                                />
+                            </div>
+                        </div>
+
+                        {/* Images Section */}
+                        <div className="bg-card rounded-lg border p-6">
+                            <h2 className="text-lg font-semibold mb-4">
+                                Изображения
+                            </h2>
+                            <p className="text-sm text-muted-foreground mb-6">
+                                Изображение-заглушка для карточек объявлений без фото.
+                            </p>
+
+                            <div className="space-y-4">
+                                <ImageSettingUpload
+                                    settingKey="placeholder_image"
+                                    label="Изображение-заглушка"
+                                    description="Используется когда у объявления нет фото"
+                                    currentValue={values["placeholder_image"] || ""}
+                                    onUpdate={(url) => handleImageUpdate("placeholder_image", url)}
+                                />
+                            </div>
+                        </div>
+
                         {/* NSPD Section */}
                         <div className="bg-card rounded-lg border p-6">
                             <h2 className="text-lg font-semibold mb-4">
@@ -137,44 +308,8 @@ export default function SettingsPage() {
                             </p>
 
                             <div className="space-y-4">
-                                {settings
-                                    .filter((s) => s.key.startsWith("nspd_"))
-                                    .map((setting) => (
-                                        <div key={setting.key} className="space-y-2">
-                                            <Label htmlFor={setting.key}>
-                                                {getSettingLabel(setting.key)}
-                                            </Label>
-                                            <div className="flex gap-2">
-                                                <Input
-                                                    id={setting.key}
-                                                    value={values[setting.key] || ""}
-                                                    placeholder={getPlaceholder(setting.key)}
-                                                    onChange={(e) =>
-                                                        setValues((prev) => ({
-                                                            ...prev,
-                                                            [setting.key]: e.target.value,
-                                                        }))
-                                                    }
-                                                    className="flex-1"
-                                                />
-                                                <Button
-                                                    onClick={() => handleSave(setting.key)}
-                                                    disabled={saving === setting.key}
-                                                >
-                                                    {saving === setting.key ? (
-                                                        <Loader2 className="h-4 w-4 animate-spin" />
-                                                    ) : (
-                                                        <Save className="h-4 w-4" />
-                                                    )}
-                                                </Button>
-                                            </div>
-                                            {setting.description && (
-                                                <p className="text-xs text-muted-foreground">
-                                                    {setting.description}
-                                                </p>
-                                            )}
-                                        </div>
-                                    ))}
+                                {renderTextSetting("nspd_proxy")}
+                                {renderTextSetting("nspd_timeout")}
                             </div>
                         </div>
 
@@ -188,45 +323,7 @@ export default function SettingsPage() {
                             </p>
 
                             <div className="space-y-4">
-                                {settings
-                                    .filter((s) => s.key.startsWith("dadata_"))
-                                    .map((setting) => (
-                                        <div key={setting.key} className="space-y-2">
-                                            <Label htmlFor={setting.key}>
-                                                {getSettingLabel(setting.key)}
-                                            </Label>
-                                            <div className="flex gap-2">
-                                                <Input
-                                                    id={setting.key}
-                                                    value={values[setting.key] || ""}
-                                                    placeholder={getPlaceholder(setting.key)}
-                                                    onChange={(e) =>
-                                                        setValues((prev) => ({
-                                                            ...prev,
-                                                            [setting.key]: e.target.value,
-                                                        }))
-                                                    }
-                                                    className="flex-1"
-                                                    type={setting.key.includes("key") ? "password" : "text"}
-                                                />
-                                                <Button
-                                                    onClick={() => handleSave(setting.key)}
-                                                    disabled={saving === setting.key}
-                                                >
-                                                    {saving === setting.key ? (
-                                                        <Loader2 className="h-4 w-4 animate-spin" />
-                                                    ) : (
-                                                        <Save className="h-4 w-4" />
-                                                    )}
-                                                </Button>
-                                            </div>
-                                            {setting.description && (
-                                                <p className="text-xs text-muted-foreground">
-                                                    {setting.description}
-                                                </p>
-                                            )}
-                                        </div>
-                                    ))}
+                                {renderTextSetting("dadata_api_key")}
                             </div>
                         </div>
 

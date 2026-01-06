@@ -26,6 +26,8 @@ interface ListingSidebarProps {
     areaMax: number | null;
     plotsCount: number;
     landUse?: string;
+    landCategory?: string;  // Категория земель
+    cadastralNumber?: string;  // Кадастровый номер
     location?: string;
     plots?: Plot[];  // Новый пропс для списка участков
 }
@@ -66,6 +68,8 @@ export function ListingSidebar({
     areaMax,
     plotsCount,
     landUse,
+    landCategory,
+    cadastralNumber,
     location,
     plots,
 }: ListingSidebarProps) {
@@ -139,7 +143,7 @@ export function ListingSidebar({
                         <div className="space-y-3">
                             {totalArea && (
                                 <div className="flex justify-between">
-                                    <span className="text-muted-foreground">Площадь участков</span>
+                                    <span className="text-muted-foreground">Площадь</span>
                                     <span className="font-medium">{formatArea(totalArea)} соток</span>
                                 </div>
                             )}
@@ -147,6 +151,18 @@ export function ListingSidebar({
                                 <div className="flex justify-between">
                                     <span className="text-muted-foreground">Назначение</span>
                                     <span className="font-medium">{landUse}</span>
+                                </div>
+                            )}
+                            {landCategory && (
+                                <div className="flex justify-between gap-2">
+                                    <span className="text-muted-foreground flex-shrink-0">Категория</span>
+                                    <span className="font-medium text-right">{landCategory}</span>
+                                </div>
+                            )}
+                            {cadastralNumber && (
+                                <div className="flex justify-between">
+                                    <span className="text-muted-foreground">Кадастровый номер</span>
+                                    <span className="font-medium font-mono text-sm">{cadastralNumber}</span>
                                 </div>
                             )}
                         </div>

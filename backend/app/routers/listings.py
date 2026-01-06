@@ -139,3 +139,17 @@ async def get_listing_by_slug(
         raise HTTPException(status_code=404, detail="Объявление не найдено")
     
     return listing
+
+
+@router.get("/slugs/all", response_model=list[str])
+async def get_all_slugs(
+    db: Session = Depends(get_db),
+):
+    """Получить список всех слагов опубликованных объявлений (для sitemap)."""
+    slugs = (
+        db.query(Listing.slug)
+        .filter(Listing.is_published == True)
+        .all()
+    )
+    # slugs возвращается как список кортежей [('item-1',), ('item-2',)]
+    return [s[0] for s in slugs if s[0]]

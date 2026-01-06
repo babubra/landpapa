@@ -22,7 +22,6 @@ class RealtorItem(BaseModel):
     id: int
     name: str
     phone: str
-    company: str | None
     
     class Config:
         from_attributes = True

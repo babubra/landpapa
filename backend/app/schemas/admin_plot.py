@@ -56,6 +56,7 @@ class PlotAdminListItem(BaseModel):
     land_use: ReferenceShort | None = None
     land_category: ReferenceShort | None = None
     listing: ListingShort | None = None
+    comment: str | None = None
     
     created_at: datetime
     updated_at: datetime
@@ -85,6 +86,7 @@ class PlotAdminDetail(BaseModel):
     land_category: ReferenceShort | None = None
     listing: ListingShort | None = None
     owner: OwnerShort | None = None
+    comment: str | None = None
     
     created_at: datetime
     updated_at: datetime
@@ -107,6 +109,7 @@ class PlotCreate(BaseModel):
     price_per_sotka_private: int | None = None
     status: PlotStatus = PlotStatus.active
     owner_id: int | None = None
+    comment: str | None = None
 
 
 class PlotUpdate(BaseModel):
@@ -123,6 +126,7 @@ class PlotUpdate(BaseModel):
     price_per_sotka_private: int | None = None
     status: PlotStatus | None = None
     owner_id: int | None = None
+    comment: str | None = None
 
 
 class PlotListResponse(BaseModel):
@@ -142,3 +146,84 @@ class BulkDeleteRequest(BaseModel):
 class BulkDeleteResponse(BaseModel):
     """Ответ на массовое удаление."""
     deleted_count: int
+
+
+# === Схемы для карты ===
+
+class PlotMapItem(BaseModel):
+    """Участок для отображения на карте."""
+    id: int
+    cadastral_number: str | None
+    area: float | None
+    address: str | None
+    price_public: int | None
+    comment: str | None
+    status: PlotStatus
+    listing_id: int | None
+    listing: ListingShort | None = None
+    polygon_coords: list[list[float]]  # [[lat, lon], ...]
+
+    class Config:
+        from_attributes = True
+
+
+class PlotMapResponse(BaseModel):
+    """Ответ списка участков для карты."""
+    items: list[PlotMapItem]
+    total: int
+
+
+class BulkAssignRequest(BaseModel):
+    """Запрос на массовую привязку участков к объявлению."""
+    plot_ids: list[int] = Field(..., min_length=1)
+    listing_id: int
+
+
+class BulkAssignResponse(BaseModel):
+    """Ответ на массовую привязку."""
+    updated_count: int
+
+
+# === Схемы для массового импорта ===
+
+class PlotBulkImportItem(BaseModel):
+    """Элемент массового импорта участка."""
+    cadastral_number: str
+    price: int | None = None
+    comment: str | None = None
+
+
+class BulkImportRequest(BaseModel):
+    """Запрос массового импорта участков."""
+    items: list[PlotBulkImportItem]
+
+
+class BulkImportResultItem(BaseModel):
+    """Результат импорта одного участка."""
+    cadastral_number: str
+    plot_id: int | None = None
+    status: str  # "created", "updated", "error"
+    message: str | None = None
+    nspd_status: str | None = None  # "success", "error", "skipped"
+
+
+class BulkImportResponse(BaseModel):
+    """Ответ массового импорта."""
+    total: int
+    created: int
+    updated: int
+    errors: int
+    items: list[BulkImportResultItem]
+
+
+class BulkUpdateRequest(BaseModel):
+    """Запрос массового обновления участков."""
+    plot_ids: list[int] = Field(..., min_length=1)
+    land_use_id: int | None = None
+    land_category_id: int | None = None
+    price_public: int | None = None
+
+
+class BulkUpdateResponse(BaseModel):
+    """Ответ на массовое обновление."""
+    updated_count: int

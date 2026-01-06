@@ -38,6 +38,7 @@ import {
     updateListing,
     getListing,
     getRealtors,
+    getPlot,
     SettlementItem,
     RealtorItem,
     PlotShortItem,
@@ -50,6 +51,7 @@ interface ListingFormModalProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     listingId?: number | null;  // null = создание, number = редактирование
+    initialPlotIds?: number[];  // Предвыбранные участки (из карты)
     onSuccess?: () => void;
 }
 
@@ -57,6 +59,7 @@ export function ListingFormModal({
     open,
     onOpenChange,
     listingId,
+    initialPlotIds,
     onSuccess,
 }: ListingFormModalProps) {
     const isEditing = !!listingId;
@@ -115,6 +118,15 @@ export function ListingFormModal({
                     } else {
                         // Сброс формы
                         resetForm();
+
+                        // Если есть предвыбранные участки — загружаем их
+                        if (initialPlotIds && initialPlotIds.length > 0) {
+                            const plotsData = await Promise.all(
+                                initialPlotIds.map(id => getPlot(id).catch(() => null))
+                            );
+                            const validPlots = plotsData.filter(Boolean) as PlotShortItem[];
+                            setSelectedPlots(validPlots);
+                        }
                     }
                 } catch (error) {
                     toast.error("Ошибка загрузки данных");
@@ -269,7 +281,7 @@ export function ListingFormModal({
                                             <SelectContent>
                                                 {realtors.map((realtor) => (
                                                     <SelectItem key={realtor.id} value={String(realtor.id)}>
-                                                        {realtor.name} {realtor.company ? `(${realtor.company})` : ""}
+                                                        {realtor.name}
                                                     </SelectItem>
                                                 ))}
                                             </SelectContent>

@@ -4,7 +4,7 @@ from fastapi.staticfiles import StaticFiles
 import os
 
 from app.config import settings
-from app.routers import news, listings, locations, references, auth, admin_plots, admin_settings, admin_listings, admin_geo, images, admin_references
+from app.routers import news, listings, locations, references, auth, admin_plots, admin_settings, admin_listings, admin_geo, images, admin_references, admin_realtors, public_settings
 
 app = FastAPI(
     title="КалининградЗем API",
@@ -19,6 +19,7 @@ app.include_router(admin_listings.router, prefix="/api/admin/listings", tags=["a
 app.include_router(admin_geo.router, prefix="/api/admin/geo", tags=["admin-geo"])
 app.include_router(images.router, prefix="/api/admin/images", tags=["admin-images"])
 app.include_router(admin_references.router, prefix="/api/admin/references", tags=["admin-references"])
+app.include_router(admin_realtors.router, prefix="/api/admin/realtors", tags=["admin-realtors"])
 
 # CORS configuration
 print(f"DEBUG: Loaded CORS origins: {settings.cors_origins}")
@@ -43,6 +44,7 @@ app.include_router(news.router, prefix="/api/news", tags=["news"])
 app.include_router(listings.router, prefix="/api/listings", tags=["listings"])
 app.include_router(locations.router, prefix="/api/locations", tags=["locations"])
 app.include_router(references.router, prefix="/api/references", tags=["references"])
+app.include_router(public_settings.router, prefix="/api/settings", tags=["settings"])
 
 # Админские роутеры
 app.include_router(admin_plots.router, prefix="/api/admin/plots", tags=["admin-plots"])

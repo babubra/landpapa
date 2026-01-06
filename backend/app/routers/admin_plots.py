@@ -21,6 +21,15 @@ from app.schemas.admin_plot import (
     PlotListResponse,
     BulkDeleteRequest,
     BulkDeleteResponse,
+    PlotMapItem,
+    PlotMapResponse,
+    BulkAssignRequest,
+    BulkAssignResponse,
+    BulkImportRequest,
+    BulkImportResponse,
+    BulkImportResultItem,
+    BulkUpdateRequest,
+    BulkUpdateResponse,
 )
 
 
@@ -71,6 +80,7 @@ def plot_to_list_item(plot: Plot) -> dict:
         "land_use": plot.land_use,
         "land_category": plot.land_category,
         "listing": plot.listing,
+        "comment": plot.comment,
         "created_at": plot.created_at,
         "updated_at": plot.updated_at,
     }
@@ -104,6 +114,86 @@ async def check_cadastral_number(
         }
     
     return {"exists": False}
+
+
+@router.get("/map", response_model=PlotMapResponse)
+async def get_plots_for_map(
+    db: Session = Depends(get_db),
+    current_user: AdminUser = Depends(get_current_user),
+):
+    """
+    Получить все участки с геометрией для отображения на карте.
+    
+    Возвращает участки у которых есть polygon.
+    """
+    from geoalchemy2.shape import to_shape
+    from app.schemas.admin_plot import ListingShort
+    
+    # Подгружаем связанные объявления
+    plots = db.query(Plot).filter(Plot.polygon.isnot(None)).all()
+    
+    items = []
+    for plot in plots:
+        try:
+            poly = to_shape(plot.polygon)
+            coords = list(poly.exterior.coords)
+            polygon_coords = [[coord[1], coord[0]] for coord in coords]  # [lat, lon]
+            
+            # Формируем информацию о связанном объявлении
+            listing_info = None
+            if plot.listing:
+                listing_info = ListingShort(
+                    id=plot.listing.id,
+                    slug=plot.listing.slug,
+                    title=plot.listing.title,
+                )
+            
+            items.append(PlotMapItem(
+                id=plot.id,
+                cadastral_number=plot.cadastral_number,
+                area=plot.area,
+                address=plot.address,
+                price_public=plot.price_public,
+                comment=plot.comment,
+                status=plot.status,
+                listing_id=plot.listing_id,
+                listing=listing_info,
+                polygon_coords=polygon_coords,
+            ))
+        except Exception:
+            # Пропускаем участки с невалидной геометрией
+            continue
+    
+    return PlotMapResponse(items=items, total=len(items))
+
+
+@router.post("/bulk-assign", response_model=BulkAssignResponse)
+async def bulk_assign_plots(
+    data: BulkAssignRequest,
+    db: Session = Depends(get_db),
+    current_user: AdminUser = Depends(get_current_user),
+):
+    """
+    Массовая привязка участков к объявлению.
+    
+    Обновляет listing_id для указанных участков.
+    """
+    # Проверяем существование объявления
+    listing = db.query(Listing).filter(Listing.id == data.listing_id).first()
+    if not listing:
+        raise HTTPException(status_code=404, detail="Объявление не найдено")
+    
+    # Обновляем участки
+    updated = db.query(Plot).filter(Plot.id.in_(data.plot_ids)).update(
+        {"listing_id": data.listing_id},
+        synchronize_session=False
+    )
+    db.commit()
+    
+    # Перегенерируем название объявления
+    regenerate_listing_title(db, data.listing_id)
+    
+    return BulkAssignResponse(updated_count=updated)
 
 
 @router.get("/", response_model=PlotListResponse)
@@ -348,3 +438,141 @@ async def fetch_geometry_from_nspd(
         "price_per_sotka_private": plot.price_per_sotka_private,
         "owner": plot.owner,
     }
+
+
+@router.post("/bulk-import", response_model=BulkImportResponse)
+async def bulk_import_plots(
+    data: BulkImportRequest,
+    db: Session = Depends(get_db),
+    current_user: AdminUser = Depends(get_current_user),
+):
+    """
+    Массовый импорт участков из JSON.
+    
+    Для каждого участка:
+    - Создаёт новый или обновляет существующий (по кадастровому номеру)
+    - Последовательно запрашивает данные из NSPD (полигон, центроид, площадь, адрес)
+    """
+    from geoalchemy2.shape import from_shape
+    from shapely.geometry import Polygon as ShapelyPolygon, Point as ShapelyPoint
+    from app.nspd_client import get_nspd_client
+    
+    results: list[BulkImportResultItem] = []
+    created_count = 0
+    updated_count = 0
+    error_count = 0
+    
+    nspd_client = get_nspd_client()
+    
+    for item in data.items:
+        try:
+            # Проверяем существование участка
+            existing = db.query(Plot).filter(
+                Plot.cadastral_number == item.cadastral_number
+            ).first()
+            
+            if existing:
+                # Обновляем существующий
+                if item.price is not None:
+                    existing.price_public = item.price
+                if item.comment is not None:
+                    existing.comment = item.comment
+                plot = existing
+                status = "updated"
+                updated_count += 1
+            else:
+                # Создаём новый
+                plot = Plot(
+                    cadastral_number=item.cadastral_number,
+                    price_public=item.price,
+                    comment=item.comment,
+                )
+                db.add(plot)
+                db.flush()  # Получаем ID
+                status = "created"
+                created_count += 1
+            
+            # Запрашиваем данные из NSPD (последовательно)
+            nspd_status = "skipped"
+            try:
+                cadastral_data = await nspd_client.get_object_info(item.cadastral_number)
+                
+                if cadastral_data:
+                    # Обновляем геометрию
+                    if cadastral_data.coordinates_wgs84 and cadastral_data.geometry_type == "Polygon":
+                        outer_ring = cadastral_data.coordinates_wgs84[0]
+                        shapely_polygon = ShapelyPolygon(outer_ring)
+                        plot.polygon = from_shape(shapely_polygon, srid=4326)
+                        
+                        if cadastral_data.centroid_wgs84:
+                            centroid_point = ShapelyPoint(cadastral_data.centroid_wgs84)
+                            plot.centroid = from_shape(centroid_point, srid=4326)
+                    
+                    # Обновляем адрес и площадь если пустые
+                    if not plot.address and cadastral_data.address:
+                        plot.address = cadastral_data.address
+                    if not plot.area and cadastral_data.area_sq_m:
+                        plot.area = cadastral_data.area_sq_m
+                    
+                    nspd_status = "success"
+                else:
+                    nspd_status = "not_found"
+            except Exception as e:
+                nspd_status = f"error: {str(e)}"
+            
+            results.append(BulkImportResultItem(
+                cadastral_number=item.cadastral_number,
+                plot_id=plot.id,
+                status=status,
+                nspd_status=nspd_status,
+            ))
+            
+        except Exception as e:
+            error_count += 1
+            results.append(BulkImportResultItem(
+                cadastral_number=item.cadastral_number,
+                status="error",
+                message=str(e),
+            ))
+    
+    db.commit()
+    
+    return BulkImportResponse(
+        total=len(data.items),
+        created=created_count,
+        updated=updated_count,
+        errors=error_count,
+        items=results,
+    )
+
+
+@router.post("/bulk-update", response_model=BulkUpdateResponse)
+async def bulk_update_plots(
+    data: BulkUpdateRequest,
+    db: Session = Depends(get_db),
+    current_user: AdminUser = Depends(get_current_user),
+):
+    """
+    Массовое обновление свойств участков.
+    
+    Обновляет указанные поля для всех переданных участков.
+    """
+    update_data = {}
+    
+    if data.land_use_id is not None:
+        update_data["land_use_id"] = data.land_use_id
+    if data.land_category_id is not None:
+        update_data["land_category_id"] = data.land_category_id
+    if data.price_public is not None:
+        update_data["price_public"] = data.price_public
+    
+    if not update_data:
+        raise HTTPException(status_code=400, detail="Не указаны поля для обновления")
+    
+    updated = db.query(Plot).filter(Plot.id.in_(data.plot_ids)).update(
+        update_data,
+        synchronize_session=False
+    )
+    db.commit()
+    
+    return BulkUpdateResponse(updated_count=updated)

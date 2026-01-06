@@ -56,6 +56,9 @@ class Plot(Base):
     # Владелец (приватная информация)
     owner_id: Mapped[int | None] = mapped_column(ForeignKey("owners.id"), nullable=True)
     
+    # Комментарий (собственность/аренда, продаётся вместе и т.д.)
+    comment: Mapped[str | None] = mapped_column(Text, nullable=True)
+    
     # Мета
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(

@@ -6,6 +6,7 @@ import { MapPin, Maximize } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import type { ListingData } from "@/types/listing";
+import { usePlaceholderImage } from "@/contexts/SiteSettingsContext";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8001";
 
@@ -24,8 +25,8 @@ function formatPriceRange(min: number | null, max: number | null): string {
     return `от ${formatPrice(min!)} ₽`;
 }
 
-function getImageUrl(url: string | null | undefined): string {
-    if (!url) return "/hero-bg.jpg";
+function getImageUrl(url: string | null | undefined, fallback: string): string {
+    if (!url) return fallback;
     if (url.startsWith("http")) return url;
     return `${API_URL}${url}`;
 }
@@ -36,6 +37,8 @@ export interface ListingCardProps {
 }
 
 export function ListingCard({ listing, variant = "default" }: ListingCardProps) {
+    const placeholderImage = usePlaceholderImage();
+
     // Получаем URL изображения (поддержка обоих полей)
     const imgData = listing.image || listing.main_image;
     const imageUrl = imgData ? (imgData.thumbnail_url || imgData.url) : null;
@@ -52,7 +55,7 @@ export function ListingCard({ listing, variant = "default" }: ListingCardProps) 
                 {/* Изображение */}
                 <div className="relative h-48 overflow-hidden bg-muted">
                     <Image
-                        src={getImageUrl(imageUrl)}
+                        src={getImageUrl(imageUrl, placeholderImage)}
                         alt={listing.title}
                         fill
                         className="object-cover group-hover:scale-105 transition-transform duration-300"
@@ -112,7 +115,7 @@ export function ListingCard({ listing, variant = "default" }: ListingCardProps) 
             {/* Изображение */}
             <div className="relative h-48 overflow-hidden bg-muted">
                 <Image
-                    src={getImageUrl(imageUrl)}
+                    src={getImageUrl(imageUrl, placeholderImage)}
                     alt={listing.title}
                     fill
                     className="object-cover group-hover:scale-105 transition-transform duration-300"

@@ -70,6 +70,11 @@ async function getListing(slug: string): Promise<ListingDetail | null> {
     }
 }
 
+import { getImageUrl, SITE_URL } from "@/lib/config";
+import { SeoJsonLd } from "@/components/seo/SeoJsonLd";
+
+// ... (existing imports)
+
 export async function generateMetadata({
     params,
 }: ListingPageProps): Promise<Metadata> {
@@ -80,9 +85,35 @@ export async function generateMetadata({
         return { title: "Объявление не найдено" };
     }
 
+    let title = listing.meta_title || listing.title;
+
+    // SEO: Добавляем регион, если его нет в заголовке
+    if (!title.toLowerCase().includes("калининград")) {
+        title = `${title}, Калининградская область`;
+    }
+
+    const description = listing.meta_description || `Земельный участок: ${listing.title}. ${listing.settlement?.name || "Калининградская область"}.`;
+
+    const ogImages = [];
+    if (listing.images && listing.images.length > 0) {
+        const img = listing.images[0];
+        const rawUrl = img.thumbnail_url || img.url;
+        ogImages.push(getImageUrl(rawUrl));
+    }
+
     return {
-        title: listing.meta_title || listing.title,
-        description: listing.meta_description || `Земельный участок: ${listing.title}`,
+        title,
+        description,
+        openGraph: {
+            title,
+            description,
+            type: "website",
+            url: `${SITE_URL}/listing/${slug}`,
+            images: ogImages,
+        },
+        alternates: {
+            canonical: `${SITE_URL}/listing/${slug}`,
+        },
     };
 }
 
@@ -93,6 +124,22 @@ export default async function ListingPage({ params }: ListingPageProps) {
     if (!listing) {
         notFound();
     }
+
+    // Schema.org Product/Offer
+    const jsonLd = {
+        "@context": "https://schema.org",
+        "@type": "Product",
+        "name": listing.title,
+        "description": listing.description,
+        "image": listing.images.map(img => getImageUrl(img.thumbnail_url || img.url)),
+        "offers": {
+            "@type": "Offer",
+            "price": listing.price_min, // Используем мин цену
+            "priceCurrency": "RUB",
+            "availability": "https://schema.org/InStock",
+            "url": `${SITE_URL}/listing/${slug}`,
+        }
+    };
 
     // Формируем локацию
     const location = listing.settlement
@@ -106,6 +153,7 @@ export default async function ListingPage({ params }: ListingPageProps) {
 
     return (
         <div className="min-h-screen bg-background">
+            <SeoJsonLd data={jsonLd} />
             <div className="container mx-auto px-4 py-8 max-w-6xl">
                 {/* Назад */}
                 <div className="mb-6">
@@ -152,6 +200,8 @@ export default async function ListingPage({ params }: ListingPageProps) {
                                 areaMax={listing.area_max}
                                 plotsCount={listing.plots_count}
                                 landUse={landUse}
+                                landCategory={listing.plots[0]?.land_category?.name}
+                                cadastralNumber={listing.plots[0]?.cadastral_number || undefined}
                                 location={location}
                                 plots={listing.plots}
                             />

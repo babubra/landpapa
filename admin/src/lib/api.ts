@@ -63,6 +63,7 @@ export interface PlotListItem {
   land_use: { id: number; code: string; name: string } | null;
   land_category: { id: number; code: string; name: string } | null;
   listing: { id: number; slug: string; title: string } | null;
+  comment: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -100,6 +101,7 @@ export interface PlotCreate {
   price_per_sotka_private?: number | null;
   status?: "active" | "sold" | "reserved";
   owner_id?: number | null;
+  comment?: string | null;
 }
 
 // === Гео API ===
@@ -303,7 +305,28 @@ export interface RealtorItem {
   id: number;
   name: string;
   phone: string;
-  company: string | null;
+  email?: string | null;
+  is_active?: boolean;
+  created_at?: string;
+}
+
+export interface RealtorCreate {
+  name: string;
+  phone: string;
+  email?: string | null;
+  is_active?: boolean;
+}
+
+export interface RealtorUpdate {
+  name?: string;
+  phone?: string;
+  email?: string | null;
+  is_active?: boolean;
+}
+
+export interface RealtorsResponse {
+  items: RealtorItem[];
+  total: number;
 }
 
 export interface PlotShortItem {
@@ -514,12 +537,46 @@ export async function getSettlements(): Promise<SettlementItem[]> {
 
 
 export async function getRealtors(): Promise<RealtorItem[]> {
-  const response = await fetchWithAuth("/api/admin/listings/realtors");
+  const response = await fetchWithAuth("/api/admin/realtors/");
   if (!response.ok) {
-    // Fallback: пробуем публичный эндпоинт если есть
     throw new Error("Ошибка загрузки риэлторов");
   }
+  const data: RealtorsResponse = await response.json();
+  return data.items;
+}
+
+export async function createRealtor(data: RealtorCreate): Promise<RealtorItem> {
+  const response = await fetchWithAuth("/api/admin/realtors/", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.detail || "Ошибка создания риэлтора");
+  }
   return response.json();
+}
+
+export async function updateRealtor(id: number, data: RealtorUpdate): Promise<RealtorItem> {
+  const response = await fetchWithAuth(`/api/admin/realtors/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.detail || "Ошибка обновления риэлтора");
+  }
+  return response.json();
+}
+
+export async function deleteRealtor(id: number): Promise<void> {
+  const response = await fetchWithAuth(`/api/admin/realtors/${id}`, {
+    method: "DELETE",
+  });
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.detail || "Ошибка удаления риэлтора");
+  }
 }
 
 export async function suggestSettlements(query: string): Promise<DaDataSuggestion[]> {
@@ -556,6 +613,108 @@ export async function uploadImage(file: File): Promise<Image> {
   if (!response.ok) {
     const error = await response.json();
     throw new Error(error.detail || 'Ошибка загрузки изображения');
+  }
+  return response.json();
+}
+
+// === Карта участков ===
+
+export interface PlotMapItem {
+  id: number;
+  cadastral_number: string | null;
+  area: number | null;
+  address: string | null;
+  price_public: number | null;
+  comment: string | null;
+  status: "active" | "sold" | "reserved";
+  listing_id: number | null;
+  listing: { id: number; slug: string; title: string } | null;
+  polygon_coords: [number, number][];  // [[lat, lon], ...]
+}
+
+export interface PlotMapResponse {
+  items: PlotMapItem[];
+  total: number;
+}
+
+export async function getPlotsForMap(): Promise<PlotMapResponse> {
+  const response = await fetchWithAuth("/api/admin/plots/map");
+  if (!response.ok) {
+    throw new Error("Ошибка загрузки участков для карты");
+  }
+  return response.json();
+}
+
+export async function bulkAssignPlots(
+  plotIds: number[],
+  listingId: number
+): Promise<{ updated_count: number }> {
+  const response = await fetchWithAuth("/api/admin/plots/bulk-assign", {
+    method: "POST",
+    body: JSON.stringify({ plot_ids: plotIds, listing_id: listingId }),
+  });
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.detail || "Ошибка привязки участков");
+  }
+  return response.json();
+}
+
+// === Массовый импорт участков ===
+
+export interface BulkImportItem {
+  cadastral_number: string;
+  price?: number | null;
+  comment?: string | null;
+}
+
+export interface BulkImportResultItem {
+  cadastral_number: string;
+  plot_id?: number | null;
+  status: "created" | "updated" | "error";
+  message?: string | null;
+  nspd_status?: string | null;
+}
+
+export interface BulkImportResponse {
+  total: number;
+  created: number;
+  updated: number;
+  errors: number;
+  items: BulkImportResultItem[];
+}
+
+export async function bulkImportPlots(
+  items: BulkImportItem[]
+): Promise<BulkImportResponse> {
+  const response = await fetchWithAuth("/api/admin/plots/bulk-import", {
+    method: "POST",
+    body: JSON.stringify({ items }),
+  });
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.detail || "Ошибка массового импорта");
+  }
+  return response.json();
+}
+
+export interface BulkUpdateRequest {
+  plot_ids: number[];
+  land_use_id?: number | null;
+  land_category_id?: number | null;
+  price_public?: number | null;
+}
+
+export async function bulkUpdatePlots(
+  data: BulkUpdateRequest
+): Promise<{ updated_count: number }> {
+  const response = await fetchWithAuth("/api/admin/plots/bulk-update", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.detail || "Ошибка массового обновления");
   }
   return response.json();
 }

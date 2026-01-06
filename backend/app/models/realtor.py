@@ -17,7 +17,6 @@ class Realtor(Base):
     name: Mapped[str] = mapped_column(String(255))  # ФИО
     phone: Mapped[str] = mapped_column(String(50))  # Телефон для публикации
     email: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    company: Mapped[str | None] = mapped_column(String(255), nullable=True)  # Название компании
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     

@@ -91,6 +91,49 @@ def seed_settings(db: Session):
             "value": "",
             "description": "API ключ для DaData (получить на dadata.ru)"
         },
+        # Настройки сайта
+        {
+            "key": "site_title",
+            "value": "КалининградЗем",
+            "description": "Название сайта"
+        },
+        {
+            "key": "site_subtitle",
+            "value": "Земельные участки",
+            "description": "Подзаголовок сайта"
+        },
+        {
+            "key": "site_phone",
+            "value": "+7 (4012) 12-34-56",
+            "description": "Телефон в шапке сайта"
+        },
+        {
+            "key": "site_logo",
+            "value": "",
+            "description": "Логотип сайта (SVG код). Вставьте код <svg> с fill=\"currentColor\""
+        },
+        # Главная страница
+        {
+            "key": "hero_title",
+            "value": "Земельные участки в Калининградской области",
+            "description": "Заголовок Hero-секции"
+        },
+        {
+            "key": "hero_subtitle",
+            "value": "Найдите идеальный участок для строительства дома, ведения хозяйства или инвестиций",
+            "description": "Подзаголовок Hero-секции"
+        },
+        {
+            "key": "hero_image",
+            "value": "",
+            "description": "Фоновое изображение Hero (URL)"
+        },
+        # Изображения
+        {
+            "key": "placeholder_image",
+            "value": "",
+            "description": "Изображение-заглушка для карточек объявлений (URL)"
+        },
     ]
     
     created = 0

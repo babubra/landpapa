@@ -12,6 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
     Select,
     SelectContent,
@@ -65,6 +66,7 @@ export function PlotFormModal({
     const [status, setStatus] = useState<"active" | "sold" | "reserved">("active");
     const [landUseId, setLandUseId] = useState<string>("");
     const [landCategoryId, setLandCategoryId] = useState<string>("");
+    const [comment, setComment] = useState("");
 
     // Координаты
     const [hasGeometry, setHasGeometry] = useState(false);
@@ -116,6 +118,7 @@ export function PlotFormModal({
             setStatus(plot.status);
             setLandUseId(plot.land_use?.id ? String(plot.land_use.id) : "");
             setLandCategoryId(plot.land_category?.id ? String(plot.land_category.id) : "");
+            setComment(plot.comment || "");
             setHasGeometry(plot.has_geometry || false);
             setCentroidCoords(plot.centroid_coords || null);
         } else {
@@ -129,6 +132,7 @@ export function PlotFormModal({
             setStatus("active");
             setLandUseId("");
             setLandCategoryId("");
+            setComment("");
             setHasGeometry(false);
             setCentroidCoords(null);
         }
@@ -178,6 +182,7 @@ export function PlotFormModal({
                 status,
                 land_use_id: landUseId ? parseInt(landUseId) : null,
                 land_category_id: landCategoryId ? parseInt(landCategoryId) : null,
+                comment: comment?.trim() || null,
                 listing_id: listingId || null,  // Привязка к объявлению при создании
             };
 
@@ -426,6 +431,18 @@ export function PlotFormModal({
                                 onChange={(e) => setPricePrivate(e.target.value)}
                             />
                         </div>
+                    </div>
+
+                    {/* Комментарий */}
+                    <div className="space-y-2">
+                        <Label htmlFor="comment">Комментарий</Label>
+                        <Textarea
+                            id="comment"
+                            placeholder="Собственность, аренда, продаётся вместе с..."
+                            value={comment}
+                            onChange={(e) => setComment(e.target.value)}
+                            rows={2}
+                        />
                     </div>
 
                     {/* Статус и справочники */}

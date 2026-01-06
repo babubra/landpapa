@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo, useCallback } from "react";
+import { Suspense, useEffect, useState, useMemo, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { RowSelectionState } from "@tanstack/react-table";
 import { Plus, Trash2, ArrowLeft } from "lucide-react";
@@ -16,6 +16,14 @@ import { ListingsPagination } from "@/components/listings/listings-pagination";
 import { ListingFormModal } from "@/components/listings/listing-form-modal";
 
 export default function ListingsPage() {
+    return (
+        <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><p className="text-muted-foreground">Загрузка...</p></div>}>
+            <ListingsPageContent />
+        </Suspense>
+    );
+}
+
+function ListingsPageContent() {
     const { user, isLoading: authLoading } = useAuth();
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -30,6 +38,7 @@ export default function ListingsPage() {
     // Модальное окно
     const [modalOpen, setModalOpen] = useState(false);
     const [editingListingId, setEditingListingId] = useState<number | null>(null);
+    const [initialPlotIds, setInitialPlotIds] = useState<number[]>([]);
 
     // Проверка авторизации
     useEffect(() => {
@@ -62,10 +71,18 @@ export default function ListingsPage() {
     // Обработка query параметра edit для открытия модала редактирования
     useEffect(() => {
         const editId = searchParams.get("edit");
+        const plotIdsParam = searchParams.get("plot_ids");
+
         if (editId) {
             setEditingListingId(parseInt(editId));
             setModalOpen(true);
-            // Очищаем URL
+            router.replace("/listings", { scroll: false });
+        } else if (plotIdsParam) {
+            // Создание объявления с предвыбранными участками (из карты)
+            const ids = plotIdsParam.split(',').map(Number).filter(n => !isNaN(n));
+            setInitialPlotIds(ids);
+            setEditingListingId(null);
+            setModalOpen(true);
             router.replace("/listings", { scroll: false });
         }
     }, [searchParams, router]);
@@ -128,10 +145,12 @@ export default function ListingsPage() {
 
     const handleCreate = () => {
         setEditingListingId(null);
+        setInitialPlotIds([]);
         setModalOpen(true);
     };
 
     const handleModalSuccess = () => {
+        setInitialPlotIds([]);
         loadListings();
     };
 
@@ -222,8 +241,12 @@ export default function ListingsPage() {
             {/* Modal */}
             <ListingFormModal
                 open={modalOpen}
-                onOpenChange={setModalOpen}
+                onOpenChange={(open) => {
+                    setModalOpen(open);
+                    if (!open) setInitialPlotIds([]);
+                }}
                 listingId={editingListingId}
+                initialPlotIds={initialPlotIds}
                 onSuccess={handleModalSuccess}
             />
         </div>

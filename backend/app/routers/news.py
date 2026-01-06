@@ -79,7 +79,21 @@ async def get_news_by_slug(
     news.views_count += 1
     db.commit()
     
+    
     return news
+
+
+@router.get("/slugs/all", response_model=list[str])
+async def get_all_news_slugs(
+    db: Session = Depends(get_db),
+):
+    """Получить список всех слагов опубликованных новостей (для sitemap)."""
+    slugs = (
+        db.query(News.slug)
+        .filter(News.is_published == True)
+        .all()
+    )
+    return [s[0] for s in slugs if s[0]]
 
 
 # === Админские эндпоинты (пока без авторизации) ===

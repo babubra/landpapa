@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState, useMemo, useCallback } from "react";
+import { Suspense, useEffect, useState, useMemo, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { RowSelectionState } from "@tanstack/react-table";
-import { Plus, Trash2, ArrowLeft } from "lucide-react";
+import { Plus, Trash2, ArrowLeft, Map, Upload, Edit } from "lucide-react";
 import { toast } from "sonner";
 
 import { useAuth } from "@/lib/auth";
@@ -14,8 +14,18 @@ import { getColumns } from "@/components/plots/plots-columns";
 import { PlotsFilters } from "@/components/plots/plots-filters";
 import { PlotsPagination } from "@/components/plots/plots-pagination";
 import { PlotFormModal } from "@/components/plots/plot-form-modal";
+import { BulkImportModal } from "@/components/plots/BulkImportModal";
+import { BulkEditModal } from "@/components/plots/BulkEditModal";
 
 export default function PlotsPage() {
+    return (
+        <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><p className="text-muted-foreground">Загрузка...</p></div>}>
+            <PlotsPageContent />
+        </Suspense>
+    );
+}
+
+function PlotsPageContent() {
     const { user, isLoading: authLoading } = useAuth();
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -30,6 +40,8 @@ export default function PlotsPage() {
     // Модальное окно
     const [modalOpen, setModalOpen] = useState(false);
     const [editingPlot, setEditingPlot] = useState<PlotListItem | null>(null);
+    const [bulkImportOpen, setBulkImportOpen] = useState(false);
+    const [bulkEditOpen, setBulkEditOpen] = useState(false);
 
     // Проверка авторизации
     useEffect(() => {
@@ -181,10 +193,20 @@ export default function PlotsPage() {
                             </p>
                         </div>
                     </div>
-                    <Button onClick={handleCreate}>
-                        <Plus className="mr-2 h-4 w-4" />
-                        Добавить участок
-                    </Button>
+                    <div className="flex items-center gap-2">
+                        <Button variant="outline" onClick={() => router.push("/plots/map")}>
+                            <Map className="mr-2 h-4 w-4" />
+                            Показать на карте
+                        </Button>
+                        <Button onClick={handleCreate}>
+                            <Plus className="mr-2 h-4 w-4" />
+                            Добавить участок
+                        </Button>
+                        <Button variant="outline" onClick={() => setBulkImportOpen(true)}>
+                            <Upload className="mr-2 h-4 w-4" />
+                            Массовая загрузка
+                        </Button>
+                    </div>
                 </div>
 
                 {/* Filters */}
@@ -199,6 +221,10 @@ export default function PlotsPage() {
                         <Button variant="destructive" size="sm" onClick={handleBulkDelete}>
                             <Trash2 className="mr-2 h-4 w-4" />
                             Удалить выбранные
+                        </Button>
+                        <Button variant="outline" size="sm" onClick={() => setBulkEditOpen(true)}>
+                            <Edit className="mr-2 h-4 w-4" />
+                            Редактировать выбранные
                         </Button>
                     </div>
                 )}
@@ -227,6 +253,24 @@ export default function PlotsPage() {
                 onOpenChange={setModalOpen}
                 plot={editingPlot}
                 onSuccess={handleModalSuccess}
+            />
+
+            {/* Bulk Import Modal */}
+            <BulkImportModal
+                open={bulkImportOpen}
+                onOpenChange={setBulkImportOpen}
+                onSuccess={loadPlots}
+            />
+
+            {/* Bulk Edit Modal */}
+            <BulkEditModal
+                open={bulkEditOpen}
+                onOpenChange={setBulkEditOpen}
+                selectedIds={Object.keys(rowSelection).map(Number)}
+                onSuccess={() => {
+                    loadPlots();
+                    setRowSelection({});
+                }}
             />
         </div>
     );

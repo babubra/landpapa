@@ -1,5 +1,7 @@
 import os
 import aiohttp
+import ssl
+import certifi
 from typing import List, Optional
 from pydantic import BaseModel
 
@@ -30,20 +32,25 @@ class DaDataClient:
     BASE_URL = "https://suggestions.dadata.ru/suggestions/api/4_1/rs"
 
     def __init__(self):
-        self.api_key = _get_dadata_api_key_from_db()
+        pass  # Ключ читается при каждом запросе
+    
+    def _get_api_key(self) -> str | None:
+        """Получить актуальный API ключ из БД."""
+        return _get_dadata_api_key_from_db()
 
     async def suggest_settlement(self, query: str, count: int = 10) -> List[DaDataSuggestion]:
         """
         Поиск населенных пунктов (исключая улицы).
         Ограничиваем поиск Калининградской областью по умолчанию (kladr_id 39).
         """
-        if not self.api_key:
+        api_key = self._get_api_key()
+        if not api_key:
             print("Warning: DADATA_API_KEY not found in settings")
             return []
 
         url = f"{self.BASE_URL}/suggest/address"
         headers = {
-            "Authorization": f"Token {self.api_key}",
+            "Authorization": f"Token {api_key}",
             "Content-Type": "application/json",
             "Accept": "application/json",
         }
@@ -59,14 +66,20 @@ class DaDataClient:
             "restrict_value": True 
         }
 
+        ssl_context = ssl.create_default_context(cafile=certifi.where())
+        
         async with aiohttp.ClientSession() as session:
             try:
-                async with session.post(url, json=payload, headers=headers) as response:
+                print(f"DaData request: query='{query}', api_key_length={len(api_key) if api_key else 0}")
+                async with session.post(url, json=payload, headers=headers, ssl=ssl_context) as response:
                     if response.status == 200:
                         data = await response.json()
-                        return [DaDataSuggestion(**item) for item in data.get("suggestions", [])]
+                        suggestions = data.get("suggestions", [])
+                        print(f"DaData response: {len(suggestions)} suggestions")
+                        return [DaDataSuggestion(**item) for item in suggestions]
                     else:
-                        print(f"DaData error: {response.status} {await response.text()}")
+                        error_text = await response.text()
+                        print(f"DaData error: {response.status} {error_text}")
                         return []
             except Exception as e:
                 print(f"DaData exception: {e}")

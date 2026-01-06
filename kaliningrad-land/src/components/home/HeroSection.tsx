@@ -1,17 +1,26 @@
 import Image from "next/image";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { getSiteSettings, getImageUrl } from "@/lib/config";
 
-export function HeroSection() {
+export async function HeroSection() {
+  const settings = await getSiteSettings();
+
+  const heroTitle = settings.hero_title || "Земельные участки в Калининградской области";
+  const heroSubtitle = settings.hero_subtitle || "Найдите идеальный участок для строительства дома, ведения хозяйства или инвестиций";
+  const heroImage = getImageUrl(settings.hero_image, "/hero-bg.jpg");
+
   return (
     <div className="relative h-full min-h-[350px] w-full overflow-hidden rounded-xl">
       {/* Фоновое изображение */}
       <Image
-        src="/hero-bg.jpg"
-        alt="Земельные участки в Калининградской области"
+        src={heroImage}
+        alt={heroTitle}
         fill
         className="object-cover"
         sizes="100vw"
         priority
+        unoptimized
       />
 
       {/* Градиентный оверлей */}
@@ -19,19 +28,18 @@ export function HeroSection() {
 
       {/* Контент */}
       <div className="relative z-10 flex h-full flex-col justify-center px-6 md:px-10 lg:px-12">
-        <h1 className="text-white mb-4 max-w-xl">
-          Земельные участки в Калининградской области
+        <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-white mb-4 max-w-xl leading-tight">
+          {heroTitle}
         </h1>
         <p className="text-lg md:text-xl text-white/90 mb-8 max-w-lg">
-          Найдите идеальный участок для строительства дома,
-          ведения хозяйства или инвестиций
+          {heroSubtitle}
         </p>
         <div className="flex flex-wrap gap-4">
-          <Button size="lg" className="text-base">
-            Смотреть каталог
+          <Button size="lg" className="text-base" asChild>
+            <Link href="/catalog">Смотреть каталог</Link>
           </Button>
-          <Button size="lg" variant="outline" className="text-base bg-white/10 border-white/30 text-white hover:bg-white/20">
-            Показать на карте
+          <Button size="lg" variant="outline" className="text-base bg-white/10 border-white/30 text-white hover:bg-white/20" asChild>
+            <Link href="/map">Показать на карте</Link>
           </Button>
         </div>
       </div>

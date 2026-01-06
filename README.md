@@ -39,30 +39,32 @@ Test1/
 
 ### 1. База данных
 ```bash
-cd c:\Users\babubra\TestProjects\Test1
 docker-compose up -d
 ```
 
 ### 2. Backend (терминал 1)
 ```bash
-cd c:\Users\babubra\TestProjects\Test1\backend
-.\venv\Scripts\activate
-uvicorn app.main:app --reload --port 8001 --log-level debug
+cd backend
+
+# macOS / Linux:
+./venv/bin/uvicorn app.main:app --reload --port 8001
+
+# Windows:
+# .\venv\Scripts\uvicorn app.main:app --reload --port 8001
 ```
 **API:** http://localhost:8001
 
 ### 3. Публичный сайт (терминал 2)
 ```bash
-cd c:\Users\babubra\TestProjects\Test1\kaliningrad-land
+cd kaliningrad-land
 npm run dev
 ```
 **Сайт:** http://localhost:3000
 
 ### 4. Админ-панель (терминал 3)
 ```bash
-cd c:\Users\babubra\TestProjects\Test1\admin
-npx next dev --port 3001
-
+cd admin
+npm run dev -- --port 3001
 ```
 **Админка:** http://localhost:3001
 
@@ -93,25 +95,33 @@ docker-compose up -d db          # только db, без бэкенда
 ### 2. Backend
 ```bash
 cd backend
-python -m venv venv              # ⚠️ только при ПЕРВОМ запуске
-.\venv\Scripts\activate
-pip install -r requirements.txt  # ⚠️ только при ПЕРВОМ запуске или после изменения requirements.txt
-python -m app.seed               # ⚠️ только при ПЕРВОМ запуске или для пересоздания данных
-uvicorn app.main:app --reload --port 8001 --log-level debug
+python3 -m venv venv             # ⚠️ только при ПЕРВОМ запуске
+
+# Установка зависимостей (macOS / Linux):
+./venv/bin/pip install -r requirements.txt
+
+# Windows:
+# .\venv\Scripts\pip install -r requirements.txt
+
+# Инициализация данных:
+./venv/bin/python -m app.seed    # ⚠️ только при ПЕРВОМ запуске
+
+# Запуск:
+./venv/bin/uvicorn app.main:app --reload --port 8001
 ```
 
 ### 3. Публичный сайт
 ```bash
 cd kaliningrad-land
-npm install                      # ⚠️ только при ПЕРВОМ запуске или после изменения package.json
+npm install                      # ⚠️ только при ПЕРВОМ запуске
 npm run dev
 ```
 
 ### 4. Админ-панель
 ```bash
 cd admin
-npm install                      # ⚠️ только при ПЕРВОМ запуске или после изменения package.json
-npx next dev --port 3001
+npm install                      # ⚠️ только при ПЕРВОМ запуске
+npm run dev -- --port 3001
 ```
 
 ---
@@ -185,9 +195,13 @@ NEXT_PUBLIC_API_URL=https://api.your-domain.com
 Создайте файл `.env.local` или `.env.production`:
 ```env
 NEXT_PUBLIC_API_URL=https://api.your-domain.com
+NEXT_PUBLIC_SITE_URL=https://your-domain.com
 ```
 
-> **Примечание:** Для локальной разработки переменные не требуются — по умолчанию используется `http://localhost:8001`.
+- `NEXT_PUBLIC_API_URL`: URL вашего бэкенда.
+- `NEXT_PUBLIC_SITE_URL`: URL вашего фронтенда (важно для SEO, sitemap и канонических ссылок).
+
+> **Примечание:** Для локальной разработки переменные не требуются — по умолчанию используются `http://localhost:8001` и `http://localhost:3000`.
 
 ---
 
@@ -242,9 +256,17 @@ python -m app.seed
 
 ---
 
+### SEO
+- **Автоматическая sitemap.xml** и **robots.txt**
+- **Динамические метаданные** (Title, Description, OpenGraph) для каждой страницы
+- **Schema.org (JSON-LD)** разметка для организаций, товаров и статей
+- **Динамический Favicon** — генерируется из SVG логотипа сайта (`/api/site-icon`)
+
+---
+
 ## TODO
 
-- [ ] SEO: sitemap, robots.txt
+- [x] SEO: sitemap, robots.txt, metadata, schema.org
 - [ ] Оптимизация производительности
 - [ ] Загрузка изображений в CDN
 
