@@ -8,17 +8,23 @@ log() {
 # Остановка при ошибке
 set -e
 
+# Проверка, нужен ли sudo
+SUDO=""
+if [ "$(id -u)" -ne 0 ]; then
+    SUDO="sudo"
+fi
+
 log "Начинаем установку..."
 
 # 1. Проверка и установка Docker
 if ! command -v docker &> /dev/null; then
     log "Docker не найден. Устанавливаю..."
     curl -fsSL https://get.docker.com -o get-docker.sh
-    sudo sh get-docker.sh
+    $SUDO sh get-docker.sh
     rm get-docker.sh
     
     # Добавляем текущего пользователя в группу docker
-    sudo usermod -aG docker $USER
+    $SUDO usermod -aG docker $USER
     log "Docker установлен."
 else
     log "Docker уже установлен."
@@ -69,14 +75,14 @@ fi
 
 # 5. Запуск
 log "Запускаем проект..."
-sudo docker compose -f docker-compose.prod.yml up -d --build
+$SUDO docker compose -f docker-compose.prod.yml up -d --build
 
 # 6. Инициализация БД (опционально)
 log "Хотите запустить seed (начальные данные)? Введите 'y' если это первый запуск:"
 read RUN_SEED
 if [ "$RUN_SEED" = "y" ]; then
     log "Заполняем базу данными..."
-    sudo docker compose -f docker-compose.prod.yml exec backend python -m app.seed
+    $SUDO docker compose -f docker-compose.prod.yml exec backend python -m app.seed
 fi
 
 log "Готово! 🚀"
