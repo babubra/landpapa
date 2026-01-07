@@ -20,6 +20,7 @@ export const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:30
  */
 export interface SiteSettings {
     site_title: string | null;
+    site_name: string | null;
     site_subtitle: string | null;
     site_phone: string | null;
     site_logo: string | null;
@@ -45,12 +46,13 @@ export async function getSiteSettings(): Promise<SiteSettings> {
         console.error("Error fetching settings:", error);
         // Возвращаем дефолтные значения
         return {
-            site_title: "КалининградЗем",
-            site_subtitle: "Земельные участки",
-            site_phone: "+7 (4012) 12-34-56",
+            site_title: null,
+            site_name: null,
+            site_subtitle: null,
+            site_phone: null,
             site_logo: null,
-            hero_title: "Земельные участки в Калининградской области",
-            hero_subtitle: "Найдите идеальный участок для строительства дома, ведения хозяйства или инвестиций",
+            hero_title: null,
+            hero_subtitle: null,
             hero_image: null,
             placeholder_image: null,
         };

@@ -94,8 +94,13 @@ def seed_settings(db: Session):
         # Настройки сайта
         {
             "key": "site_title",
-            "value": "КалининградЗем",
-            "description": "Название сайта"
+            "value": "РКК Лэнд — Земельные участки в Калининградской области",
+            "description": "Заголовок страницы (Meta Title) для браузера"
+        },
+        {
+            "key": "site_name",
+            "value": "РКК Лэнд",
+            "description": "Название бренда (отображается рядом с логотипом)"
         },
         {
             "key": "site_subtitle",

@@ -22,8 +22,8 @@ import { getSiteSettings, SITE_URL } from "@/lib/config";
 
 export async function generateMetadata(): Promise<Metadata> {
   const settings = await getSiteSettings();
-  const title = settings.site_title || "КалининградЗем";
-  const description = settings.site_subtitle || "Продажа земельных участков в Калининградской области. Широкий выбор участков для строительства дома, ведения хозяйства и инвестиций.";
+  const title = settings.site_title || "";
+  const description = settings.site_subtitle || "";
 
   return {
     metadataBase: new URL(SITE_URL),

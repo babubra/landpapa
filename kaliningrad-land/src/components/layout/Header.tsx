@@ -29,9 +29,9 @@ export function Header() {
         getSiteSettings().then(setSettings);
     }, []);
 
-    const siteTitle = settings?.site_title || "КалининградЗем";
-    const siteSubtitle = settings?.site_subtitle || "Земельные участки";
-    const sitePhone = settings?.site_phone || "+7 (4012) 12-34-56";
+    const siteName = settings?.site_name || "";
+    const siteSubtitle = settings?.site_subtitle || "";
+    const sitePhone = settings?.site_phone || "";
     const phoneHref = `tel:${sitePhone.replace(/[^\d+]/g, "")}`;
 
     return (
@@ -45,19 +45,17 @@ export function Header() {
                                 className="h-10 w-auto text-foreground [&>svg]:h-full [&>svg]:w-auto"
                                 dangerouslySetInnerHTML={{ __html: settings.site_logo }}
                             />
-                        ) : (
-                            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary">
-                                <span className="text-xl font-bold text-primary-foreground">К</span>
+                        ) : null}
+                        {(siteName || siteSubtitle) && (
+                            <div className="hidden sm:block">
+                                <span className="text-lg font-bold text-foreground">
+                                    {siteName}
+                                </span>
+                                <span className="block text-xs text-muted-foreground">
+                                    {siteSubtitle}
+                                </span>
                             </div>
                         )}
-                        <div className="hidden sm:block">
-                            <span className="text-lg font-bold text-foreground">
-                                {siteTitle}
-                            </span>
-                            <span className="block text-xs text-muted-foreground">
-                                {siteSubtitle}
-                            </span>
-                        </div>
                     </Link>
 
                     {/* Десктопная навигация */}
