@@ -47,13 +47,17 @@ export function Header() {
                             />
                         ) : null}
                         {(siteName || siteSubtitle) && (
-                            <div className="hidden sm:block">
-                                <span className="text-lg font-bold text-foreground">
-                                    {siteName}
-                                </span>
-                                <span className="block text-xs text-muted-foreground">
-                                    {siteSubtitle}
-                                </span>
+                            <div className="flex flex-col leading-tight">
+                                {siteName && (
+                                    <span className="text-lg font-bold text-foreground">
+                                        {siteName}
+                                    </span>
+                                )}
+                                {siteSubtitle && (
+                                    <span className="text-xs text-muted-foreground">
+                                        {siteSubtitle}
+                                    </span>
+                                )}
                             </div>
                         )}
                     </Link>
