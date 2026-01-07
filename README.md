@@ -123,13 +123,13 @@ npm run dev -- --port 3001
 
 4. **Применить миграции базы данных:**
    ```bash
-   docker exec -it landpapa_backend alembic upgrade head
+   docker exec landpapa_backend alembic upgrade head
    ```
 
 5. **Обновить базовые настройки (seed):**
    Это добавит новые поля в настройки, если они появились (например, настройки футера).
    ```bash
-   docker exec -it landpapa_backend python -m app.seed
+   docker exec landpapa_backend python -m app.seed
    ```
 
 ---
@@ -156,13 +156,13 @@ npm run dev -- --port 3001
 
 3. **Создать таблицы и настройки:**
    ```bash
-   docker exec -it landpapa_backend python -m app.seed
+   docker exec landpapa_backend python -m app.seed
    ```
    *Скрипт `seed.py` теперь автоматически регистрирует все модели и создает таблицы.*
 
 4. **Синхронизировать миграции:**
    ```bash
-   docker exec -it landpapa_backend alembic stamp head
+   docker exec landpapa_backend alembic stamp head
    ```
    *Это пометит базу как "актуальную", чтобы будущие миграции не пытались пересоздать существующие таблицы.*
 
