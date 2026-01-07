@@ -36,7 +36,7 @@ export interface SiteSettings {
 export async function getSiteSettings(): Promise<SiteSettings> {
     try {
         const res = await fetch(`${API_URL}/api/settings/public`, {
-            next: { revalidate: 60 }, // Кешируем на 60 секунд
+            cache: "no-store", // Не кешируем, чтобы изменения были видны сразу
         });
         if (!res.ok) {
             throw new Error("Failed to fetch settings");
