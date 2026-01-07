@@ -9,7 +9,10 @@ const INTERNAL_API_URL = process.env.INTERNAL_API_URL || "http://localhost:8001"
 
 /**
  * Получить API URL в зависимости от окружения (SSR или браузер).
- * ВАЖНО: Функция, а не константа, чтобы window был доступен в runtime!
+ * ВАЖНО: Функция, а не константа, чтобы правильно работать в runtime!
+ * 
+ * На production в браузере возвращает пустую строку - это позволяет использовать
+ * относительные пути (/api/...) которые Nginx проксирует на backend.
  */
 export function getAPIURL(): string {
     const IS_SERVER = typeof window === "undefined";
@@ -27,15 +30,15 @@ export function getAPIURL(): string {
         return process.env.NEXT_PUBLIC_API_URL || "http://localhost:8001";
     }
 
-    // Production: используем текущий origin (гарантирует https://)
-    return window.location.origin;
+    // Production: используем ПУСТУЮ СТРОКУ для относительных путей
+    // Запросы вида `${API_URL}/api/...` превращаются в `/api/...`
+    // Nginx корректно проксирует их на backend с правильным протоколом (HTTPS)
+    return "";
 }
 
-// Для обратной совместимости и SSR
-// При SSR это будет INTERNAL_API_URL, что правильно для server-side запросов
-export const API_URL = typeof window === "undefined"
-    ? INTERNAL_API_URL
-    : getAPIURL();
+// Экспортируем  константу для обратной совместимости
+// ВАЖНО: Для client-side компонентов лучше использовать getAPIURL()
+export const API_URL = getAPIURL();
 
 export const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 
