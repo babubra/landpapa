@@ -59,7 +59,8 @@ if [ ! -f .env ]; then
     fi
     
     log "Сейчас откроется редактор nano для настройки .env."
-    log "1. Укажите домены (NEXT_PUBLIC_SITE_URL)"
+    log "1. Укажите домены (NEXT_PUBLIC_SITE_URL и NEXT_PUBLIC_API_URL)"
+    log "   ВАЖНО: NEXT_PUBLIC_API_URL должен быть БЕЗ /api на конце (например: https://rkkland.ru)"
     log "2. Задайте сложные пароли"
     log "3. Нажмите Ctrl+X, затем Y, затем Enter для сохранения."
     echo "Нажмите Enter чтобы открыть редактор..."
@@ -76,6 +77,7 @@ fi
 # 5. Запуск
 log "Запускаем проект..."
 $SUDO docker compose -f docker-compose.prod.yml up -d --build
+$SUDO docker image prune -f
 
 # 6. Инициализация БД (опционально)
 log "Хотите запустить seed (начальные данные)? Введите 'y' если это первый запуск:"

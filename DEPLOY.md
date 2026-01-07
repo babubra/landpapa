@@ -34,9 +34,13 @@ POSTGRES_DB=kaliningrad_land
 SECRET_KEY=your-super-super-secret-key-change-it
 
 # Настройки доменов
-NEXT_PUBLIC_API_URL=https://landpapa.ru/api
+# ВАЖНО: API_URL должен быть БЕЗ /api на конце!
+NEXT_PUBLIC_API_URL=https://landpapa.ru
 NEXT_PUBLIC_SITE_URL=https://landpapa.ru
 ```
+
+### Важное примечание по базе данных
+В файле `docker-compose.prod.yml` адрес базы данных для бэкенда принудительно установлен на `db:5432`. Вам не нужно менять его в `.env`. Если вы используете внешнюю базу, отредактируйте `docker-compose.prod.yml`.
 
 ## 3. Запуск
 Используйте специальный файл `docker-compose.prod.yml` для продакшена:
