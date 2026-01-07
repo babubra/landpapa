@@ -5,8 +5,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { ListingCard } from "@/components/catalog/ListingCard";
 import type { ListingData } from "@/types/listing";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8001";
+import { API_URL } from "@/lib/config";
 
 async function getPopularListings(): Promise<ListingData[]> {
     try {

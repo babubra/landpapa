@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
-import { getSiteSettings, SiteSettings } from "@/lib/config";
+import { getSiteSettings, SiteSettings, getImageUrl } from "@/lib/config";
 
 interface SiteSettingsContextType {
     settings: SiteSettings | null;
@@ -41,10 +41,8 @@ export function useSiteSettings() {
 export function usePlaceholderImage(): string {
     const { settings } = useSiteSettings();
     if (settings?.placeholder_image) {
-        const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8001";
-        const url = settings.placeholder_image;
-        if (url.startsWith("http")) return url;
-        return `${API_URL}${url}`;
+        return getImageUrl(settings.placeholder_image, "/hero-bg.jpg");
     }
     return "/hero-bg.jpg";
 }
+
