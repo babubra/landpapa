@@ -78,10 +78,15 @@ export interface SiteSettings {
 
 /**
  * Получить публичные настройки сайта.
+ * Использует SSR_API_URL на сервере и API_URL в браузере.
  */
 export async function getSiteSettings(): Promise<SiteSettings> {
     try {
-        const res = await fetch(`${API_URL}/api/settings/public`, {
+        // На сервере нужен полный URL (SSR_API_URL), в браузере можно относительный
+        const IS_SERVER = typeof window === "undefined";
+        const baseUrl = IS_SERVER ? SSR_API_URL : API_URL;
+
+        const res = await fetch(`${baseUrl}/api/settings/public`, {
             cache: "no-store", // Не кешируем, чтобы изменения были видны сразу
         });
         if (!res.ok) {
