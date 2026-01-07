@@ -2,7 +2,7 @@ import { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
-import { API_URL, SITE_URL } from "@/lib/config";
+import { SSR_API_URL, SITE_URL } from "@/lib/config";
 import { SeoJsonLd } from "@/components/seo/SeoJsonLd";
 
 interface NewsPageProps {
@@ -11,7 +11,7 @@ interface NewsPageProps {
 
 async function getNewsBySlug(slug: string) {
     try {
-        const res = await fetch(`${API_URL}/api/news/${slug}`, { cache: "no-store" });
+        const res = await fetch(`${SSR_API_URL}/api/news/${slug}`, { cache: "no-store" });
         if (!res.ok) return null;
         return res.json();
     } catch { return null; }

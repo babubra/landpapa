@@ -4,7 +4,7 @@ import { ListingGallery } from "@/components/listing/ListingGallery";
 import { ListingSidebar } from "@/components/listing/ListingSidebar";
 import { ListingMapClient } from "@/components/listing/ListingMapClient";
 import { BackButton } from "@/components/ui/back-button";
-import { API_URL } from "@/lib/config";
+import { SSR_API_URL } from "@/lib/config";
 
 interface ListingPageProps {
     params: Promise<{ slug: string }>;
@@ -60,7 +60,7 @@ interface ListingDetail {
 
 async function getListing(slug: string): Promise<ListingDetail | null> {
     try {
-        const res = await fetch(`${API_URL}/api/listings/${slug}`, {
+        const res = await fetch(`${SSR_API_URL}/api/listings/${slug}`, {
             cache: "no-store",
         });
         if (!res.ok) return null;

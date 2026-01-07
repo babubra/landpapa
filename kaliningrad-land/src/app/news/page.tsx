@@ -1,5 +1,5 @@
 import { Metadata } from "next";
-import { API_URL, SITE_URL } from "@/lib/config";
+import { SSR_API_URL, SITE_URL } from "@/lib/config";
 import Link from "next/link";
 
 export const metadata: Metadata = {
@@ -12,7 +12,7 @@ export const metadata: Metadata = {
 
 async function getNews() {
     try {
-        const res = await fetch(`${API_URL}/api/news/?size=50`, { next: { revalidate: 60 } });
+        const res = await fetch(`${SSR_API_URL}/api/news/?size=50`, { next: { revalidate: 60 } });
         if (!res.ok) return { items: [] };
         return res.json();
     } catch { return { items: [] }; }
