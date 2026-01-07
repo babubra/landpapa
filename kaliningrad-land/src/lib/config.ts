@@ -36,9 +36,23 @@ export function getAPIURL(): string {
     return "";
 }
 
-// Экспортируем  константу для обратной совместимости
-// ВАЖНО: Для client-side компонентов лучше использовать getAPIURL()
-export const API_URL = getAPIURL();
+/**
+ * API URL для использования в компонентах.
+ * 
+ * Вычисляется СТАТИЧЕСКИ (без вызова функций) чтобы избежать проблем с SSR кешированием.
+ * 
+ * На PRODUCTION: пустая строка "" - используются относительные пути (/api /...)
+ * На DEVELOPMENT: полный URL к backend
+ */
+export const API_URL = process.env.NODE_ENV === "development" ||
+    process.env.NEXT_PUBLIC_API_URL?.includes("localhost")
+    ? (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8001")
+    : ""; // Production: пустая строка для относительных путей
+
+/**
+ * SSR API URL - для использования в server-side компонентах
+ */
+export const SSR_API_URL = INTERNAL_API_URL;
 
 export const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 
