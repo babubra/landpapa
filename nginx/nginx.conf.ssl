@@ -51,11 +51,14 @@ http {
             proxy_set_header Host $host;
             proxy_set_header X-Real-IP $remote_addr;
             proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
         }
 
         # Static Uploads
         location /uploads/ {
             proxy_pass http://backend/uploads/;
+            proxy_set_header Host $host;
+            proxy_set_header X-Forwarded-Proto $scheme;
         }
 
         # Next.js Frontend
@@ -72,7 +75,7 @@ http {
     # === Admin Panel HTTPS ===
     server {
         listen 443 ssl;
-        listen 8080 default_server; # Оставляем для доступа по IP
+        listen 8080; # Убрали default_server
         server_name admin.rkkland.ru;
 
         ssl_certificate /etc/letsencrypt/live/rkkland.ru/fullchain.pem;
@@ -84,10 +87,13 @@ http {
             proxy_set_header Host $host;
             proxy_set_header X-Real-IP $remote_addr;
             proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
         }
 
         location /uploads/ {
             proxy_pass http://backend/uploads/;
+            proxy_set_header Host $host;
+            proxy_set_header X-Forwarded-Proto $scheme;
         }
 
         # Next.js Admin
