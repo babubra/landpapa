@@ -37,7 +37,7 @@ http {
 
     # === Frontend HTTPS (Main Site) ===
     server {
-        listen 443 ssl;
+        listen 443 ssl default_server;
         server_name rkkland.ru www.rkkland.ru;
 
         ssl_certificate /etc/letsencrypt/live/rkkland.ru/fullchain.pem;
@@ -52,6 +52,7 @@ http {
             proxy_set_header X-Real-IP $remote_addr;
             proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
             proxy_set_header X-Forwarded-Proto $scheme;
+            add_header X-Proxy-Target "Frontend-API";
         }
 
         # Static Uploads
@@ -59,6 +60,7 @@ http {
             proxy_pass http://backend/uploads/;
             proxy_set_header Host $host;
             proxy_set_header X-Forwarded-Proto $scheme;
+            add_header X-Proxy-Target "Frontend-Uploads";
         }
 
         # Next.js Frontend
@@ -69,13 +71,13 @@ http {
             proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
             proxy_set_header Upgrade $http_upgrade;
             proxy_set_header Connection "upgrade";
+            add_header X-Proxy-Target "Frontend-Main";
         }
     }
 
     # === Admin Panel HTTPS ===
     server {
         listen 443 ssl;
-        listen 8080; # Убрали default_server
         server_name admin.rkkland.ru;
 
         ssl_certificate /etc/letsencrypt/live/rkkland.ru/fullchain.pem;
@@ -88,6 +90,7 @@ http {
             proxy_set_header X-Real-IP $remote_addr;
             proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
             proxy_set_header X-Forwarded-Proto $scheme;
+            add_header X-Proxy-Target "Admin-API";
         }
 
         location /uploads/ {
@@ -104,6 +107,19 @@ http {
             proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
             proxy_set_header Upgrade $http_upgrade;
             proxy_set_header Connection "upgrade";
+            add_header X-Proxy-Target "Admin-Main";
+        }
+    }
+
+    # === Admin Panel Workaround (Port 8080) ===
+    server {
+        listen 8080;
+        server_name admin.rkkland.ru rkkland.ru;
+
+        location / {
+            proxy_pass http://admin;
+            proxy_set_header Host $host;
+            add_header X-Proxy-Target "Admin-8080";
         }
     }
 }
