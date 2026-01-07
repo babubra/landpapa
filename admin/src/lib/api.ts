@@ -4,7 +4,9 @@
 
 // Используем переменную окружения для API URL, с fallback на localhost для разработки
 const IS_SERVER = typeof window === "undefined";
-const API_URL = IS_SERVER ? (process.env.INTERNAL_API_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8001") : "";
+export const API_URL = IS_SERVER
+  ? (process.env.INTERNAL_API_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8001")
+  : (process.env.NEXT_PUBLIC_API_URL || (window.location.hostname === "localhost" ? "http://localhost:8001" : ""));
 
 /**
  * Получить токен из localStorage.
@@ -716,6 +718,34 @@ export async function bulkUpdatePlots(
   if (!response.ok) {
     const error = await response.json();
     throw new Error(error.detail || "Ошибка массового обновления");
+  }
+  return response.json();
+}
+
+// === Аутентификация ===
+
+export async function forgotPassword(email: string): Promise<{ detail: string }> {
+  const response = await fetch(`${API_URL}/api/auth/forgot-password`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email }),
+  });
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.detail || "Ошибка при запросе сброса пароля");
+  }
+  return response.json();
+}
+
+export async function resetPassword(token: string, newPassword: string): Promise<{ detail: string }> {
+  const response = await fetch(`${API_URL}/api/auth/reset-password`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ token, new_password: newPassword }),
+  });
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.detail || "Ошибка при смене пароля");
   }
   return response.json();
 }

@@ -10,7 +10,9 @@ const IS_SERVER = typeof window === "undefined";
 const INTERNAL_API_URL = process.env.INTERNAL_API_URL || "http://localhost:8001";
 
 // Публичный URL для браузера
-export const API_URL = IS_SERVER ? INTERNAL_API_URL : "";
+export const API_URL = IS_SERVER
+    ? INTERNAL_API_URL
+    : (process.env.NEXT_PUBLIC_API_URL || (window.location.hostname === "localhost" ? "http://localhost:8001" : ""));
 export const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 
 /**

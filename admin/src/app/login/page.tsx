@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useAuth } from "@/lib/auth";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -72,6 +73,15 @@ export default function LoginPage() {
                                 placeholder="••••••••"
                                 required
                             />
+                        </div>
+
+                        <div className="flex justify-end">
+                            <Link
+                                href="/forgot-password"
+                                className="text-sm text-blue-600 hover:underline dark:text-blue-400"
+                            >
+                                Забыли пароль?
+                            </Link>
                         </div>
 
                         <Button type="submit" className="w-full" disabled={isLoading}>

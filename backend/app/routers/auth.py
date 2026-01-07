@@ -10,7 +10,9 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models.admin_user import AdminUser
-from app.auth import verify_password, create_access_token, decode_access_token
+from app.auth import verify_password, hash_password, create_access_token, decode_access_token
+from app.utils.email import send_email
+from app.config import settings
 
 
 router = APIRouter()
@@ -32,6 +34,15 @@ class UserResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class ForgotPasswordRequest(BaseModel):
+    email: str
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str
 
 
 # === Зависимости ===
@@ -105,3 +116,59 @@ async def login(
 async def get_me(current_user: AdminUser = Depends(get_current_user)):
     """Получить информацию о текущем пользователе."""
     return current_user
+
+
+@router.post("/forgot-password")
+async def forgot_password(request: ForgotPasswordRequest, db: Session = Depends(get_db)):
+    """Запрос на восстановление пароля."""
+    user = db.query(AdminUser).filter(AdminUser.email == request.email).first()
+    if not user:
+        # Не выдаем, что email не найден в целях безопасности
+        return {"detail": "Если этот email зарегистрирован, вы получите письмо."}
+
+    # Создаем токен на 15 минут
+    from datetime import timedelta
+    reset_token = create_access_token(
+        data={"sub": user.username, "type": "password_reset"}, 
+        expires_delta=timedelta(minutes=15)
+    )
+
+    # Формируем ссылку (нужно будет настроить BASE_URL в конфиге или использовать захардкоженный)
+    site_url = settings.cors_origins[0] if settings.cors_origins else "http://localhost:3000"
+    reset_link = f"{site_url}/reset-password?token={reset_token}"
+
+    # Отправляем письмо
+    try:
+        subject = "Восстановление пароля — РКК Лэнд"
+        text = f"Здравствуйте! Чтобы сбросить пароль, перейдите по ссылке: {reset_link}\nСсылка действует 15 минут."
+        html = f"""
+        <p>Здравствуйте!</p>
+        <p>Чтобы сбросить пароль для доступа к админ-панели <b>РКК Лэнд</b>, нажмите на кнопку ниже:</p>
+        <p><a href="{reset_link}" style="background: #0070f3; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Сбросить пароль</a></p>
+        <p>Или скопируйте ссылку в браузер: {reset_link}</p>
+        <p><i>Ссылка действует 15 минут.</i></p>
+        """
+        send_email(subject, [user.email], text, html)
+    except Exception:
+        raise HTTPException(status_code=500, detail="Ошибка при отправке письма")
+
+    return {"detail": "Письмо отправлено."}
+
+
+@router.post("/reset-password")
+async def reset_password(request: ResetPasswordRequest, db: Session = Depends(get_db)):
+    """Смена пароля по токену."""
+    payload = decode_access_token(request.token)
+    if not payload or payload.get("type") != "password_reset":
+        raise HTTPException(status_code=400, detail="Неверный или просроченный токен")
+
+    username = payload.get("sub")
+    user = db.query(AdminUser).filter(AdminUser.username == username).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Пользователь не найден")
+
+    # Меняем пароль
+    user.password_hash = hash_password(request.new_password)
+    db.commit()
+
+    return {"detail": "Пароль успешно изменен."}

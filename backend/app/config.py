@@ -35,7 +35,12 @@ class Settings(BaseSettings):
     upload_dir: str = "uploads"
     max_upload_size: int = 5 * 1024 * 1024  # 5 MB
 
-    
+    # SMTP для восстановления пароля
+    smtp_host: str | None = None
+    smtp_port: int = 587
+    smtp_user: str | None = None
+    smtp_password: str | None = None
+    emails_from: str = "noreply@rkkland.ru"
     model_config = SettingsConfigDict(env_file=".env", case_sensitive=False, extra="ignore")
 
 
