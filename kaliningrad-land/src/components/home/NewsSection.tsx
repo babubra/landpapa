@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
-import { API_URL } from "@/lib/config";
+import { SSR_API_URL } from "@/lib/config";
 
 interface NewsItem {
   id: number;
@@ -13,7 +13,7 @@ interface NewsItem {
 
 async function getLatestNews(): Promise<NewsItem[]> {
   try {
-    const res = await fetch(`${API_URL}/api/news/latest?limit=6`, {
+    const res = await fetch(`${SSR_API_URL}/api/news/latest?limit=6`, {
       next: { revalidate: 60 }, // Кэш на 60 секунд
     });
 

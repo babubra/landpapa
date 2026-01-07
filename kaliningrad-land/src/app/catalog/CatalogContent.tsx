@@ -5,7 +5,6 @@ import { useCallback, useEffect, useState } from "react";
 import { ListingCard, ListingData } from "@/components/catalog/ListingCard";
 import { CatalogFilters } from "@/components/catalog/CatalogFilters";
 import { Pagination } from "@/components/ui/pagination";
-import { API_URL } from "@/lib/config";
 
 interface ListingsResponse {
     items: ListingData[];
@@ -42,7 +41,7 @@ export function CatalogContent() {
         if (!params.has("size")) params.set("size", "12");
 
         try {
-            const res = await fetch(`${API_URL}/api/listings?${params.toString()}`);
+            const res = await fetch(`/api/listings?${params.toString()}`);
             const data: ListingsResponse = await res.json();
 
             setListings(data.items);

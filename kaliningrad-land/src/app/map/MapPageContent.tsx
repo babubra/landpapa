@@ -5,7 +5,6 @@ import { useCallback, useEffect, useState } from "react";
 import { CatalogFilters } from "@/components/catalog/CatalogFilters";
 import { ListingsMapClient } from "@/components/map/ListingsMapClient";
 import { ListingPreview } from "@/components/map/ListingPreview";
-import { API_URL } from "@/lib/config";
 import type { ListingData } from "@/types/listing";
 
 interface ListingsResponse {
@@ -42,7 +41,7 @@ export function MapPageContent() {
         params.set("size", "100");
 
         try {
-            const res = await fetch(`${API_URL}/api/listings?${params.toString()}`);
+            const res = await fetch(`/api/listings?${params.toString()}`);
             const data: ListingsResponse = await res.json();
 
             setListings(data.items);

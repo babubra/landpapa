@@ -5,11 +5,10 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { ListingCard } from "@/components/catalog/ListingCard";
 import type { ListingData } from "@/types/listing";
-import { API_URL } from "@/lib/config";
 
 async function getPopularListings(): Promise<ListingData[]> {
     try {
-        const res = await fetch(`${API_URL}/api/listings/popular?limit=4`, {
+        const res = await fetch("/api/listings/popular?limit=4", {
             next: { revalidate: 60 },
         });
 

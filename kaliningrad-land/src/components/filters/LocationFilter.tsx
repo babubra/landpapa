@@ -14,7 +14,6 @@ import {
     DialogTrigger,
 } from "@/components/ui/dialog";
 import { MapPin, ChevronDown, ChevronRight, X } from "lucide-react";
-import { API_URL } from "@/lib/config";
 
 // Типы данных
 
@@ -75,7 +74,7 @@ export function LocationFilter({
         const shouldLoad = (open || value.length > 0) && districts.length === 0;
         if (shouldLoad) {
             setLoading(true);
-            fetch(`${API_URL}/api/locations/settlements-grouped`)
+            fetch("/api/locations/settlements-grouped")
                 .then((res) => res.json())
                 .then((data: DistrictGroup[]) => {
                     setDistricts(data);

@@ -15,7 +15,6 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { LocationFilter } from "@/components/filters/LocationFilter";
 import { Search, MapPin } from "lucide-react";
-import { API_URL } from "@/lib/config";
 
 interface Reference {
   id: number;
@@ -39,7 +38,7 @@ export function SearchFilter() {
 
   // Загрузка данных при монтировании
   useEffect(() => {
-    fetch(`${API_URL}/api/references?type=land_use`)
+    fetch("/api/references?type=land_use")
       .then((res) => res.json())
       .then(setLandUseOptions)
       .catch(console.error);

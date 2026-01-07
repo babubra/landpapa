@@ -15,7 +15,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { API_URL } from "@/lib/config";
 
 const formSchema = z.object({
     name: z.string().min(2, "Имя должно быть не менее 2 символов"),
@@ -55,7 +54,7 @@ export function CallbackModal({
     const onSubmit = async (data: FormValues) => {
         setIsSubmitting(true);
         try {
-            const response = await fetch(`${API_URL}/api/leads/public`, {
+            const response = await fetch("/api/leads/public", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
