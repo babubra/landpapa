@@ -3,42 +3,39 @@
  * Использует переменную окружения NEXT_PUBLIC_API_URL с fallback на localhost для разработки.
  */
 
-const IS_SERVER = typeof window === "undefined";
-
 // Внутренний URL для запросов сервер-сервер
 // В Docker это http://backend:8000, локально http://localhost:8001
 const INTERNAL_API_URL = process.env.INTERNAL_API_URL || "http://localhost:8001";
 
-// Определяем окружение
-const isDevelopment = () => {
-    if (IS_SERVER) {
-        return INTERNAL_API_URL.includes("localhost") || INTERNAL_API_URL.includes("127.0.0.1");
-    }
-    return typeof window !== "undefined" && (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
-};
+/**
+ * Получить API URL в зависимости от окружения (SSR или браузер).
+ * ВАЖНО: Функция, а не константа, чтобы window был доступен в runtime!
+ */
+export function getAPIURL(): string {
+    const IS_SERVER = typeof window === "undefined";
 
-// Публичный URL для браузера и SSR
-export const API_URL = (() => {
-    // На сервере (SSR) используем INTERNAL_API_URL
+    // На сервере (SSR) используем INTERNAL_API_URL для server-to-server запросов
     if (IS_SERVER) {
         return INTERNAL_API_URL;
     }
 
-    // В браузере
-    // В development используем явный URL к backend
-    if (isDevelopment()) {
+    // В браузере - проверяем окружение
+    const isDev = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+
+    if (isDev) {
+        // Development: используем явный URL к backend на другом порту
         return process.env.NEXT_PUBLIC_API_URL || "http://localhost:8001";
     }
 
-    // В production используем текущий origin (протокол + домен)
-    // Это гарантирует правильный протокол (https://)
-    if (typeof window !== "undefined") {
-        return window.location.origin;
-    }
+    // Production: используем текущий origin (гарантирует https://)
+    return window.location.origin;
+}
 
-    // Fallback (не должен использоваться)
-    return process.env.NEXT_PUBLIC_API_URL || "";
-})();
+// Для обратной совместимости и SSR
+// При SSR это будет INTERNAL_API_URL, что правильно для server-side запросов
+export const API_URL = typeof window === "undefined"
+    ? INTERNAL_API_URL
+    : getAPIURL();
 
 export const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 
