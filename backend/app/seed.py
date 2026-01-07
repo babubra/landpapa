@@ -8,6 +8,8 @@
 from sqlalchemy.orm import Session
 
 from app.database import engine, SessionLocal, Base
+# Импортируем все модели, чтобы Base.metadata знал о них при создании таблиц
+import app.models  # noqa
 from app.models.reference import Reference
 from app.models.admin_user import AdminUser
 from app.models.setting import Setting
