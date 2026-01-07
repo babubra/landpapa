@@ -6,7 +6,8 @@ import { MapPin, Maximize, X, Phone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { ListingData } from "@/types/listing";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8001";
+import { getImageUrl } from "@/lib/config";
+import { usePlaceholderImage } from "@/contexts/SiteSettingsContext";
 
 interface ListingPreviewProps {
     listing: ListingData;
@@ -28,13 +29,8 @@ function formatPriceRange(min: number | null, max: number | null): string {
     return `от ${formatPrice(min!)} ₽`;
 }
 
-function getImageUrl(url: string | null | undefined): string {
-    if (!url) return "/hero-bg.jpg";
-    if (url.startsWith("http")) return url;
-    return `${API_URL}${url}`;
-}
-
 export function ListingPreview({ listing, onClose }: ListingPreviewProps) {
+    const placeholderImage = usePlaceholderImage();
     const locationText = listing.settlement
         ? listing.settlement.district
             ? `${listing.settlement.name}, ${listing.settlement.district.name}`
@@ -50,7 +46,7 @@ export function ListingPreview({ listing, onClose }: ListingPreviewProps) {
             {/* Изображение */}
             <div className="relative w-40 h-28 flex-shrink-0 rounded-lg overflow-hidden bg-muted">
                 <Image
-                    src={getImageUrl(imageUrl)}
+                    src={getImageUrl(imageUrl, placeholderImage)}
                     alt={listing.title}
                     fill
                     className="object-cover"

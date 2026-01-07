@@ -27,7 +27,7 @@ export async function HeroSection() {
       <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/50 to-transparent" />
 
       {/* Контент */}
-      <div className="relative z-10 flex h-full flex-col justify-center px-6 md:px-10 lg:px-12">
+      <div className="relative z-20 flex h-full flex-col justify-center px-6 md:px-10 lg:px-12">
         <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-white mb-4 max-w-xl leading-tight">
           {heroTitle}
         </h1>

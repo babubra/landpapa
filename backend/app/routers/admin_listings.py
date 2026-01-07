@@ -277,7 +277,7 @@ async def create_listing(
     
     # Перегенерируем название если включён авто-режим
     if listing.title_auto and listing.plots:
-        listing.title = generate_listing_title(listing.plots)
+        listing.title = generate_listing_title(listing.plots, listing.settlement)
         db.commit()
         db.refresh(listing)
     
@@ -354,6 +354,12 @@ async def update_listing(
     
     db.commit()
     db.refresh(listing)
+
+    # Перегенерируем название если включён авто-режим
+    if listing.title_auto and listing.plots:
+        listing.title = generate_listing_title(listing.plots, listing.settlement)
+        db.commit()
+        db.refresh(listing)
     
     return listing_to_detail(listing)
 

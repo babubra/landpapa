@@ -4,7 +4,7 @@ import Image from "next/image";
 import { useState, useCallback, useEffect } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { API_URL } from "@/lib/config";
+import { getImageUrl } from "@/lib/config";
 
 interface ImageType {
     url: string;
@@ -14,16 +14,10 @@ interface ImageType {
 interface ListingGalleryProps {
     images: ImageType[];
     title: string;
+    placeholderImage?: string;
 }
 
-// Формирование полного URL изображения
-function getImageUrl(url: string | null | undefined): string {
-    if (!url) return "/hero-bg.jpg";
-    if (url.startsWith("http")) return url;
-    return `${API_URL}${url}`;
-}
-
-export function ListingGallery({ images, title }: ListingGalleryProps) {
+export function ListingGallery({ images, title, placeholderImage }: ListingGalleryProps) {
     // Если нет изображений, используем заглушку
     const hasImages = images.length > 0;
     const [activeIndex, setActiveIndex] = useState(0);
@@ -53,7 +47,7 @@ export function ListingGallery({ images, title }: ListingGalleryProps) {
     // Получаем URL текущего изображения
     const currentImageUrl = hasImages
         ? getImageUrl(images[activeIndex].url)
-        : "/hero-bg.jpg";
+        : getImageUrl(null, placeholderImage);
 
     return (
         <div className="space-y-4">

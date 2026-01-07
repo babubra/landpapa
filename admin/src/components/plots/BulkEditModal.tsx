@@ -93,7 +93,7 @@ export function BulkEditModal({
                 onOpenChange(open);
             }
         }}>
-            <DialogContent className="sm:max-w-[425px] z-[9999]">
+            <DialogContent className="sm:max-w-[425px]">
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
                         <Edit className="h-5 w-5" />

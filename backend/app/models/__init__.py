@@ -9,6 +9,7 @@ from app.models.listing import Listing
 from app.models.plot import Plot, PlotStatus
 from app.models.admin_user import AdminUser
 from app.models.setting import Setting
+from app.models.lead import Lead
 
 __all__ = [
     "News",
@@ -23,4 +24,5 @@ __all__ = [
     "PlotStatus",
     "AdminUser",
     "Setting",
+    "Lead",
 ]

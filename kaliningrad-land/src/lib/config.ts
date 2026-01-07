@@ -23,11 +23,16 @@ export interface SiteSettings {
     site_name: string | null;
     site_subtitle: string | null;
     site_phone: string | null;
+    site_email: string | null;
+    site_address: string | null;
+    site_work_hours_weekdays: string | null;
+    site_work_hours_weekend: string | null;
     site_logo: string | null;
     hero_title: string | null;
     hero_subtitle: string | null;
     hero_image: string | null;
     placeholder_image: string | null;
+    privacy_policy: string | null;
 }
 
 /**
@@ -50,11 +55,16 @@ export async function getSiteSettings(): Promise<SiteSettings> {
             site_name: null,
             site_subtitle: null,
             site_phone: null,
+            site_email: null,
+            site_address: null,
+            site_work_hours_weekdays: null,
+            site_work_hours_weekend: null,
             site_logo: null,
             hero_title: null,
             hero_subtitle: null,
             hero_image: null,
             placeholder_image: null,
+            privacy_policy: null,
         };
     }
 }
@@ -65,6 +75,17 @@ export async function getSiteSettings(): Promise<SiteSettings> {
 export function getImageUrl(url: string | null | undefined, fallback: string = "/hero-bg.jpg"): string {
     if (!url) return fallback;
     if (url.startsWith("http")) return url;
-    // Всегда возвращаем относительный путь, так как Nginx проксирует /uploads/
-    return url.startsWith("/") ? url : `/${url}`;
+
+    // В разработке нам нужно ссылаться на полный URL бэкенда для картинок,
+    // так как фронтенд и бэкенд на разных портах.
+    // В продакшене (через Nginx) можно использовать относительные пути.
+    const baseUrl = API_URL.replace(/\/$/, "");
+    const relativeUrl = url.startsWith("/") ? url : `/${url}`;
+
+    // Если мы на сервере или в разработке на клиенте
+    if (baseUrl && (IS_SERVER || baseUrl.includes("localhost") || baseUrl.includes("127.0.0.1"))) {
+        return `${baseUrl}${relativeUrl}`;
+    }
+
+    return relativeUrl;
 }

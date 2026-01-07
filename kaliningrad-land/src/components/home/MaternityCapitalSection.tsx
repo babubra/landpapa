@@ -1,44 +1,39 @@
-import { FileCheck, Baby, Banknote } from "lucide-react";
+import { FileCheck, Users, Banknote, Handshake } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import Link from "next/link";
 
 export function MaternityCapitalSection() {
     return (
         <section className="pt-6">
-            <div className="rounded-2xl bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border border-primary/20 p-6 md:p-10 lg:p-12">
+            <div className="rounded-2xl bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border border-primary/20 p-6 md:p-8 lg:p-10">
                 <div className="grid lg:grid-cols-2 gap-8 items-center">
                     {/* Текст слева */}
                     <div>
                         <div className="flex items-center gap-2 mb-4">
-                            <Baby className="h-8 w-8 text-primary" />
+                            <Users className="h-8 w-8 text-primary" />
                             <span className="text-sm font-medium text-primary uppercase tracking-wide">
-                                Материнский капитал
+                                Многодетным семьям
                             </span>
                         </div>
 
-                        <h2 className="mb-4 text-2xl md:text-3xl">
-                            Приобретайте участок с использованием материнского капитала
+                        <h2 className="mb-4 text-2xl md:text-3xl font-bold">
+                            Покупайте участок по программе для многодетных семей
                         </h2>
 
-                        <p className="text-muted-foreground mb-6">
-                            Мы предоставляем возможность оплаты земельного участка
-                            средствами материнского (семейного) капитала.
-                            Поможем с оформлением всех необходимых документов.
+                        <p className="text-muted-foreground mb-6 text-lg leading-relaxed">
+                            В Калининградской области многодетные семьи могут получить денежную выплату вместо предоставления земельного участка.
                         </p>
 
-                        <ul className="space-y-3 mb-8">
+                        <ul className="space-y-4">
                             <li className="flex items-start gap-3">
-                                <FileCheck className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
-                                <span>Полное сопровождение сделки с использованием сертификата</span>
+                                <FileCheck className="h-6 w-6 text-primary flex-shrink-0 mt-0.5" />
+                                <span className="text-foreground">У нас можно выбрать и купить земельный участок с использованием этой выплаты</span>
                             </li>
                             <li className="flex items-start gap-3">
-                                <Banknote className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
-                                <span>Возможность комбинирования с ипотекой или собственными средствами</span>
+                                <Handshake className="h-6 w-6 text-primary flex-shrink-0 mt-0.5" />
+                                <span className="text-foreground">Поможем подобрать вариант и оформить сделку под программу</span>
                             </li>
                         </ul>
-
-                        <Button size="lg">
-                            Узнать подробнее
-                        </Button>
                     </div>
 
                     {/* Декоративный блок справа */}
@@ -46,15 +41,15 @@ export function MaternityCapitalSection() {
                         <div className="relative">
                             <div className="absolute -inset-4 bg-primary/20 rounded-full blur-3xl" />
                             <div className="relative bg-card rounded-2xl border p-8 shadow-lg">
-                                <Baby className="h-16 w-16 text-primary mx-auto mb-4" />
-                                <p className="text-center text-lg font-semibold">
-                                    Материнский капитал
+                                <Users className="h-16 w-16 text-primary mx-auto mb-4" />
+                                <p className="text-center text-lg font-semibold whitespace-nowrap">
+                                    Региональная выплата для семей
                                 </p>
                                 <p className="text-center text-3xl font-bold text-primary mt-2">
-                                    ₽ 833 025
+                                    ₽ 400 000
                                 </p>
                                 <p className="text-center text-sm text-muted-foreground mt-1">
-                                    размер в 2024 году
+                                    вместо участка
                                 </p>
                             </div>
                         </div>

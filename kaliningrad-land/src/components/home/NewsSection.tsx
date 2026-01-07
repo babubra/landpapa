@@ -53,40 +53,15 @@ function NewsItem({ news }: { news: NewsItem }) {
   );
 }
 
-// Fallback данные если API недоступен
-const fallbackNews: NewsItem[] = [
-  {
-    id: 1,
-    slug: "example-1",
-    title: "Открыт новый коттеджный посёлок в Зеленоградском районе",
-    excerpt: "",
-    published_at: new Date().toISOString(),
-    views_count: 0,
-  },
-  {
-    id: 2,
-    slug: "example-2",
-    title: "Изменения в программе материнского капитала в 2025 году",
-    excerpt: "",
-    published_at: new Date().toISOString(),
-    views_count: 0,
-  },
-  {
-    id: 3,
-    slug: "example-3",
-    title: "Как выбрать участок для строительства дома: советы экспертов",
-    excerpt: "",
-    published_at: new Date().toISOString(),
-    views_count: 0,
-  },
-];
-
 export async function NewsSection() {
   const newsItems = await getLatestNews();
-  const displayNews = newsItems.length > 0 ? newsItems : fallbackNews;
 
-  const leftColumn = displayNews.slice(0, 3);
-  const rightColumn = displayNews.slice(3, 6);
+  if (newsItems.length === 0) {
+    return null;
+  }
+
+  const leftColumn = newsItems.slice(0, 3);
+  const rightColumn = newsItems.slice(3, 6);
 
   return (
     <section className="pt-6 pb-8">

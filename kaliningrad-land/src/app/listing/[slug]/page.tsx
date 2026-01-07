@@ -70,7 +70,7 @@ async function getListing(slug: string): Promise<ListingDetail | null> {
     }
 }
 
-import { getImageUrl, SITE_URL } from "@/lib/config";
+import { getImageUrl, SITE_URL, getSiteSettings } from "@/lib/config";
 import { SeoJsonLd } from "@/components/seo/SeoJsonLd";
 
 // ... (existing imports)
@@ -119,7 +119,10 @@ export async function generateMetadata({
 
 export default async function ListingPage({ params }: ListingPageProps) {
     const { slug } = await params;
-    const listing = await getListing(slug);
+    const [listing, settings] = await Promise.all([
+        getListing(slug),
+        getSiteSettings()
+    ]);
 
     if (!listing) {
         notFound();
@@ -168,7 +171,11 @@ export default async function ListingPage({ params }: ListingPageProps) {
                     {/* Левая колонка: галерея + описание */}
                     <div className="lg:col-span-2 space-y-8">
                         {/* Галерея */}
-                        <ListingGallery images={listing.images} title={listing.title} />
+                        <ListingGallery
+                            images={listing.images}
+                            title={listing.title}
+                            placeholderImage={getImageUrl(settings.placeholder_image)}
+                        />
 
                         {/* Описание */}
                         {listing.description && (

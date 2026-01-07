@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Phone, Mail, MapPin } from "lucide-react";
+import { getSiteSettings } from "@/lib/config";
 
 const navigation = [
     { name: "Каталог", href: "/catalog" },
@@ -8,7 +9,20 @@ const navigation = [
     { name: "Контакты", href: "/contacts" },
 ];
 
-export function Footer() {
+export async function Footer() {
+    const settings = await getSiteSettings();
+
+    const siteName = settings.site_name || "КалининградЗем";
+    const siteSubtitle = settings.site_subtitle || "";
+    const sitePhone = settings.site_phone || "+7 (4012) 12-34-56";
+    const siteEmail = settings.site_email || "info@kaliningrad-zem.ru";
+    const siteAddress = settings.site_address || "г. Калининград, ул. Примерная, д. 1";
+    const workHoursWeekdays = settings.site_work_hours_weekdays || "Пн–Пт: 9:00 – 18:00";
+    const workHoursWeekend = settings.site_work_hours_weekend || "Сб: 10:00 – 16:00, Вс: выходной";
+
+    const phoneHref = `tel:${sitePhone.replace(/[^\d+]/g, "")}`;
+    const mailHref = `mailto:${siteEmail}`;
+
     return (
         <footer className="border-t bg-muted/50">
             <div className="container mx-auto px-4 py-12">
@@ -16,12 +30,28 @@ export function Footer() {
                     {/* Логотип и описание */}
                     <div className="space-y-4">
                         <Link href="/" className="flex items-center space-x-2">
-                            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary">
-                                <span className="text-xl font-bold text-primary-foreground">К</span>
+                            {settings.site_logo && settings.site_logo.trim().startsWith("<svg") ? (
+                                <div
+                                    className="h-10 w-auto text-foreground [&>svg]:h-full [&>svg]:w-auto"
+                                    dangerouslySetInnerHTML={{ __html: settings.site_logo }}
+                                />
+                            ) : (
+                                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary">
+                                    <span className="text-xl font-bold text-primary-foreground">
+                                        {siteName.charAt(0)}
+                                    </span>
+                                </div>
+                            )}
+                            <div className="flex flex-col leading-tight">
+                                <span className="text-lg font-bold text-foreground">
+                                    {siteName}
+                                </span>
+                                {siteSubtitle && (
+                                    <span className="text-xs text-muted-foreground line-clamp-1">
+                                        {siteSubtitle}
+                                    </span>
+                                )}
                             </div>
-                            <span className="text-lg font-bold text-foreground">
-                                КалининградЗем
-                            </span>
                         </Link>
                         <p className="text-sm text-muted-foreground">
                             Продажа земельных участков в Калининградской области.
@@ -56,26 +86,26 @@ export function Footer() {
                         <ul className="space-y-3">
                             <li>
                                 <a
-                                    href="tel:+74012123456"
+                                    href={phoneHref}
                                     className="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors"
                                 >
                                     <Phone className="h-4 w-4" />
-                                    +7 (4012) 12-34-56
+                                    {sitePhone}
                                 </a>
                             </li>
                             <li>
                                 <a
-                                    href="mailto:info@kaliningrad-zem.ru"
+                                    href={mailHref}
                                     className="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors"
                                 >
                                     <Mail className="h-4 w-4" />
-                                    info@kaliningrad-zem.ru
+                                    {siteEmail}
                                 </a>
                             </li>
                             <li>
                                 <div className="flex items-start gap-2 text-sm text-muted-foreground">
                                     <MapPin className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                                    <span>г. Калининград, ул. Примерная, д. 1</span>
+                                    <span>{siteAddress}</span>
                                 </div>
                             </li>
                         </ul>
@@ -87,9 +117,10 @@ export function Footer() {
                             Режим работы
                         </h3>
                         <ul className="space-y-2 text-sm text-muted-foreground">
-                            <li>Пн–Пт: 9:00 – 18:00</li>
-                            <li>Сб: 10:00 – 16:00</li>
-                            <li>Вс: выходной</li>
+                            <li>{workHoursWeekdays}</li>
+                            {workHoursWeekend.split(',').map((part, idx) => (
+                                <li key={idx}>{part.trim()}</li>
+                            ))}
                         </ul>
                     </div>
                 </div>
@@ -97,7 +128,7 @@ export function Footer() {
                 {/* Копирайт */}
                 <div className="mt-12 border-t pt-8">
                     <p className="text-center text-sm text-muted-foreground">
-                        © {new Date().getFullYear()} КалининградЗем. Все права защищены.
+                        © {new Date().getFullYear()} {siteName}. Все права защищены.
                     </p>
                 </div>
             </div>

@@ -129,7 +129,7 @@ export function BulkImportModal({
 
     return (
         <Dialog open={open} onOpenChange={handleClose}>
-            <DialogContent className="sm:max-w-[600px] z-[9999]">
+            <DialogContent className="sm:max-w-[600px]">
                 <DialogHeader>
                     <DialogTitle>Массовая загрузка участков</DialogTitle>
                     <DialogDescription>

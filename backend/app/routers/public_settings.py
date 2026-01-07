@@ -18,11 +18,16 @@ PUBLIC_SETTING_KEYS = [
     "site_name",
     "site_subtitle", 
     "site_phone",
+    "site_email",
+    "site_address",
+    "site_work_hours_weekdays",
+    "site_work_hours_weekend",
     "site_logo",
     "hero_title",
     "hero_subtitle",
     "hero_image",
     "placeholder_image",
+    "privacy_policy",
 ]
 
 
@@ -32,11 +37,16 @@ class PublicSettingsResponse(BaseModel):
     site_name: str | None = None
     site_subtitle: str | None = None
     site_phone: str | None = None
+    site_email: str | None = None
+    site_address: str | None = None
+    site_work_hours_weekdays: str | None = None
+    site_work_hours_weekend: str | None = None
     site_logo: str | None = None
     hero_title: str | None = None
     hero_subtitle: str | None = None
     hero_image: str | None = None
     placeholder_image: str | None = None
+    privacy_policy: str | None = None
 
 
 @router.get("/public", response_model=PublicSettingsResponse)

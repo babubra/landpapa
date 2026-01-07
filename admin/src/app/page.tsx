@@ -53,6 +53,13 @@ export default function DashboardPage() {
             </p>
 
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              <Link href="/leads">
+                <Card className="p-4 bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors cursor-pointer ring-2 ring-blue-500/50">
+                  <h3 className="font-semibold mb-1 text-blue-700 dark:text-blue-400">📞 Заявки</h3>
+                  <p className="text-sm text-muted-foreground">Обратные звонки и лиды</p>
+                </Card>
+              </Link>
+
               <Link href="/listings">
                 <Card className="p-4 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
                   <h3 className="font-semibold mb-1">📋 Объявления</h3>

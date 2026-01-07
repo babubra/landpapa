@@ -5,13 +5,13 @@
 from app.models.plot import Plot
 
 
-def generate_listing_title(plots: list[Plot]) -> str:
+def generate_listing_title(plots: list[Plot], settlement=None) -> str:
     """
-    Генерирует название объявления на основе участков.
+    Генерирует название объявления на основе участков и местоположения.
     
     Примеры:
-    - 1 участок 6 соток с ИЖС: "Продажа участка 6 соток (ИЖС)"
-    - 3 участка от 6 до 10 соток с ИЖС и ЛПХ: "Продажа участков от 6 соток (ИЖС, ЛПХ)"
+    - 1 участок 6 соток: "Продажа участка 6 соток"
+    - С местоположением: "Продажа участков от 6 соток Гурьевский район, пос. Авангардное"
     """
     if not plots:
         return "Продажа участка"
@@ -52,6 +52,18 @@ def generate_listing_title(plots: list[Plot]) -> str:
     if land_uses:
         land_uses_str = ", ".join(sorted(land_uses))
         title += f" ({land_uses_str})"
+    
+    # Добавляем местоположение
+    if settlement:
+        location_parts = []
+        if hasattr(settlement, 'district') and settlement.district:
+            location_parts.append(settlement.district.name)
+        if hasattr(settlement, 'name') and settlement.name:
+            location_parts.append(settlement.name)
+        
+        if location_parts:
+            location_str = ", ".join(location_parts)
+            title += f" {location_str}"
     
     return title
 

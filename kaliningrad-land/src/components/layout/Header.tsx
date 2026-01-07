@@ -12,6 +12,7 @@ import {
     SheetClose,
 } from "@/components/ui/sheet";
 import { getSiteSettings, SiteSettings, getImageUrl } from "@/lib/config";
+import { CallbackModal } from "@/components/modals/CallbackModal";
 
 const navigation = [
     { name: "Каталог", href: "/catalog" },
@@ -23,6 +24,7 @@ const navigation = [
 export function Header() {
     const { theme, setTheme } = useTheme();
     const [isOpen, setIsOpen] = useState(false);
+    const [showCallback, setShowCallback] = useState(false);
     const [settings, setSettings] = useState<SiteSettings | null>(null);
 
     useEffect(() => {
@@ -46,20 +48,16 @@ export function Header() {
                                 dangerouslySetInnerHTML={{ __html: settings.site_logo }}
                             />
                         ) : null}
-                        {(siteName || siteSubtitle) && (
-                            <div className="flex flex-col leading-tight">
-                                {siteName && (
-                                    <span className="text-lg font-bold text-foreground">
-                                        {siteName}
-                                    </span>
-                                )}
-                                {siteSubtitle && (
-                                    <span className="text-xs text-muted-foreground">
-                                        {siteSubtitle}
-                                    </span>
-                                )}
-                            </div>
-                        )}
+                        <div className="flex flex-col leading-tight">
+                            <span className="text-lg font-bold text-foreground">
+                                {settings?.site_name || ""}
+                            </span>
+                            {settings?.site_subtitle && (
+                                <span className="text-xs text-muted-foreground">
+                                    {settings.site_subtitle}
+                                </span>
+                            )}
+                        </div>
                     </Link>
 
                     {/* Десктопная навигация */}
@@ -87,7 +85,7 @@ export function Header() {
                         </a>
 
                         {/* Кнопка CTA */}
-                        <Button className="hidden sm:inline-flex">
+                        <Button className="hidden sm:inline-flex" onClick={() => setShowCallback(true)}>
                             Подберите мне участок
                         </Button>
 
@@ -137,7 +135,10 @@ export function Header() {
                                     </a>
 
                                     {/* CTA кнопка */}
-                                    <Button size="lg" className="w-full mt-2">
+                                    <Button size="lg" className="w-full mt-2" onClick={() => {
+                                        setIsOpen(false);
+                                        setShowCallback(true);
+                                    }}>
                                         Подберите мне участок
                                     </Button>
                                 </div>
@@ -146,6 +147,11 @@ export function Header() {
                     </div>
                 </div>
             </div>
+
+            <CallbackModal
+                open={showCallback}
+                onOpenChange={setShowCallback}
+            />
         </header>
     );
 }

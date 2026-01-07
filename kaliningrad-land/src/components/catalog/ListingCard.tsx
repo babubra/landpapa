@@ -6,9 +6,8 @@ import { MapPin, Maximize } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import type { ListingData } from "@/types/listing";
+import { getImageUrl } from "@/lib/config";
 import { usePlaceholderImage } from "@/contexts/SiteSettingsContext";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8001";
 
 function formatPrice(price: number): string {
     return new Intl.NumberFormat("ru-RU").format(price);
@@ -23,12 +22,6 @@ function formatPriceRange(min: number | null, max: number | null): string {
     if (!min && !max) return "Цена по запросу";
     if (min === max || !max) return `${formatPrice(min!)} ₽`;
     return `от ${formatPrice(min!)} ₽`;
-}
-
-function getImageUrl(url: string | null | undefined, fallback: string): string {
-    if (!url) return fallback;
-    if (url.startsWith("http")) return url;
-    return `${API_URL}${url}`;
 }
 
 export interface ListingCardProps {
@@ -63,7 +56,7 @@ export function ListingCard({ listing, variant = "default" }: ListingCardProps) 
                     />
                     {listing.plots_count > 1 && (
                         <div className="absolute top-3 left-3 bg-primary text-primary-foreground px-3 py-1 rounded-full text-sm font-medium">
-                            {listing.plots_count} участка
+                            {listing.plots_count} уч.
                         </div>
                     )}
                 </div>
@@ -96,7 +89,7 @@ export function ListingCard({ listing, variant = "default" }: ListingCardProps) 
 
                     <div className="flex items-end justify-between mt-auto">
                         <div>
-                            <p className="text-2xl font-bold text-primary">
+                            <p className="text-xl font-bold text-primary">
                                 {formatPriceRange(listing.price_min, listing.price_max)}
                             </p>
                         </div>

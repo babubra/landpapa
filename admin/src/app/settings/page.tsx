@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Loader2, Save, ArrowLeft, Settings as SettingsIcon } from "lucide-react";
 import { ImageSettingUpload } from "@/components/settings/ImageSettingUpload";
+import { RichTextEditor } from "@/components/ui/rich-text-editor";
 
 export default function SettingsPage() {
     const { user, isLoading: authLoading } = useAuth();
@@ -95,6 +96,12 @@ export default function SettingsPage() {
             site_phone: "Телефон",
             hero_title: "Заголовок Hero",
             hero_subtitle: "Подзаголовок Hero",
+            site_email: "Email (футер)",
+            site_address: "Адрес (футер)",
+            site_work_hours_weekdays: "Режим работы (будни)",
+            site_work_hours_weekend: "Режим работы (выходные)",
+            tg_bot_token: "Telegram Bot Token",
+            tg_chat_id: "Telegram Chat ID",
         };
         return labels[key] || key;
     };
@@ -110,6 +117,12 @@ export default function SettingsPage() {
             site_phone: "+7 (4012) 12-34-56",
             hero_title: "Земельные участки в Калининградской области",
             hero_subtitle: "Найдите идеальный участок...",
+            site_email: "info@example.com",
+            site_address: "г. Калининград, ул. Примерная, д. 1",
+            site_work_hours_weekdays: "Пн–Пт: 9:00 – 18:00",
+            site_work_hours_weekend: "Сб: 10:00 – 16:00, Вс: выходной",
+            tg_bot_token: "123456789:ABCDefGhI... (от @BotFather)",
+            tg_chat_id: "-100123456789 или ID пользователя",
         };
         return placeholders[key] || "";
     };
@@ -207,6 +220,10 @@ export default function SettingsPage() {
                                 {renderTextSetting("site_name")}
                                 {renderTextSetting("site_subtitle")}
                                 {renderTextSetting("site_phone")}
+                                {renderTextSetting("site_email")}
+                                {renderTextSetting("site_address")}
+                                {renderTextSetting("site_work_hours_weekdays")}
+                                {renderTextSetting("site_work_hours_weekend")}
 
                                 <div className="space-y-2">
                                     <div className="flex items-center justify-between">
@@ -301,6 +318,21 @@ export default function SettingsPage() {
                             </div>
                         </div>
 
+                        {/* Telegram Section */}
+                        <div className="bg-card rounded-lg border p-6">
+                            <h2 className="text-lg font-semibold mb-4">
+                                Уведомления Telegram
+                            </h2>
+                            <p className="text-sm text-muted-foreground mb-6">
+                                Настройки бота для получения мгновенных уведомлений о новых заявках.
+                            </p>
+
+                            <div className="space-y-4">
+                                {renderTextSetting("tg_bot_token")}
+                                {renderTextSetting("tg_chat_id")}
+                            </div>
+                        </div>
+
                         {/* NSPD Section */}
                         <div className="bg-card rounded-lg border p-6">
                             <h2 className="text-lg font-semibold mb-4">
@@ -327,6 +359,41 @@ export default function SettingsPage() {
 
                             <div className="space-y-4">
                                 {renderTextSetting("dadata_api_key")}
+                            </div>
+                        </div>
+
+                        {/* Legal Documents Section */}
+                        <div className="bg-card rounded-lg border p-6">
+                            <h2 className="text-lg font-semibold mb-4">
+                                Юридические документы
+                            </h2>
+                            <p className="text-sm text-muted-foreground mb-6">
+                                Текст политики конфиденциальности и согласия на обработку данных.
+                            </p>
+
+                            <div className="space-y-6">
+                                <div className="space-y-4">
+                                    <div className="flex items-center justify-between">
+                                        <Label className="text-base">Политика конфиденциальности</Label>
+                                        <Button
+                                            onClick={() => handleSave("privacy_policy")}
+                                            disabled={saving === "privacy_policy"}
+                                            size="sm"
+                                        >
+                                            {saving === "privacy_policy" ? (
+                                                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                            ) : (
+                                                <Save className="h-4 w-4 mr-2" />
+                                            )}
+                                            Сохранить текст
+                                        </Button>
+                                    </div>
+                                    <RichTextEditor
+                                        value={values["privacy_policy"] || ""}
+                                        onChange={(html) => setValues(prev => ({ ...prev, privacy_policy: html }))}
+                                        className="bg-background"
+                                    />
+                                </div>
                             </div>
                         </div>
 

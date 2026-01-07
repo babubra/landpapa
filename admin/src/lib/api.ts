@@ -749,3 +749,46 @@ export async function resetPassword(token: string, newPassword: string): Promise
   }
   return response.json();
 }
+
+// === Заявки (Leads) ===
+
+export interface LeadItem {
+  id: number;
+  name: string | null;
+  phone: string;
+  comment: string | null;
+  status: "new" | "processing" | "completed" | "rejected";
+  source_url: string | null;
+  ip_address: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface LeadsResponse {
+  items: LeadItem[];
+  total: number;
+  page: number;
+  size: number;
+}
+
+export async function getLeads(page = 1, size = 20, status?: string): Promise<LeadsResponse> {
+  const params = new URLSearchParams({ page: String(page), size: String(size) });
+  if (status) params.set("status", status);
+
+  const response = await fetchWithAuth(`/api/admin/leads/admin?${params.toString()}`);
+  if (!response.ok) {
+    throw new Error("Ошибка загрузки заявок");
+  }
+  return response.json();
+}
+
+export async function updateLeadStatus(id: number, status: string): Promise<LeadItem> {
+  const response = await fetchWithAuth(`/api/admin/leads/admin/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify({ status }),
+  });
+  if (!response.ok) {
+    throw new Error("Ошибка обновления статуса заявки");
+  }
+  return response.json();
+}
