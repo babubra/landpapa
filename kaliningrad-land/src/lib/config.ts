@@ -9,10 +9,37 @@ const IS_SERVER = typeof window === "undefined";
 // В Docker это http://backend:8000, локально http://localhost:8001
 const INTERNAL_API_URL = process.env.INTERNAL_API_URL || "http://localhost:8001";
 
-// Публичный URL для браузера
-export const API_URL = IS_SERVER
-    ? INTERNAL_API_URL
-    : (process.env.NEXT_PUBLIC_API_URL || (window.location.hostname === "localhost" ? "http://localhost:8001" : ""));
+// Определяем окружение
+const isDevelopment = () => {
+    if (IS_SERVER) {
+        return INTERNAL_API_URL.includes("localhost") || INTERNAL_API_URL.includes("127.0.0.1");
+    }
+    return typeof window !== "undefined" && (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
+};
+
+// Публичный URL для браузера и SSR
+export const API_URL = (() => {
+    // На сервере (SSR) используем INTERNAL_API_URL
+    if (IS_SERVER) {
+        return INTERNAL_API_URL;
+    }
+
+    // В браузере
+    // В development используем явный URL к backend
+    if (isDevelopment()) {
+        return process.env.NEXT_PUBLIC_API_URL || "http://localhost:8001";
+    }
+
+    // В production используем текущий origin (протокол + домен)
+    // Это гарантирует правильный протокол (https://)
+    if (typeof window !== "undefined") {
+        return window.location.origin;
+    }
+
+    // Fallback (не должен использоваться)
+    return process.env.NEXT_PUBLIC_API_URL || "";
+})();
+
 export const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 
 /**
