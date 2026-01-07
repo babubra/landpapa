@@ -89,7 +89,8 @@ export default function SettingsPage() {
             nspd_proxy: "Прокси для NSPD",
             nspd_timeout: "Таймаут NSPD (сек)",
             dadata_api_key: "API ключ DaData",
-            site_title: "Название сайта",
+            site_title: "Заголовок страницы (SEO)",
+            site_name: "Название бренда (у логотипа)",
             site_subtitle: "Подзаголовок",
             site_phone: "Телефон",
             hero_title: "Заголовок Hero",
@@ -103,7 +104,8 @@ export default function SettingsPage() {
             nspd_proxy: "user:pass@host:port",
             nspd_timeout: "10",
             dadata_api_key: "Введите API ключ от dadata.ru",
-            site_title: "КалининградЗем",
+            site_title: "РКК Лэнд — Земельные участки",
+            site_name: "РКК Лэнд",
             site_subtitle: "Земельные участки",
             site_phone: "+7 (4012) 12-34-56",
             hero_title: "Земельные участки в Калининградской области",
@@ -202,6 +204,7 @@ export default function SettingsPage() {
 
                             <div className="space-y-4">
                                 {renderTextSetting("site_title")}
+                                {renderTextSetting("site_name")}
                                 {renderTextSetting("site_subtitle")}
                                 {renderTextSetting("site_phone")}
 

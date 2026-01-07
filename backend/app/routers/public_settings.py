@@ -15,6 +15,7 @@ router = APIRouter()
 # Ключи, доступные публично
 PUBLIC_SETTING_KEYS = [
     "site_title",
+    "site_name",
     "site_subtitle", 
     "site_phone",
     "site_logo",
@@ -28,6 +29,7 @@ PUBLIC_SETTING_KEYS = [
 class PublicSettingsResponse(BaseModel):
     """Публичные настройки сайта."""
     site_title: str | None = None
+    site_name: str | None = None
     site_subtitle: str | None = None
     site_phone: str | None = None
     site_logo: str | None = None
