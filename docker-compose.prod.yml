@@ -27,6 +27,7 @@ services:
     command: [ "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4", "--proxy-headers" ]
 
   frontend:
+    image: landpapa-frontend:latest
     build:
       context: ./kaliningrad-land
       # Передаем аргументы сборки для Next.js (чтобы запечь ENV переменные)
@@ -42,6 +43,7 @@ services:
       - backend
 
   admin:
+    image: landpapa-admin:latest
     build:
       context: ./admin
       args:

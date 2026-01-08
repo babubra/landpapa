@@ -72,7 +72,8 @@ http {
             proxy_set_header Upgrade $http_upgrade;
             proxy_set_header Connection "upgrade";
             add_header X-Proxy-Target "Frontend-Main-v2";
-            add_header X-Nginx-Config-Version "v2-final";
+            add_header X-Debug-Host $host;
+            add_header X-Nginx-Config-Version "v2-final-debug";
         }
     }
 
@@ -121,7 +122,8 @@ http {
             proxy_set_header Upgrade $http_upgrade;
             proxy_set_header Connection "upgrade";
             add_header X-Proxy-Target "Admin-Main-v2";
-            add_header X-Nginx-Config-Version "v2-final";
+            add_header X-Debug-Host $host;
+            add_header X-Nginx-Config-Version "v2-final-debug";
         }
     }
 
