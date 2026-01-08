@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { useAuth } from "@/lib/auth";
+import { API_URL } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -15,8 +16,6 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8001";
 
 interface District {
     id: number;

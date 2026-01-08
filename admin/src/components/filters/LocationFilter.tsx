@@ -14,9 +14,7 @@ import {
     DialogTrigger,
 } from "@/components/ui/dialog";
 import { ChevronDown, ChevronRight, X } from "lucide-react";
-
-// Используем переменную окружения для API URL, с fallback на localhost для разработки
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8001";
+import { API_URL } from "@/lib/api";
 
 // Типы данных
 

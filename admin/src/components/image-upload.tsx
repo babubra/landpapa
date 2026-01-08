@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { Image as ImageType, uploadImage } from "@/lib/api";
+import { Image as ImageType, uploadImage, API_URL } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { X, Upload, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import Image from "next/image";
@@ -85,18 +85,12 @@ export function ImageUpload({ value, onChange, disabled }: ImageUploadProps) {
         onChange(newImages);
     };
 
-    // Формируем URL. Если absolute URL ок, если relative (путь), то добавляем prefix API (или uploads route)
-    // Но у нас API_URL может быть другим портом.
-    // Image.url приходит с бэкенда как "/uploads/filename.jpg".
-    // Нам нужен полный путь.
-    // Предполагаем, что статика раздается с того же домена, что и API. 
-    // Или используем NEXT_PUBLIC_API_URL.
+    // Формируем URL. Image.url приходит с бэкенда как "/uploads/filename.jpg".
+    // В production используется относительный путь (API_URL = ""), в dev - полный URL
     const getImageUrl = (url: string) => {
         if (url.startsWith("http")) return url;
-        // Если url начинается с /, добавляем base url API.
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8001";
-        // Удаляем trailing slash из apiUrl
-        const cleanApiUrl = apiUrl.replace(/\/$/, "");
+        // Удаляем trailing slash из API_URL
+        const cleanApiUrl = API_URL.replace(/\/$/, "");
         return `${cleanApiUrl}${url}`;
     };
 

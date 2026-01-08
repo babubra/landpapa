@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2, Upload, Trash2, Save, Image as ImageIcon } from "lucide-react";
 import { toast } from "sonner";
-import { uploadImage, updateSetting } from "@/lib/api";
+import { uploadImage, updateSetting, API_URL } from "@/lib/api";
 
 interface ImageSettingUploadProps {
     settingKey: string;
@@ -15,8 +15,6 @@ interface ImageSettingUploadProps {
     currentValue: string;
     onUpdate: (newUrl: string) => void;
 }
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8001";
 
 export function ImageSettingUpload({
     settingKey,
