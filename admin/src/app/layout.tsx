@@ -14,10 +14,17 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-export const metadata: Metadata = {
-  title: "Админ-панель | КалининградЗем",
-  description: "Панель управления сайтом",
-};
+import { API_URL } from "@/lib/api";
+
+export async function generateMetadata(): Promise<Metadata> {
+  return {
+    title: "Админ-панель | КалининградЗем",
+    description: "Панель управления сайтом",
+    icons: {
+      icon: "/api/site-icon",
+    },
+  };
+}
 
 export default function RootLayout({
   children,
