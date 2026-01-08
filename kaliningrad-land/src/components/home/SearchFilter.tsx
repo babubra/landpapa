@@ -38,7 +38,7 @@ export function SearchFilter() {
 
   // Загрузка данных при монтировании
   useEffect(() => {
-    fetch("/api/references?type=land_use")
+    fetch("/api/references/?type=land_use")
       .then((res) => res.json())
       .then(setLandUseOptions)
       .catch(console.error);

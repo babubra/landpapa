@@ -52,7 +52,7 @@ export function CatalogFilters({ onFiltersChange, baseUrl = "/catalog", total }:
 
     // Загрузка справочника назначения
     useEffect(() => {
-        fetch("/api/references?type=land_use")
+        fetch("/api/references/?type=land_use")
             .then((res) => res.json())
             .then(setLandUseOptions)
             .catch(console.error);

@@ -22,16 +22,20 @@ app.include_router(admin_references.router, prefix="/api/admin/references", tags
 app.include_router(admin_realtors.router, prefix="/api/admin/realtors", tags=["admin-realtors"])
 app.include_router(leads.router, prefix="/api/admin/leads", tags=["admin-leads"])
 
+from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
+
 # CORS configuration
 print(f"DEBUG: Loaded CORS origins: {settings.cors_origins}")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins,
-
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Доверяем прокси-заголовкам (X-Forwarded-Proto и т.д.)
+app.add_middleware(ProxyHeadersMiddleware, trusted_hosts="*")
 
 # Создаем папку загрузок если нет
 if not os.path.exists(settings.upload_dir):

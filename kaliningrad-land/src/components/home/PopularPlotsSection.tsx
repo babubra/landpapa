@@ -8,7 +8,7 @@ import type { ListingData } from "@/types/listing";
 
 async function getPopularListings(): Promise<ListingData[]> {
     try {
-        const res = await fetch("/api/listings/popular?limit=4", {
+        const res = await fetch("/api/listings/popular/?limit=4", {
             next: { revalidate: 60 },
         });
 

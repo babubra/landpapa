@@ -74,7 +74,7 @@ export function LocationFilter({
         const shouldLoad = (open || value.length > 0) && districts.length === 0;
         if (shouldLoad) {
             setLoading(true);
-            fetch("/api/locations/settlements-grouped")
+            fetch("/api/locations/settlements-grouped/")
                 .then((res) => res.json())
                 .then((data: DistrictGroup[]) => {
                     setDistricts(data);

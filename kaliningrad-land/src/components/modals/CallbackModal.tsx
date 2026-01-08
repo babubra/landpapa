@@ -54,7 +54,7 @@ export function CallbackModal({
     const onSubmit = async (data: FormValues) => {
         setIsSubmitting(true);
         try {
-            const response = await fetch("/api/leads/public", {
+            const response = await fetch("/api/leads/public/", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",

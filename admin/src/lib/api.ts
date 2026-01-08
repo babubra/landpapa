@@ -249,7 +249,7 @@ export interface Reference {
 }
 
 export async function getReferences(type: string): Promise<Reference[]> {
-  const response = await fetch(`${API_URL}/api/references?type=${type}`);
+  const response = await fetch(`${API_URL}/api/references/?type=${type}`);
   if (!response.ok) {
     throw new Error("Ошибка загрузки справочников");
   }
@@ -531,7 +531,7 @@ export async function searchPlots(query: string, listingId?: number): Promise<Pl
 
 export async function getSettlements(): Promise<SettlementItem[]> {
   // Параметр all=true возвращает все населённые пункты, включая те, у которых нет объявлений
-  const response = await fetch(`${API_URL}/api/locations/settlements?all=true`);
+  const response = await fetch(`${API_URL}/api/locations/settlements/?all=true`);
   if (!response.ok) {
     throw new Error("Ошибка загрузки населённых пунктов");
   }
@@ -725,7 +725,7 @@ export async function bulkUpdatePlots(
 // === Аутентификация ===
 
 export async function forgotPassword(email: string): Promise<{ detail: string }> {
-  const response = await fetch(`${API_URL}/api/auth/forgot-password`, {
+  const response = await fetch(`${API_URL}/api/auth/forgot-password/`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email }),
@@ -738,7 +738,7 @@ export async function forgotPassword(email: string): Promise<{ detail: string }>
 }
 
 export async function resetPassword(token: string, newPassword: string): Promise<{ detail: string }> {
-  const response = await fetch(`${API_URL}/api/auth/reset-password`, {
+  const response = await fetch(`${API_URL}/api/auth/reset-password/`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ token, new_password: newPassword }),
