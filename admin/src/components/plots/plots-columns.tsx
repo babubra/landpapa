@@ -159,6 +159,15 @@ export function getColumns({ onEdit, onDelete, currentSort, onSort }: ColumnsPro
             cell: ({ row }) => formatPrice(row.original.price_public),
         },
         {
+            accessorKey: "address",
+            header: "Адрес",
+            cell: ({ row }) => (
+                <div className="max-w-[250px] whitespace-normal text-sm leading-tight">
+                    {row.original.address || "—"}
+                </div>
+            ),
+        },
+        {
             accessorKey: "status",
             header: "Статус",
             cell: ({ row }) => <StatusBadge status={row.original.status} />,
@@ -190,6 +199,15 @@ export function getColumns({ onEdit, onDelete, currentSort, onSort }: ColumnsPro
                 ) : (
                     <span className="text-muted-foreground">—</span>
                 )
+            ),
+        },
+        {
+            accessorKey: "comment",
+            header: "Комментарий",
+            cell: ({ row }) => (
+                <div className="max-w-[250px] whitespace-normal text-sm text-muted-foreground leading-tight">
+                    {row.original.comment || "—"}
+                </div>
             ),
         },
         {

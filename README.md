@@ -197,21 +197,35 @@ docker-compose up -d db          # только db, без бэкенда
 ```
 
 ### 2. Backend
+
+**macOS / Linux:**
 ```bash
 cd backend
 python3 -m venv venv             # ⚠️ только при ПЕРВОМ запуске
 
-# Установка зависимостей (macOS / Linux):
+# Установка зависимостей:
 ./venv/bin/pip install -r requirements.txt
-
-# Windows:
-# .\venv\Scripts\pip install -r requirements.txt
 
 # Инициализация данных:
 ./venv/bin/python -m app.seed    # ⚠️ только при ПЕРВОМ запуске
 
 # Запуск:
 ./venv/bin/uvicorn app.main:app --reload --port 8001
+```
+
+**Windows:**
+```powershell
+cd backend
+python -m venv venv              # ⚠️ только при ПЕРВОМ запуске
+
+# Установка зависимостей:
+.\venv\Scripts\pip install -r requirements.txt
+
+# Инициализация данных:
+.\venv\Scripts\python -m app.seed    # ⚠️ только при ПЕРВОМ запуске
+
+# Запуск:
+.\venv\Scripts\uvicorn app.main:app --reload --port 8001
 ```
 
 ### 3. Публичный сайт
@@ -225,7 +239,7 @@ npm run dev
 ```bash
 cd admin
 npm install                      # ⚠️ только при ПЕРВОМ запуске
-npm run dev -- --port 3001
+npm run dev
 ```
 
 ---
