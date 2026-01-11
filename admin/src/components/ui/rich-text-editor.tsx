@@ -4,6 +4,7 @@ import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Link from "@tiptap/extension-link";
 import Underline from "@tiptap/extension-underline";
+import Image from "@tiptap/extension-image";
 import {
     Bold,
     Italic,
@@ -11,15 +12,18 @@ import {
     List,
     ListOrdered,
     Link as LinkIcon,
+    Image as ImageIcon,
     Heading2,
     Heading3,
     Undo,
     Redo,
+    Loader2,
 } from "lucide-react";
 import { Toggle } from "@/components/ui/toggle";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
+import { uploadImage, API_URL } from "@/lib/api";
 
 interface RichTextEditorProps {
     value?: string;
@@ -48,6 +52,13 @@ export function RichTextEditor({
                     class: "text-primary underline",
                 },
             }),
+            Image.configure({
+                inline: false,
+                allowBase64: false,
+                HTMLAttributes: {
+                    class: "max-w-full h-auto rounded-md my-4",
+                },
+            }),
         ],
         content: value,
         immediatelyRender: false,  // Фикс SSR/hydration
@@ -67,6 +78,10 @@ export function RichTextEditor({
         },
     });
 
+    // Состояние и ref для загрузки изображений (должны быть ДО условного return)
+    const [uploading, setUploading] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
     // Sync external value changes
     useEffect(() => {
         if (editor && value !== editor.getHTML()) {
@@ -82,6 +97,28 @@ export function RichTextEditor({
         const url = window.prompt("Введите URL:");
         if (url) {
             editor.chain().focus().setLink({ href: url }).run();
+        }
+    };
+
+    const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        try {
+            setUploading(true);
+            const image = await uploadImage(file);
+            // Формируем полный URL для изображения (image.url может быть относительным)
+            const imageUrl = image.url.startsWith("http") ? image.url : `${API_URL}${image.url}`;
+            editor.chain().focus().setImage({ src: imageUrl }).run();
+        } catch (error: any) {
+            console.error("Ошибка загрузки изображения:", error);
+            alert(error.message || "Ошибка загрузки изображения");
+        } finally {
+            setUploading(false);
+            // Очищаем input для повторной загрузки того же файла
+            if (fileInputRef.current) {
+                fileInputRef.current.value = "";
+            }
         }
     };
 
@@ -166,6 +203,30 @@ export function RichTextEditor({
                 >
                     <LinkIcon className="h-4 w-4" />
                 </Toggle>
+
+                {/* Кнопка загрузки изображения */}
+                <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploading}
+                    className="h-8 w-8 p-0"
+                    title="Вставить изображение"
+                >
+                    {uploading ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                        <ImageIcon className="h-4 w-4" />
+                    )}
+                </Button>
+                <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageUpload}
+                    className="hidden"
+                />
 
                 <div className="w-px h-6 bg-border mx-1" />
 
