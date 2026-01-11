@@ -28,6 +28,7 @@ PUBLIC_SETTING_KEYS = [
     "hero_image",
     "placeholder_image",
     "privacy_policy",
+    "about_page",
 ]
 
 
@@ -47,6 +48,7 @@ class PublicSettingsResponse(BaseModel):
     hero_image: str | None = None
     placeholder_image: str | None = None
     privacy_policy: str | None = None
+    about_page: str | None = None
 
 
 @router.get("/public", response_model=PublicSettingsResponse)

@@ -74,6 +74,7 @@ export interface SiteSettings {
     hero_image: string | null;
     placeholder_image: string | null;
     privacy_policy: string | null;
+    about_page: string | null;
 }
 
 /**
@@ -111,6 +112,7 @@ export async function getSiteSettings(): Promise<SiteSettings> {
             hero_image: null,
             placeholder_image: null,
             privacy_policy: null,
+            about_page: null,
         };
     }
 }

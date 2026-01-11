@@ -15,20 +15,21 @@ services:
       - postgres_data:/var/lib/postgresql/data
     restart: unless-stopped
 
-  # Backend (FastAPI)
-  backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    container_name: kaliningrad-land-backend
-    environment:
-      DATABASE_URL: postgresql://postgres:postgres@db:5432/kaliningrad_land
-      CORS_ORIGINS: '["http://localhost:3000", "http://localhost:3001"]'
-    ports:
-      - "8001:8000"
-    depends_on:
-      - db
-    restart: unless-stopped
+  # Backend (FastAPI) - для production
+  # Для локальной разработки используйте venv (см. dev.ps1)
+  # backend:
+  #   build:
+  #     context: ./backend
+  #     dockerfile: Dockerfile
+  #   container_name: kaliningrad-land-backend
+  #   environment:
+  #     DATABASE_URL: postgresql://postgres:postgres@db:5432/kaliningrad_land
+  #     CORS_ORIGINS: '["http://localhost:3000", "http://localhost:3001"]'
+  #   ports:
+  #     - "8001:8000"
+  #   depends_on:
+  #     - db
+  #   restart: unless-stopped
   # Frontend (Next.js) - для production
   # frontend:
   #   build:

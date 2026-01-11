@@ -362,40 +362,7 @@ export default function SettingsPage() {
                             </div>
                         </div>
 
-                        {/* Legal Documents Section */}
-                        <div className="bg-card rounded-lg border p-6">
-                            <h2 className="text-lg font-semibold mb-4">
-                                Юридические документы
-                            </h2>
-                            <p className="text-sm text-muted-foreground mb-6">
-                                Текст политики конфиденциальности и согласия на обработку данных.
-                            </p>
-
-                            <div className="space-y-6">
-                                <div className="space-y-4">
-                                    <div className="flex items-center justify-between">
-                                        <Label className="text-base">Политика конфиденциальности</Label>
-                                        <Button
-                                            onClick={() => handleSave("privacy_policy")}
-                                            disabled={saving === "privacy_policy"}
-                                            size="sm"
-                                        >
-                                            {saving === "privacy_policy" ? (
-                                                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                                            ) : (
-                                                <Save className="h-4 w-4 mr-2" />
-                                            )}
-                                            Сохранить текст
-                                        </Button>
-                                    </div>
-                                    <RichTextEditor
-                                        value={values["privacy_policy"] || ""}
-                                        onChange={(html) => setValues(prev => ({ ...prev, privacy_policy: html }))}
-                                        className="bg-background"
-                                    />
-                                </div>
-                            </div>
-                        </div>
+                        {/* Раздел "Юридические документы" перенесён в "Страницы сайта" */}
 
                         {/* Info */}
                         <div className="bg-blue-50 dark:bg-blue-950 rounded-lg border border-blue-200 dark:border-blue-800 p-4">

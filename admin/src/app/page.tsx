@@ -93,6 +93,13 @@ export default function DashboardPage() {
                 </Card>
               </Link>
 
+              <Link href="/pages">
+                <Card className="p-4 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
+                  <h3 className="font-semibold mb-1">📄 Страницы сайта</h3>
+                  <p className="text-sm text-muted-foreground">О нас, политика конф.</p>
+                </Card>
+              </Link>
+
               <Link href="/settings">
                 <Card className="p-4 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
                   <h3 className="font-semibold mb-1">⚙️ Настройки</h3>
