@@ -68,6 +68,7 @@ services:
       - ./nginx/nginx.conf.ssl:/etc/nginx/nginx.conf:ro
       - ./certbot/conf:/etc/letsencrypt:ro
       - ./certbot/www:/var/www/certbot:ro
+      - ./nginx/static:/var/www/static:ro
     depends_on:
       - frontend
       - admin

@@ -46,6 +46,12 @@ http {
             add_header X-Proxy-Target "Frontend-SiteIcon";
         }
 
+        # Файлы верификации поисковых систем (Яндекс, Google и т.д.)
+        location ~* ^/(yandex_[a-z0-9]+\.html|google[a-z0-9]+\.html)$ {
+            root /var/www/static;
+            try_files $uri =404;
+        }
+
         # API Proxies (Backend)
         location /api/ {
             proxy_pass http://landpapa_backend:8000/api/;
