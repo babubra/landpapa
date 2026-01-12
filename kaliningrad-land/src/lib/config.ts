@@ -26,28 +26,27 @@ export function getAPIURL(): string {
     const isDev = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
 
     if (isDev) {
-        // Development: используем явный URL к backend на другом порту
-        return process.env.NEXT_PUBLIC_API_URL || "http://localhost:8001";
+        // Development: пустая строка — используем относительные пути.
+        // Next.js rewrites в next.config.ts проксируют /api/* на backend.
+        return "";
     }
 
-    // Production: используем ПУСТУЮ СТРОКУ для относительных путей
-    // Запросы вида `${API_URL}/api/...` превращаются в `/api/...`
-    // Nginx корректно проксирует их на backend с правильным протоколом (HTTPS)
+    // Production: пустая строка — относительные пути.
+    // Nginx проксирует /api/* на backend.
     return "";
 }
 
 /**
- * API URL для использования в компонентах.
+ * API URL для использования в клиентских компонентах.
  * 
- * Вычисляется СТАТИЧЕСКИ (без вызова функций) чтобы избежать проблем с SSR кешированием.
+ * ВАЖНО: Теперь ВСЕГДА пустая строка на клиенте!
+ * - В Development: Next.js rewrites проксируют /api/* → localhost:8001
+ * - В Production: Nginx проксирует /api/* → backend:8000
  * 
- * На PRODUCTION: пустая строка "" - используются относительные пути (/api /...)
- * На DEVELOPMENT: полный URL к backend
+ * Для SSR используйте SSR_API_URL.
  */
-export const API_URL = process.env.NODE_ENV === "development" ||
-    process.env.NEXT_PUBLIC_API_URL?.includes("localhost")
-    ? (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8001")
-    : ""; // Production: пустая строка для относительных путей
+export const API_URL = "";
+
 
 /**
  * SSR API URL - для использования в server-side компонентах
@@ -119,6 +118,10 @@ export async function getSiteSettings(): Promise<SiteSettings> {
 
 /**
  * Получить URL изображения (с учётом относительных путей).
+ * 
+ * Теперь всегда использует относительные пути:
+ * - В Development: Next.js rewrites проксируют /uploads/* → localhost:8001/uploads/*
+ * - В Production: Nginx проксирует /uploads/* → backend:8000/uploads/*
  */
 export function getImageUrl(url: string | null | undefined, fallback: string = "/hero-bg.jpg"): string {
     if (!url) return fallback;
@@ -127,16 +130,8 @@ export function getImageUrl(url: string | null | undefined, fallback: string = "
     // Убеждаемся что путь начинается с /
     const relativePath = url.startsWith("/") ? url : `/${url}`;
 
-    // В production (когда через Nginx) используем относительные пути
-    // Nginx корректно проксирует /uploads/ на backend
-    // В development нужны абсолютные URL так как фронт и бэк на разных портах
-    const isDevelopment = API_URL.includes("localhost") || API_URL.includes("127.0.0.1");
-
-    if (isDevelopment) {
-        const baseUrl = API_URL.replace(/\/$/, "");
-        return `${baseUrl}${relativePath}`;
-    }
-
-    // Production: относительный путь (Nginx проксирует)
+    // Всегда используем относительные пути — проксирование обеспечивается
+    // Next.js rewrites (development) или Nginx (production)
     return relativePath;
 }
+

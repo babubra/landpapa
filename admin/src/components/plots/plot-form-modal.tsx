@@ -156,6 +156,7 @@ export function PlotFormModal({
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        e.stopPropagation();  // ВАЖНО: останавливаем всплытие, чтобы не триггерить submit родительской формы
         setIsLoading(true);
 
         try {
@@ -172,6 +173,8 @@ export function PlotFormModal({
             // Сбрасываем предупреждение
             setDuplicateWarning(null);
             setForceCreate(false);
+
+            // Базовые данные (без listing_id)
             const data: PlotCreate = {
                 cadastral_number: cadastralNumber?.trim() || null,
                 area: area ? parseFloat(area) * 100 : null, // Сотки → м²
@@ -183,8 +186,14 @@ export function PlotFormModal({
                 land_use_id: landUseId ? parseInt(landUseId) : null,
                 land_category_id: landCategoryId ? parseInt(landCategoryId) : null,
                 comment: comment?.trim() || null,
-                listing_id: listingId || null,  // Привязка к объявлению при создании
             };
+
+            // При СОЗДАНИИ передаём listing_id для привязки к объявлению.
+            // При РЕДАКТИРОВАНИИ НЕ передаём listing_id, чтобы не сбросить существующую привязку.
+            // (backend использует exclude_unset=True, так что listing_id останется неизменным)
+            if (!isEditing && listingId) {
+                data.listing_id = listingId;
+            }
 
             let result: PlotListItem;
 
@@ -222,11 +231,19 @@ export function PlotFormModal({
     };
 
     return (
-        <Dialog open={open} onOpenChange={onOpenChange}>
+        <Dialog open={open} onOpenChange={onOpenChange} modal={true}>
             <DialogContent
                 className="w-[95vw] max-w-5xl max-h-[90vh] overflow-y-auto"
                 onPointerDownOutside={(e) => e.preventDefault()}
                 onInteractOutside={(e) => e.preventDefault()}
+                onEscapeKeyDown={(e) => {
+                    // Останавливаем всплытие, чтобы не закрыть родительский модал
+                    e.stopPropagation();
+                }}
+                onCloseAutoFocus={(e) => {
+                    // Предотвращаем автофокус на родительский модал при закрытии
+                    e.preventDefault();
+                }}
             >
                 <DialogHeader>
                     <DialogTitle>

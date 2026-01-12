@@ -202,6 +202,7 @@ async def get_plots(
     size: int = Query(20, ge=1, le=100),
     # Фильтры
     search: str | None = Query(None, description="Поиск по кадастровому номеру"),
+    address_search: str | None = Query(None, description="Поиск по адресу"),
     status_filter: PlotStatus | None = Query(None, alias="status", description="Статус"),
     has_geometry: bool | None = Query(None, description="Наличие координат"),
     area_min: float | None = Query(None, description="Мин. площадь (м²)"),
@@ -218,6 +219,9 @@ async def get_plots(
     # Фильтрация
     if search:
         query = query.filter(Plot.cadastral_number.ilike(f"%{search}%"))
+    
+    if address_search:
+        query = query.filter(Plot.address.ilike(f"%{address_search}%"))
     
     if status_filter:
         query = query.filter(Plot.status == status_filter)
@@ -244,12 +248,28 @@ async def get_plots(
     
     # Сортировка
     sort_mapping = {
+        # Кадастровый номер
         "cadastral_asc": Plot.cadastral_number.asc().nulls_last(),
         "cadastral_desc": Plot.cadastral_number.desc().nulls_last(),
+        # Площадь
         "area_asc": Plot.area.asc().nulls_last(),
         "area_desc": Plot.area.desc().nulls_last(),
+        # Цена
         "price_asc": Plot.price_public.asc().nulls_last(),
         "price_desc": Plot.price_public.desc().nulls_last(),
+        # Адрес
+        "address_asc": Plot.address.asc().nulls_last(),
+        "address_desc": Plot.address.desc().nulls_last(),
+        # Статус
+        "status_asc": Plot.status.asc(),
+        "status_desc": Plot.status.desc(),
+        # Координаты (есть/нет)
+        "geometry_asc": Plot.polygon.isnot(None).asc(),
+        "geometry_desc": Plot.polygon.isnot(None).desc(),
+        # Комментарий
+        "comment_asc": Plot.comment.asc().nulls_last(),
+        "comment_desc": Plot.comment.desc().nulls_last(),
+        # Дата создания
         "newest": desc(Plot.created_at),
         "oldest": Plot.created_at,
     }

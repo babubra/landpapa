@@ -65,6 +65,7 @@ class PlotShortItem(BaseModel):
     price_public: int | None = None
     status: str
     land_use: ReferenceItem | None = None
+    comment: str | None = None  # Комментарий к участку
     
     class Config:
         from_attributes = True

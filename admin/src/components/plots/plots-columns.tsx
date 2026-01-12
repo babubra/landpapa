@@ -160,7 +160,14 @@ export function getColumns({ onEdit, onDelete, currentSort, onSort }: ColumnsPro
         },
         {
             accessorKey: "address",
-            header: "Адрес",
+            header: () => (
+                <SortableHeader
+                    label="Адрес"
+                    sortKey="address"
+                    currentSort={currentSort}
+                    onSort={handleSort}
+                />
+            ),
             cell: ({ row }) => (
                 <div className="max-w-[250px] whitespace-normal text-sm leading-tight">
                     {row.original.address || "—"}
@@ -169,12 +176,26 @@ export function getColumns({ onEdit, onDelete, currentSort, onSort }: ColumnsPro
         },
         {
             accessorKey: "status",
-            header: "Статус",
+            header: () => (
+                <SortableHeader
+                    label="Статус"
+                    sortKey="status"
+                    currentSort={currentSort}
+                    onSort={handleSort}
+                />
+            ),
             cell: ({ row }) => <StatusBadge status={row.original.status} />,
         },
         {
             accessorKey: "has_geometry",
-            header: "Координаты",
+            header: () => (
+                <SortableHeader
+                    label="Координаты"
+                    sortKey="geometry"
+                    currentSort={currentSort}
+                    onSort={handleSort}
+                />
+            ),
             cell: ({ row }) => (
                 row.original.has_geometry ? (
                     <MapPin className="h-4 w-4 text-green-600" />
@@ -203,7 +224,14 @@ export function getColumns({ onEdit, onDelete, currentSort, onSort }: ColumnsPro
         },
         {
             accessorKey: "comment",
-            header: "Комментарий",
+            header: () => (
+                <SortableHeader
+                    label="Комментарий"
+                    sortKey="comment"
+                    currentSort={currentSort}
+                    onSort={handleSort}
+                />
+            ),
             cell: ({ row }) => (
                 <div className="max-w-[250px] whitespace-normal text-sm text-muted-foreground leading-tight">
                     {row.original.comment || "—"}

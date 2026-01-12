@@ -80,7 +80,8 @@ export interface PlotListResponse {
 }
 
 export interface PlotFilters {
-  search?: string;
+  search?: string;           // Поиск по кадастровому номеру
+  address_search?: string;   // Поиск по адресу
   status?: string;
   has_geometry?: boolean;
   area_min?: number;
@@ -140,6 +141,7 @@ export async function getPlots(filters: PlotFilters = {}): Promise<PlotListRespo
   const params = new URLSearchParams();
 
   if (filters.search) params.set("search", filters.search);
+  if (filters.address_search) params.set("address_search", filters.address_search);
   if (filters.status) params.set("status", filters.status);
   if (filters.has_geometry !== undefined) params.set("has_geometry", String(filters.has_geometry));
   if (filters.area_min) params.set("area_min", String(filters.area_min));
@@ -340,6 +342,7 @@ export interface PlotShortItem {
   price_public: number | null;
   status: string;
   land_use: { id: number; code: string; name: string } | null;
+  comment: string | null;  // Комментарий к участку
 }
 
 export interface ListingListItem {

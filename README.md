@@ -344,6 +344,29 @@ NEXT_PUBLIC_SITE_URL=https://your-domain.com
 
 > **Примечание:** Для локальной разработки переменные не требуются — по умолчанию используются `http://localhost:8001` и `http://localhost:3000`.
 
+### ⚡ Проксирование API (для разработчиков)
+
+В режиме локальной разработки Next.js проксирует API-запросы на backend через **rewrites** в `next.config.ts`:
+
+```typescript
+async rewrites() {
+  return {
+    afterFiles: [
+      { source: "/api/:path*", destination: "http://localhost:8001/api/:path*" },
+      { source: "/uploads/:path*", destination: "http://localhost:8001/uploads/:path*" },
+    ],
+  };
+}
+```
+
+Это позволяет фронтенду использовать относительные пути (`/api/listings`) без указания полного URL бэкенда.
+
+**Как это работает:**
+- **Development** (без nginx): Next.js проксирует `/api/*` → `http://localhost:8001/api/*`
+- **Production** (с nginx): Nginx проксирует `/api/*` → `http://backend:8000/api/*`
+
+Внутренние API-роуты Next.js (например `/api/site-icon`) обрабатываются самим Next.js благодаря использованию `afterFiles`.
+
 ---
 
 ## Инициализация базы данных (seed)

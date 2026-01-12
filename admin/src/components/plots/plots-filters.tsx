@@ -10,7 +10,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { Search, X, Loader2 } from "lucide-react";
+import { Search, X, Loader2, MapPin } from "lucide-react";
 import { PlotFilters } from "@/lib/api";
 
 interface PlotsFiltersProps {
@@ -19,48 +19,83 @@ interface PlotsFiltersProps {
 }
 
 export function PlotsFilters({ filters, onFiltersChange }: PlotsFiltersProps) {
+    // Поиск по кадастру
     const [search, setSearch] = useState(filters.search || "");
-    const [isTyping, setIsTyping] = useState(false);
-    const debounceRef = useRef<NodeJS.Timeout | null>(null);
+    const [isTypingSearch, setIsTypingSearch] = useState(false);
+    const debounceSearchRef = useRef<NodeJS.Timeout | null>(null);
 
-    // Debounce поиска — автоматический запрос через 500мс после ввода
+    // Поиск по адресу
+    const [addressSearch, setAddressSearch] = useState(filters.address_search || "");
+    const [isTypingAddress, setIsTypingAddress] = useState(false);
+    const debounceAddressRef = useRef<NodeJS.Timeout | null>(null);
+
+    // Debounce поиска по кадастру
     useEffect(() => {
-        if (debounceRef.current) {
-            clearTimeout(debounceRef.current);
+        if (debounceSearchRef.current) {
+            clearTimeout(debounceSearchRef.current);
         }
 
         if (search !== (filters.search || "")) {
-            setIsTyping(true);
-            debounceRef.current = setTimeout(() => {
+            setIsTypingSearch(true);
+            debounceSearchRef.current = setTimeout(() => {
                 onFiltersChange({ ...filters, search: search || undefined, page: 1 });
-                setIsTyping(false);
+                setIsTypingSearch(false);
             }, 500);
         }
 
         return () => {
-            if (debounceRef.current) {
-                clearTimeout(debounceRef.current);
+            if (debounceSearchRef.current) {
+                clearTimeout(debounceSearchRef.current);
             }
         };
     }, [search]);
+
+    // Debounce поиска по адресу
+    useEffect(() => {
+        if (debounceAddressRef.current) {
+            clearTimeout(debounceAddressRef.current);
+        }
+
+        if (addressSearch !== (filters.address_search || "")) {
+            setIsTypingAddress(true);
+            debounceAddressRef.current = setTimeout(() => {
+                onFiltersChange({ ...filters, address_search: addressSearch || undefined, page: 1 });
+                setIsTypingAddress(false);
+            }, 500);
+        }
+
+        return () => {
+            if (debounceAddressRef.current) {
+                clearTimeout(debounceAddressRef.current);
+            }
+        };
+    }, [addressSearch]);
 
     // Синхронизация при внешнем изменении filters
     useEffect(() => {
         setSearch(filters.search || "");
     }, [filters.search]);
 
+    useEffect(() => {
+        setAddressSearch(filters.address_search || "");
+    }, [filters.address_search]);
+
     const handleSearchSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         // Немедленный поиск при нажатии кнопки
-        if (debounceRef.current) {
-            clearTimeout(debounceRef.current);
+        if (debounceSearchRef.current) {
+            clearTimeout(debounceSearchRef.current);
         }
         onFiltersChange({ ...filters, search: search || undefined, page: 1 });
-        setIsTyping(false);
+        setIsTypingSearch(false);
     };
 
     const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setSearch(e.target.value);
+    };
+
+    const handleAddressChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setAddressSearch(e.target.value);
     };
 
     const handleStatusChange = (value: string) => {
@@ -82,17 +117,18 @@ export function PlotsFilters({ filters, onFiltersChange }: PlotsFiltersProps) {
 
     const handleClearFilters = () => {
         setSearch("");
+        setAddressSearch("");
         onFiltersChange({ page: 1, size: filters.size });
     };
 
-    const hasActiveFilters = filters.search || filters.status || filters.has_geometry !== undefined;
+    const hasActiveFilters = filters.search || filters.address_search || filters.status || filters.has_geometry !== undefined;
 
     return (
         <div className="flex flex-wrap gap-4 items-end">
             {/* Поиск по кадастру */}
             <form onSubmit={handleSearchSubmit} className="flex gap-2">
                 <div className="relative">
-                    {isTyping ? (
+                    {isTypingSearch ? (
                         <Loader2 className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground animate-spin" />
                     ) : (
                         <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -101,10 +137,25 @@ export function PlotsFilters({ filters, onFiltersChange }: PlotsFiltersProps) {
                         placeholder="Кадастровый номер..."
                         value={search}
                         onChange={handleSearchChange}
-                        className="pl-8 w-[250px]"
+                        className="pl-8 w-[200px]"
                     />
                 </div>
             </form>
+
+            {/* Поиск по адресу */}
+            <div className="relative">
+                {isTypingAddress ? (
+                    <Loader2 className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground animate-spin" />
+                ) : (
+                    <MapPin className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                )}
+                <Input
+                    placeholder="Поиск по адресу..."
+                    value={addressSearch}
+                    onChange={handleAddressChange}
+                    className="pl-8 w-[200px]"
+                />
+            </div>
 
             {/* Статус */}
             <Select

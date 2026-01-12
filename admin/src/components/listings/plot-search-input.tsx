@@ -1,14 +1,12 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useRouter } from "next/navigation";
-import { Plus, X, Search, ExternalLink } from "lucide-react";
+import { Pencil, Plus, X, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { PlotShortItem, searchPlots } from "@/lib/api";
+import { PlotShortItem, PlotListItem, getPlot, searchPlots } from "@/lib/api";
 import { PlotFormModal } from "@/components/plots/plot-form-modal";
-import { cn } from "@/lib/utils";
 
 interface PlotSearchInputProps {
     selectedPlots: PlotShortItem[];
@@ -21,17 +19,26 @@ export function PlotSearchInput({
     onPlotsChange,
     listingId,
 }: PlotSearchInputProps) {
-    const router = useRouter();
     const [query, setQuery] = useState("");
     const [results, setResults] = useState<PlotShortItem[]>([]);
     const [isSearching, setIsSearching] = useState(false);
     const [showResults, setShowResults] = useState(false);
+
+    // Модальное окно для создания/редактирования участка
     const [plotModalOpen, setPlotModalOpen] = useState(false);
     const [initialCadastral, setInitialCadastral] = useState("");
+    const [editingPlot, setEditingPlot] = useState<PlotListItem | null>(null);  // null = создание, объект = редактирование
 
-    // Переход к редактированию участка
-    const handleGoToPlot = (plotId: number) => {
-        router.push(`/plots?edit=${plotId}`);
+    // Открыть модал редактирования участка
+    const handleEditPlot = async (plotId: number) => {
+        try {
+            // Загружаем полные данные участка для редактирования
+            const fullPlot = await getPlot(plotId);
+            setEditingPlot(fullPlot);
+            setPlotModalOpen(true);
+        } catch (error) {
+            console.error("Ошибка загрузки участка:", error);
+        }
     };
 
     // Debounced search
@@ -73,22 +80,54 @@ export function PlotSearchInput({
     }, [selectedPlots, onPlotsChange]);
 
     const handleCreateNew = () => {
+        setEditingPlot(null);  // Сбрасываем редактируемый участок
         setInitialCadastral(query);
         setPlotModalOpen(true);
     };
 
     const handleCreateWithoutCadastral = () => {
+        setEditingPlot(null);  // Сбрасываем редактируемый участок
         setInitialCadastral("");
         setPlotModalOpen(true);
     };
 
-    const handlePlotCreated = (plot: PlotShortItem) => {
-        // Сначала закрываем модал участка
-        setPlotModalOpen(false);
-        // Добавляем участок с микрозадержкой для предотвращения конфликта рендеринга
+    // Callback после сохранения участка (создание или редактирование)
+    // Примечание: PlotFormModal сам вызывает onOpenChange(false), не нужно дублировать здесь
+    const handlePlotSaved = (plot: PlotListItem) => {
+        // Небольшая задержка для предотвращения конфликта рендеринга
         setTimeout(() => {
-            addPlot(plot);
-        }, 50);
+            if (editingPlot) {
+                // Редактирование: обновляем участок в списке
+                const updatedPlots = selectedPlots.map(p =>
+                    p.id === plot.id
+                        ? {
+                            id: plot.id,
+                            cadastral_number: plot.cadastral_number,
+                            area: plot.area,
+                            address: plot.address,
+                            price_public: plot.price_public,
+                            status: plot.status,
+                            land_use: plot.land_use,
+                            comment: plot.comment,
+                        } as PlotShortItem
+                        : p
+                );
+                onPlotsChange(updatedPlots);
+            } else {
+                // Создание: добавляем новый участок
+                addPlot({
+                    id: plot.id,
+                    cadastral_number: plot.cadastral_number,
+                    area: plot.area,
+                    address: plot.address,
+                    price_public: plot.price_public,
+                    status: plot.status,
+                    land_use: plot.land_use,
+                    comment: plot.comment,
+                } as PlotShortItem);
+            }
+            setEditingPlot(null);  // Сбрасываем редактируемый участок
+        }, 100);  // Увеличена задержка для надёжности
     };
 
     const formatArea = (area: number | null) => {
@@ -212,13 +251,18 @@ export function PlotSearchInput({
                                     <span className="text-sm text-muted-foreground w-6">
                                         {index + 1}.
                                     </span>
-                                    <div>
+                                    <div className="min-w-0 flex-1">
                                         <div className="font-mono text-sm">
                                             {plot.cadastral_number || "Без кадастра"}
                                         </div>
                                         <div className="text-xs text-muted-foreground">
                                             {plot.address || "—"}
                                         </div>
+                                        {plot.comment && (
+                                            <div className="text-xs text-muted-foreground italic truncate max-w-[300px]" title={plot.comment}>
+                                                {plot.comment}
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-4">
@@ -236,10 +280,10 @@ export function PlotSearchInput({
                                         variant="ghost"
                                         size="icon"
                                         className="h-8 w-8 text-muted-foreground hover:text-primary"
-                                        onClick={() => handleGoToPlot(plot.id)}
+                                        onClick={() => handleEditPlot(plot.id)}
                                         title="Редактировать участок"
                                     >
-                                        <ExternalLink className="h-4 w-4" />
+                                        <Pencil className="h-4 w-4" />
                                     </Button>
                                     <Button
                                         type="button"
@@ -257,13 +301,17 @@ export function PlotSearchInput({
                 </div>
             )}
 
-            {/* Модал создания участка */}
+            {/* Модал создания/редактирования участка */}
             <PlotFormModal
                 open={plotModalOpen}
-                onOpenChange={setPlotModalOpen}
-                plot={null}
-                initialCadastralNumber={initialCadastral}
-                onPlotCreated={handlePlotCreated}
+                onOpenChange={(open) => {
+                    setPlotModalOpen(open);
+                    if (!open) setEditingPlot(null);  // Сброс при закрытии
+                }}
+                plot={editingPlot}
+                initialCadastralNumber={editingPlot ? undefined : initialCadastral}
+                onSuccess={handlePlotSaved}
+                onPlotCreated={handlePlotSaved}
                 listingId={listingId}
             />
         </div>
