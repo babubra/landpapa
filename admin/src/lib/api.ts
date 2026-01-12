@@ -19,7 +19,7 @@ function getToken(): string | null {
 /**
  * Базовый fetch с авторизацией.
  */
-async function fetchWithAuth(
+export async function fetchWithAuth(
   url: string,
   options: RequestInit = {}
 ): Promise<Response> {
@@ -690,18 +690,75 @@ export interface BulkImportResponse {
   items: BulkImportResultItem[];
 }
 
-export async function bulkImportPlots(
-  items: BulkImportItem[]
-): Promise<BulkImportResponse> {
+export async function bulkImportPlots(items: BulkImportItem[]): Promise<BulkImportResponse> {
   const response = await fetchWithAuth("/api/admin/plots/bulk-import", {
     method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
     body: JSON.stringify({ items }),
   });
+
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.detail || "Ошибка массового импорта");
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.detail || "Ошибка при массовом импорте");
   }
+
   return response.json();
+}
+
+export type StreamEvent =
+  | { type: "start"; total: number }
+  | { type: "processing"; current: number; total: number; cadastral_number: string }
+  | { type: "progress"; current: number; total: number; item: BulkImportResultItem }
+  | { type: "finish"; summary: BulkImportResponse };
+
+export async function bulkImportPlotsStream(
+  items: BulkImportItem[],
+  onEvent: (event: StreamEvent) => void
+): Promise<void> {
+  const response = await fetchWithAuth("/api/admin/plots/bulk-import/stream", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ items }),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.detail || "Ошибка при массовом импорте");
+  }
+
+  if (!response.body) {
+    throw new Error("Нет тела ответа");
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder("utf-8");
+  let buffer = "";
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split("\n");
+
+    // Последняя часть может быть неполной
+    buffer = lines.pop() || "";
+
+    for (const line of lines) {
+      if (line.trim()) {
+        try {
+          const event = JSON.parse(line) as StreamEvent;
+          onEvent(event);
+        } catch (e) {
+          console.error("Ошибка парсинга события стрима:", e, line);
+        }
+      }
+    }
+  }
 }
 
 export interface BulkUpdateRequest {

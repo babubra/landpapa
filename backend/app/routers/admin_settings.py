@@ -92,6 +92,76 @@ async def update_setting(
     return setting
 
 
+
+class CheckProxyRequest(BaseModel):
+    """Запрос на проверку прокси."""
+    proxy: str
+    test_url: str | None = "https://api.ipify.org?format=json"
+
+class CheckProxyResponse(BaseModel):
+    """Результат проверки прокси."""
+    success: bool
+    status_code: int | None
+    ip: str | None
+    error: str | None
+    elapsed_ms: float
+
+@router.post("/check-proxy", response_model=CheckProxyResponse)
+async def check_proxy(
+    data: CheckProxyRequest,
+    current_user: AdminUser = Depends(get_current_user),
+):
+    """
+    Проверка соединения через прокси.
+    """
+    import httpx
+    import time
+    
+    start_time = time.time()
+    
+    try:
+        proxy_url = None
+        if data.proxy and data.proxy.strip():
+            proxy_url = data.proxy.strip()
+            # Добавляем схему, если её нет (httpx требует схему)
+            if not proxy_url.startswith("http://") and not proxy_url.startswith("https://"):
+                 proxy_url = f"http://{proxy_url}"
+        
+        # В некоторых версиях httpx аргумент называется proxy (singular)
+        async with httpx.AsyncClient(proxy=proxy_url, timeout=10.0, verify=False) as client:
+            response = await client.get(data.test_url or "https://api.ipify.org?format=json")
+            
+            elapsed_ms = (time.time() - start_time) * 1000
+            
+            result_ip = None
+            try:
+                # Пытаемся извлечь IP если ответ в JSON
+                json_resp = response.json()
+                if isinstance(json_resp, dict):
+                    # Разные сервисы возвращают IP в разных полях
+                    result_ip = json_resp.get("ip") or json_resp.get("origin")
+            except Exception:
+                pass
+            
+            return CheckProxyResponse(
+                success=response.status_code == 200,
+                status_code=response.status_code,
+                ip=result_ip,
+                error=None,
+                elapsed_ms=elapsed_ms
+            )
+            
+    except Exception as e:
+        elapsed_ms = (time.time() - start_time) * 1000
+        return CheckProxyResponse(
+            success=False,
+            status_code=None,
+            ip=None,
+            error=str(e),
+            elapsed_ms=elapsed_ms
+        )
+
+
 def _invalidate_nspd_client():
     """Сброс NSPD клиента для применения новых настроек."""
     from app.nspd_client import _nspd_client

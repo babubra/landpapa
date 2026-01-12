@@ -14,6 +14,10 @@ from app.models.admin_user import AdminUser
 from app.routers.auth import get_current_user
 from app.utils.title_generator import generate_listing_title
 from app.nspd_client import NspdClient, get_nspd_client
+import json
+import asyncio
+from fastapi.responses import StreamingResponse
+
 from app.schemas.admin_plot import (
     PlotAdminListItem,
     PlotAdminDetail,
@@ -563,6 +567,143 @@ async def bulk_import_plots(
         errors=error_count,
         items=results,
     )
+
+
+
+@router.post("/bulk-import/stream")
+async def bulk_import_stream(
+    data: BulkImportRequest,
+    db: Session = Depends(get_db),
+    current_user: AdminUser = Depends(get_current_user),
+    nspd_client: NspdClient = Depends(get_nspd_client),
+):
+    """
+    Массовый импорт участков с streaming-ответом (NDJSON).
+    Отправляет обновления статуса в реальном времени.
+    """
+    from geoalchemy2.shape import from_shape
+    from shapely.geometry import Polygon as ShapelyPolygon, Point as ShapelyPoint
+
+    async def event_generator():
+        yield json.dumps({"type": "start", "total": len(data.items)}) + "\n"
+        
+        results: list[BulkImportResultItem] = []
+        created_count = 0
+        updated_count = 0
+        error_count = 0
+        
+        for index, item in enumerate(data.items):
+            try:
+                # 1. Работа с БД (синхронно, в контексте сессии)
+                existing = db.query(Plot).filter(
+                    Plot.cadastral_number == item.cadastral_number
+                ).first()
+                
+                if existing:
+                    # Обновляем существующий
+                    if item.price is not None:
+                        existing.price_public = item.price
+                    if item.comment is not None:
+                        existing.comment = item.comment
+                    plot = existing
+                    status = "updated"
+                    updated_count += 1
+                else:
+                    # Создаём новый
+                    plot = Plot(
+                        cadastral_number=item.cadastral_number,
+                        price_public=item.price,
+                        comment=item.comment,
+                    )
+                    db.add(plot)
+                    db.flush()  # Получаем ID
+                    status = "created"
+                    created_count += 1
+                
+                # 2. Запрос к NSPD (асинхронно, может быть долгим)
+                nspd_status = "skipped"
+                try:
+                    # Отправляем статус "в обработке"
+                    yield json.dumps({
+                        "type": "processing",
+                        "current": index + 1,
+                        "total": len(data.items),
+                        "cadastral_number": item.cadastral_number
+                    }) + "\n"
+
+                    cadastral_data = await nspd_client.get_object_info(item.cadastral_number)
+                    
+                    if cadastral_data:
+                        # Обновляем геометрию
+                        if cadastral_data.coordinates_wgs84 and cadastral_data.geometry_type == "Polygon":
+                            outer_ring = cadastral_data.coordinates_wgs84[0]
+                            shapely_polygon = ShapelyPolygon(outer_ring)
+                            plot.polygon = from_shape(shapely_polygon, srid=4326)
+                            
+                            if cadastral_data.centroid_wgs84:
+                                centroid_point = ShapelyPoint(cadastral_data.centroid_wgs84)
+                                plot.centroid = from_shape(centroid_point, srid=4326)
+                        
+                        # Обновляем адрес и площадь если пустые
+                        if not plot.address and cadastral_data.address:
+                            plot.address = cadastral_data.address
+                        if not plot.area and cadastral_data.area_sq_m:
+                            plot.area = cadastral_data.area_sq_m
+                        
+                        nspd_status = "success"
+                    else:
+                        nspd_status = "not_found"
+                except Exception as e:
+                    nspd_status = f"error: {str(e)}"
+                
+                # Коммит для каждого участка, чтобы данные сохранялись инкрементально
+                db.commit()
+                
+                result_item = BulkImportResultItem(
+                    cadastral_number=item.cadastral_number,
+                    plot_id=plot.id,
+                    status=status,
+                    nspd_status=nspd_status,
+                )
+                results.append(result_item)
+                
+                # Отправляем результат обработки элемента
+                yield json.dumps({
+                    "type": "progress",
+                    "current": index + 1,
+                    "total": len(data.items),
+                    "item": result_item.model_dump()
+                }) + "\n"
+                
+                # Небольшая пауза чтобы не заблокировать event loop полностью
+                await asyncio.sleep(0.01)
+                
+            except Exception as e:
+                error_count += 1
+                error_item = BulkImportResultItem(
+                    cadastral_number=item.cadastral_number,
+                    status="error",
+                    message=str(e),
+                )
+                results.append(error_item)
+                yield json.dumps({
+                    "type": "progress",
+                    "current": index + 1,
+                    "total": len(data.items),
+                    "item": error_item.model_dump()
+                }) + "\n"
+        
+        # Финальный отчет
+        summary = BulkImportResponse(
+            total=len(data.items),
+            created=created_count,
+            updated=updated_count,
+            errors=error_count,
+            items=results,
+        )
+        yield json.dumps({"type": "finish", "summary": summary.model_dump()}) + "\n"
+
+    return StreamingResponse(event_generator(), media_type="application/x-ndjson")
 
 
 @router.post("/bulk-update", response_model=BulkUpdateResponse)

@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import { Loader2, Save, ArrowLeft, Settings as SettingsIcon } from "lucide-react";
 import { ImageSettingUpload } from "@/components/settings/ImageSettingUpload";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
+import { CheckProxyButton } from "@/components/settings/CheckProxyButton";
 
 export default function SettingsPage() {
     const { user, isLoading: authLoading } = useAuth();
@@ -127,10 +128,49 @@ export default function SettingsPage() {
         return placeholders[key] || "";
     };
 
+
     // Рендер текстового поля настройки
     const renderTextSetting = (key: string) => {
         const setting = settings.find((s) => s.key === key);
         if (!setting) return null;
+
+        if (key === "nspd_proxy") {
+            return (
+                <div key={key} className="space-y-2">
+                    <Label htmlFor={key}>{getSettingLabel(key)}</Label>
+                    <div className="flex gap-2">
+                        <Input
+                            id={key}
+                            value={values[key] || ""}
+                            placeholder={getPlaceholder(key)}
+                            onChange={(e) =>
+                                setValues((prev) => ({
+                                    ...prev,
+                                    [key]: e.target.value,
+                                }))
+                            }
+                            className="flex-1"
+                        />
+                        <CheckProxyButton proxy={values[key] || ""} />
+                        <Button
+                            onClick={() => handleSave(key)}
+                            disabled={saving === key}
+                        >
+                            {saving === key ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                                <Save className="h-4 w-4" />
+                            )}
+                        </Button>
+                    </div>
+                    {setting.description && (
+                        <p className="text-xs text-muted-foreground">
+                            {setting.description}
+                        </p>
+                    )}
+                </div>
+            )
+        }
 
         return (
             <div key={key} className="space-y-2">
