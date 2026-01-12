@@ -220,10 +220,6 @@ class NspdClient:
             await self.client.aclose()
 
 
-# Singleton instance
-_nspd_client: Optional[NspdClient] = None
-
-
 def _get_settings_from_db() -> tuple[Optional[str], float]:
     """Получить настройки NSPD из базы данных."""
     try:
@@ -246,11 +242,19 @@ def _get_settings_from_db() -> tuple[Optional[str], float]:
         return None, 10.0
 
 
-def get_nspd_client() -> NspdClient:
-    """Получить экземпляр NSPD клиента (singleton)."""
-    global _nspd_client
-    if _nspd_client is None:
-        proxy, timeout = _get_settings_from_db()
-        logger.info(f"NSPD: Creating client with proxy={proxy}, timeout={timeout}")
-        _nspd_client = NspdClient(timeout=timeout, proxy=proxy)
-    return _nspd_client
+from typing import AsyncGenerator
+
+async def get_nspd_client() -> AsyncGenerator[NspdClient, None]:
+    """
+    FastAPI dependency для получения экземпляра NspdClient.
+    Создаёт новый экземпляр для каждого запроса (или scope),
+    и корректно закрывает соединение после использования.
+    """
+    proxy, timeout = _get_settings_from_db()
+    # logger.info(f"NSPD: Creating client with proxy={proxy}, timeout={timeout}")
+    client = NspdClient(timeout=timeout, proxy=proxy)
+    try:
+        yield client
+    finally:
+        await client.close()
+

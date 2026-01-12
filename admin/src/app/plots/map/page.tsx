@@ -123,33 +123,34 @@ export default function PlotsMapPage() {
                 </div>
             </div>
 
-            {/* Панель выбора */}
-            {selectedIds.size > 0 && (
-                <div className="flex items-center gap-4 px-4 py-3 bg-amber-50 dark:bg-amber-950 border-b">
-                    <span className="text-sm font-medium">
-                        Выбрано: <strong>{selectedIds.size}</strong> участков
-                    </span>
-                    <Button size="sm" onClick={() => setAssignModalOpen(true)}>
-                        <Link2 className="h-4 w-4 mr-2" />
-                        Привязать к объявлению
-                    </Button>
-                    <Button
-                        variant="secondary"
-                        size="sm"
-                        onClick={() => {
-                            const ids = Array.from(selectedIds).join(',');
-                            router.push(`/listings?plot_ids=${ids}`);
-                        }}
-                    >
-                        <Plus className="h-4 w-4 mr-2" />
-                        Создать объявление
-                    </Button>
-                    <Button variant="ghost" size="sm" onClick={clearSelection}>
-                        <X className="h-4 w-4 mr-2" />
-                        Снять выбор
-                    </Button>
-                </div>
-            )}
+            {/* Панель выбора — всегда занимает место, скрывается через visibility */}
+            <div
+                className={`flex items-center gap-4 px-4 py-3 bg-amber-50 dark:bg-amber-950 border-b transition-opacity ${selectedIds.size > 0 ? 'opacity-100' : 'opacity-0 pointer-events-none'
+                    }`}
+            >
+                <span className="text-sm font-medium">
+                    Выбрано: <strong>{selectedIds.size}</strong> участков
+                </span>
+                <Button size="sm" onClick={() => setAssignModalOpen(true)}>
+                    <Link2 className="h-4 w-4 mr-2" />
+                    Привязать к объявлению
+                </Button>
+                <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => {
+                        const ids = Array.from(selectedIds).join(',');
+                        router.push(`/listings?plot_ids=${ids}`);
+                    }}
+                >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Создать объявление
+                </Button>
+                <Button variant="ghost" size="sm" onClick={clearSelection}>
+                    <X className="h-4 w-4 mr-2" />
+                    Снять выбор
+                </Button>
+            </div>
 
             {/* Карта */}
             <div className="flex-1 relative">

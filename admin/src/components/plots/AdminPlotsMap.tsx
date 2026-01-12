@@ -28,6 +28,8 @@ export function AdminPlotsMap({
     const polygonsRef = useRef<Map<number, L.Polygon>>(new Map());
     const lassoPointsRef = useRef<L.LatLng[]>([]);
     const lassoPolylineRef = useRef<L.Polyline | null>(null);
+    const hasFittedRef = useRef(false);  // Был ли уже выполнен первоначальный fitBounds
+    const prevPlotsLengthRef = useRef(0);  // Предыдущее количество участков
 
     // Цвета полигонов
     const getPolygonColor = useCallback(
@@ -46,6 +48,7 @@ export function AdminPlotsMap({
         const map = L.map(mapContainerRef.current, {
             center: [54.7104, 20.4522], // Калининград
             zoom: 10,
+            attributionControl: false,
         });
 
         L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
@@ -57,6 +60,9 @@ export function AdminPlotsMap({
         return () => {
             map.remove();
             mapRef.current = null;
+            // Сбрасываем состояние fitBounds при уничтожении карты (важно для Strict Mode)
+            hasFittedRef.current = false;
+            prevPlotsLengthRef.current = 0;
         };
     }, []);
 
@@ -70,6 +76,10 @@ export function AdminPlotsMap({
         polygonsRef.current.clear();
 
         if (plots.length === 0) return;
+
+        // Определяем, нужно ли делать fitBounds
+        // Делаем это если это первая успешная загрузка данных для этой карты
+        const shouldFitBounds = !hasFittedRef.current;
 
         const bounds: L.LatLngBoundsExpression = [];
 
@@ -147,14 +157,17 @@ export function AdminPlotsMap({
             polygonsRef.current.set(plot.id, polygon);
 
             // Для bounds
-            plot.polygon_coords.forEach((coord) => {
-                bounds.push(coord as L.LatLngTuple);
-            });
+            if (shouldFitBounds) {
+                plot.polygon_coords.forEach((coord) => {
+                    bounds.push(coord as L.LatLngTuple);
+                });
+            }
         });
 
-        // Подстройка карты под все полигоны
-        if (bounds.length > 0) {
+        // Подстройка карты под все полигоны — только при первой загрузке
+        if (shouldFitBounds && bounds.length > 0) {
             map.fitBounds(bounds, { padding: [50, 50] });
+            hasFittedRef.current = true;
         }
     }, [plots, selectedIds, getPolygonColor, onSelectionChange]);
 

@@ -13,6 +13,7 @@ from app.models.listing import Listing
 from app.models.admin_user import AdminUser
 from app.routers.auth import get_current_user
 from app.utils.title_generator import generate_listing_title
+from app.nspd_client import NspdClient, get_nspd_client
 from app.schemas.admin_plot import (
     PlotAdminListItem,
     PlotAdminDetail,
@@ -50,8 +51,9 @@ def regenerate_listing_title(db: Session, listing_id: int | None) -> None:
     
     # Генерируем новое название
     new_title = generate_listing_title(plots)
-    listing.title = new_title
-    db.commit()
+    if new_title:
+        listing.title = new_title
+        db.commit()
 
 
 def plot_to_list_item(plot: Plot) -> dict:
@@ -402,6 +404,7 @@ async def fetch_geometry_from_nspd(
     plot_id: int,
     db: Session = Depends(get_db),
     current_user: AdminUser = Depends(get_current_user),
+    nspd_client: NspdClient = Depends(get_nspd_client),
 ):
     """
     Получить координаты участка из NSPD по кадастровому номеру.
@@ -410,7 +413,6 @@ async def fetch_geometry_from_nspd(
     """
     from geoalchemy2.shape import from_shape
     from shapely.geometry import Polygon as ShapelyPolygon, Point as ShapelyPoint
-    from app.nspd_client import get_nspd_client
     
     plot = db.query(Plot).filter(Plot.id == plot_id).first()
     if not plot:
@@ -420,7 +422,6 @@ async def fetch_geometry_from_nspd(
         raise HTTPException(status_code=400, detail="Кадастровый номер не указан")
     
     # Получаем данные из NSPD
-    nspd_client = get_nspd_client()
     cadastral_data = await nspd_client.get_object_info(plot.cadastral_number)
     
     if not cadastral_data:
@@ -465,6 +466,7 @@ async def bulk_import_plots(
     data: BulkImportRequest,
     db: Session = Depends(get_db),
     current_user: AdminUser = Depends(get_current_user),
+    nspd_client: NspdClient = Depends(get_nspd_client),
 ):
     """
     Массовый импорт участков из JSON.
@@ -475,14 +477,11 @@ async def bulk_import_plots(
     """
     from geoalchemy2.shape import from_shape
     from shapely.geometry import Polygon as ShapelyPolygon, Point as ShapelyPoint
-    from app.nspd_client import get_nspd_client
     
     results: list[BulkImportResultItem] = []
     created_count = 0
     updated_count = 0
     error_count = 0
-    
-    nspd_client = get_nspd_client()
     
     for item in data.items:
         try:
