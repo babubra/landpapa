@@ -4,7 +4,7 @@ from fastapi.staticfiles import StaticFiles
 import os
 
 from app.config import settings
-from app.routers import news, listings, locations, references, auth, admin_plots, admin_settings, admin_listings, admin_geo, images, admin_references, admin_realtors, public_settings, leads
+from app.routers import news, listings, locations, references, auth, admin_plots, admin_settings, admin_listings, admin_geo, images, admin_references, admin_realtors, public_settings, leads, public_plots
 
 app = FastAPI(
     title="КалининградЗем API",
@@ -51,6 +51,7 @@ app.include_router(locations.router, prefix="/api/locations", tags=["locations"]
 app.include_router(references.router, prefix="/api/references", tags=["references"])
 app.include_router(public_settings.router, prefix="/api/settings", tags=["settings"])
 app.include_router(leads.router, prefix="/api/leads", tags=["leads"])
+app.include_router(public_plots.router, prefix="/api/public-plots", tags=["public-plots"])
 
 
 @app.get("/")

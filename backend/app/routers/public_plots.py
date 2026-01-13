@@ -48,26 +48,26 @@ async def get_plots_in_viewport(
     # Создаём envelope для viewport (SRID 4326 = WGS84)
     viewport_envelope = ST_MakeEnvelope(west, south, east, north, 4326)
     
-    # Базовый запрос: только активные участки с геометрией
-    query = db.query(Plot).filter(
+    # Базовый запрос: только активные участки с геометрией И с опубликованными объявлениями
+    query = db.query(Plot, Listing.slug.label('listing_slug')).join(
+        Listing, Plot.listing_id == Listing.id
+    ).filter(
         Plot.status == PlotStatus.active,
         Plot.polygon.isnot(None),
+        Listing.is_published == True,
         ST_Intersects(Plot.polygon, viewport_envelope)
     )
     
-    # Применяем фильтры через связанные объявления
-    if district_id or settlements or land_use_id:
-        query = query.join(Listing, Plot.listing_id == Listing.id).filter(
-            Listing.is_published == True
+    # Фильтры по местоположению (через связанные объявления)
+    if district_id:
+        query = query.join(Settlement, Listing.settlement_id == Settlement.id).filter(
+            Settlement.district_id == district_id
         )
-        
-        if district_id:
-            query = query.join(Settlement).filter(Settlement.district_id == district_id)
-        
-        if settlements:
-            settlement_ids = [int(s.strip()) for s in settlements.split(",") if s.strip().isdigit()]
-            if settlement_ids:
-                query = query.filter(Listing.settlement_id.in_(settlement_ids))
+    
+    if settlements:
+        settlement_ids = [int(s.strip()) for s in settlements.split(",") if s.strip().isdigit()]
+        if settlement_ids:
+            query = query.filter(Listing.settlement_id.in_(settlement_ids))
     
     # Фильтры по характеристикам участков
     if land_use_id:
@@ -89,7 +89,36 @@ async def get_plots_in_viewport(
     
     if zoom < CLUSTER_ZOOM_THRESHOLD:
         # Режим кластеров: группируем участки по сетке
-        clusters = _generate_clusters(query, viewport_envelope, zoom)
+        # Для кластеров нужны только Plot объекты
+        plots_for_clusters = db.query(Plot).join(
+            Listing, Plot.listing_id == Listing.id
+        ).filter(
+            Plot.status == PlotStatus.active,
+            Plot.polygon.isnot(None),
+            Listing.is_published == True,
+            ST_Intersects(Plot.polygon, viewport_envelope)
+        )
+        # Применяем те же фильтры
+        if district_id:
+            plots_for_clusters = plots_for_clusters.join(
+                Settlement, Listing.settlement_id == Settlement.id
+            ).filter(Settlement.district_id == district_id)
+        if settlements:
+            settlement_ids = [int(s.strip()) for s in settlements.split(",") if s.strip().isdigit()]
+            if settlement_ids:
+                plots_for_clusters = plots_for_clusters.filter(Listing.settlement_id.in_(settlement_ids))
+        if land_use_id:
+            plots_for_clusters = plots_for_clusters.filter(Plot.land_use_id == land_use_id)
+        if price_min:
+            plots_for_clusters = plots_for_clusters.filter(Plot.price_public >= price_min)
+        if price_max:
+            plots_for_clusters = plots_for_clusters.filter(Plot.price_public <= price_max)
+        if area_min:
+            plots_for_clusters = plots_for_clusters.filter(Plot.area >= area_min)
+        if area_max:
+            plots_for_clusters = plots_for_clusters.filter(Plot.area <= area_max)
+            
+        clusters = _generate_clusters(plots_for_clusters, viewport_envelope, zoom)
         return PlotViewportResponse(
             zoom=zoom,
             plots=[],
@@ -98,10 +127,10 @@ async def get_plots_in_viewport(
         )
     else:
         # Режим полигонов: возвращаем участки
-        plots = query.limit(1000).all()  # Лимит для безопасности
+        results = query.limit(1000).all()  # Лимит для безопасности
         
         plot_items = []
-        for plot in plots:
+        for plot, listing_slug in results:
             try:
                 poly = to_shape(plot.polygon)
                 coords = list(poly.exterior.coords)
@@ -115,6 +144,7 @@ async def get_plots_in_viewport(
                     status=plot.status,
                     polygon_coords=polygon_coords,
                     listing_id=plot.listing_id,
+                    listing_slug=listing_slug,
                 ))
             except Exception:
                 # Пропускаем участки с невалидной геометрией
@@ -126,6 +156,8 @@ async def get_plots_in_viewport(
             clusters=[],
             total_in_viewport=total_count
         )
+
+
 
 
 def _generate_clusters(query, viewport_envelope, zoom: int) -> list[ClusterItem]:

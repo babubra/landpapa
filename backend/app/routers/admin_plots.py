@@ -124,19 +124,59 @@ async def check_cadastral_number(
 
 @router.get("/map", response_model=PlotMapResponse)
 async def get_plots_for_map(
+    # Опциональные viewport-параметры для динамической загрузки
+    north: float | None = Query(None, description="Северная граница (latitude)"),
+    south: float | None = Query(None, description="Южная граница (latitude)"),
+    east: float | None = Query(None, description="Восточная граница (longitude)"),
+    west: float | None = Query(None, description="Западная граница (longitude)"),
+    zoom: int | None = Query(None, description="Уровень зума карты"),
     db: Session = Depends(get_db),
     current_user: AdminUser = Depends(get_current_user),
 ):
     """
-    Получить все участки с геометрией для отображения на карте.
+    Получить участки с геометрией для отображения на карте.
     
-    Возвращает участки у которых есть polygon.
+    Если переданы viewport-параметры (north, south, east, west, zoom):
+    - При zoom < 13: возвращает кластеры
+    - При zoom >= 13: возвращает полигоны участков в viewport
+    
+    Без параметров: возвращает все участки (для обратной совместимости).
     """
-    from geoalchemy2.shape import to_shape
-    from app.schemas.admin_plot import ListingShort
+    from geoalchemy2.shape import to_shape, from_shape
+    from geoalchemy2.functions import ST_MakeEnvelope, ST_Intersects
+    from app.schemas.admin_plot import ListingShort, PlotClusterItem
     
-    # Подгружаем связанные объявления
-    plots = db.query(Plot).filter(Plot.polygon.isnot(None)).all()
+    # Режим viewport (если переданы все параметры)
+    viewport_mode = all(p is not None for p in [north, south, east, west, zoom])
+    
+    if viewport_mode:
+        viewport_envelope = ST_MakeEnvelope(west, south, east, north, 4326)
+        
+        # Базовый запрос с viewport-фильтром
+        query = db.query(Plot).filter(
+            Plot.polygon.isnot(None),
+            ST_Intersects(Plot.polygon, viewport_envelope)
+        )
+        
+        total_count = query.count()
+        
+        CLUSTER_ZOOM_THRESHOLD = 13
+        
+        if zoom < CLUSTER_ZOOM_THRESHOLD:
+            # Режим кластеров
+            clusters = _generate_admin_clusters(query.all(), zoom)
+            return PlotMapResponse(
+                items=[],
+                clusters=clusters,
+                total=total_count,
+                mode="clusters"
+            )
+        else:
+            # Режим полигонов (ограничение для производительности)
+            plots = query.limit(500).all()
+    else:
+        # Режим полной загрузки (обратная совместимость)
+        plots = db.query(Plot).filter(Plot.polygon.isnot(None)).all()
     
     items = []
     for plot in plots:
@@ -170,7 +210,74 @@ async def get_plots_for_map(
             # Пропускаем участки с невалидной геометрией
             continue
     
-    return PlotMapResponse(items=items, total=len(items))
+    return PlotMapResponse(items=items, total=len(items), clusters=[], mode="plots")
+
+
+def _generate_admin_clusters(plots: list[Plot], zoom: int) -> list:
+    """Генерация кластеров для админ-карты."""
+    from geoalchemy2.shape import to_shape
+    from app.schemas.admin_plot import PlotClusterItem
+    
+    # Размер сетки зависит от зума
+    grid_size = 0.5 / (2 ** (zoom - 8))
+    
+    clusters_dict = {}
+    
+    for plot in plots:
+        if not plot.centroid:
+            continue
+        
+        try:
+            point = to_shape(plot.centroid)
+            lat, lon = point.y, point.x
+            
+            grid_lat = int(lat / grid_size) * grid_size
+            grid_lon = int(lon / grid_size) * grid_size
+            grid_key = (grid_lat, grid_lon)
+            
+            if grid_key not in clusters_dict:
+                clusters_dict[grid_key] = {
+                    'plots': [],
+                    'min_lat': lat,
+                    'max_lat': lat,
+                    'min_lon': lon,
+                    'max_lon': lon,
+                }
+            
+            cluster = clusters_dict[grid_key]
+            cluster['plots'].append(plot)
+            cluster['min_lat'] = min(cluster['min_lat'], lat)
+            cluster['max_lat'] = max(cluster['max_lat'], lat)
+            cluster['min_lon'] = min(cluster['min_lon'], lon)
+            cluster['max_lon'] = max(cluster['max_lon'], lon)
+        except Exception:
+            continue
+    
+    cluster_items = []
+    for grid_key, cluster_data in clusters_dict.items():
+        plots_in_cluster = cluster_data['plots']
+        
+        center_lat = (cluster_data['min_lat'] + cluster_data['max_lat']) / 2
+        center_lon = (cluster_data['min_lon'] + cluster_data['max_lon']) / 2
+        
+        # Подсчёт по типам
+        unassigned = sum(1 for p in plots_in_cluster if p.listing_id is None)
+        assigned = len(plots_in_cluster) - unassigned
+        
+        cluster_items.append(PlotClusterItem(
+            center=[center_lat, center_lon],
+            count=len(plots_in_cluster),
+            unassigned_count=unassigned,
+            assigned_count=assigned,
+            bounds=[
+                [cluster_data['min_lat'], cluster_data['min_lon']],
+                [cluster_data['max_lat'], cluster_data['max_lon']]
+            ],
+        ))
+    
+    return cluster_items
+
+
 
 
 @router.post("/bulk-assign", response_model=BulkAssignResponse)

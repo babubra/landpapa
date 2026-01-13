@@ -15,9 +15,11 @@ class PlotViewportItem(BaseModel):
     status: PlotStatus
     polygon_coords: list[list[float]] = Field(description="Координаты полигона [[lat, lon], ...]")
     listing_id: int | None = None
+    listing_slug: str | None = Field(None, description="Slug объявления для формирования ссылки")
     
     class Config:
         from_attributes = True
+
 
 
 class ClusterItem(BaseModel):

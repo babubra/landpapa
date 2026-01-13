@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import { ArrowLeft, Lasso, X, Link2, Plus, ExternalLink } from "lucide-react";
@@ -8,7 +8,7 @@ import { toast } from "sonner";
 import Link from "next/link";
 
 import { useAuth } from "@/lib/auth";
-import { getPlotsForMap, bulkAssignPlots, PlotMapItem } from "@/lib/api";
+import { getPlotsForMap, bulkAssignPlots, PlotMapItem, PlotClusterItem, ViewportParams } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { AssignListingModal } from "@/components/plots/AssignListingModal";
 
@@ -23,11 +23,18 @@ export default function PlotsMapPage() {
     const router = useRouter();
 
     const [plots, setPlots] = useState<PlotMapItem[]>([]);
+    const [clusters, setClusters] = useState<PlotClusterItem[]>([]);
+    const [mode, setMode] = useState<"plots" | "clusters">("plots");
+    const [totalCount, setTotalCount] = useState(0);
     const [isLoading, setIsLoading] = useState(true);
     const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
     const [lassoMode, setLassoMode] = useState(false);
     const [assignModalOpen, setAssignModalOpen] = useState(false);
     const [focusedPlot, setFocusedPlot] = useState<PlotMapItem | null>(null);
+
+    // Debounce для запросов
+    const fetchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const currentViewportRef = useRef<ViewportParams | null>(null);
 
     // Проверка авторизации
     useEffect(() => {
@@ -36,13 +43,16 @@ export default function PlotsMapPage() {
         }
     }, [user, authLoading, router]);
 
-    // Загрузка участков
-    const loadPlots = useCallback(async () => {
+    // Загрузка участков по viewport
+    const loadPlots = useCallback(async (viewport?: ViewportParams) => {
         if (!user) return;
         setIsLoading(true);
         try {
-            const response = await getPlotsForMap();
-            setPlots(response.items);
+            const response = await getPlotsForMap(viewport);
+            setPlots(response.items || []);
+            setClusters(response.clusters || []);
+            setMode(response.mode || "plots");
+            setTotalCount(response.total || 0);
         } catch (error) {
             toast.error("Ошибка загрузки участков");
             console.error(error);
@@ -51,8 +61,17 @@ export default function PlotsMapPage() {
         }
     }, [user]);
 
-    useEffect(() => {
-        loadPlots();
+    // Обработчик изменения viewport с debounce
+    const handleViewportChange = useCallback((viewport: ViewportParams) => {
+        currentViewportRef.current = viewport;
+
+        if (fetchTimeoutRef.current) {
+            clearTimeout(fetchTimeoutRef.current);
+        }
+
+        fetchTimeoutRef.current = setTimeout(() => {
+            loadPlots(viewport);
+        }, 300);
     }, [loadPlots]);
 
     // Привязка к объявлению
@@ -61,7 +80,10 @@ export default function PlotsMapPage() {
         const result = await bulkAssignPlots(plotIds, listingId);
         toast.success(`Привязано участков: ${result.updated_count}`);
         setSelectedIds(new Set());
-        loadPlots(); // Перезагружаем для обновления цветов
+        // Перезагружаем с текущим viewport
+        if (currentViewportRef.current) {
+            loadPlots(currentViewportRef.current);
+        }
     };
 
     // Снять выделение
@@ -78,7 +100,7 @@ export default function PlotsMapPage() {
         }
     };
 
-    // Статистика
+    // Статистика (из текущего viewport)
     const unassignedCount = plots.filter((p) => p.listing_id === null).length;
     const assignedCount = plots.filter((p) => p.listing_id !== null).length;
 
@@ -103,27 +125,38 @@ export default function PlotsMapPage() {
                     <div>
                         <h1 className="text-xl font-bold">Карта участков</h1>
                         <p className="text-sm text-muted-foreground">
-                            Всего: {plots.length} •
-                            <span className="text-green-600 ml-1">Без привязки: {unassignedCount}</span> •
-                            <span className="text-blue-600 ml-1">Привязано: {assignedCount}</span>
+                            {mode === "clusters" ? (
+                                <>
+                                    В области: {totalCount} участков ({clusters.length} кластеров)
+                                    <span className="text-xs ml-2">(приблизьте для просмотра)</span>
+                                </>
+                            ) : (
+                                <>
+                                    Всего: {totalCount} •
+                                    <span className="text-green-600 ml-1">Без привязки: {unassignedCount}</span> •
+                                    <span className="text-blue-600 ml-1">Привязано: {assignedCount}</span>
+                                </>
+                            )}
                         </p>
                     </div>
                 </div>
 
                 <div className="flex items-center gap-2">
-                    {/* Режим лассо */}
-                    <Button
-                        variant={lassoMode ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => setLassoMode(!lassoMode)}
-                    >
-                        <Lasso className="h-4 w-4 mr-2" />
-                        {lassoMode ? "Выключить лассо" : "Лассо"}
-                    </Button>
+                    {/* Режим лассо (только при высоком зуме) */}
+                    {mode === "plots" && (
+                        <Button
+                            variant={lassoMode ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => setLassoMode(!lassoMode)}
+                        >
+                            <Lasso className="h-4 w-4 mr-2" />
+                            {lassoMode ? "Выключить лассо" : "Лассо"}
+                        </Button>
+                    )}
                 </div>
             </div>
 
-            {/* Панель выбора — всегда занимает место, скрывается через visibility */}
+            {/* Панель выбора */}
             <div
                 className={`flex items-center gap-4 px-4 py-3 bg-amber-50 dark:bg-amber-950 border-b transition-opacity ${selectedIds.size > 0 ? 'opacity-100' : 'opacity-0 pointer-events-none'
                     }`}
@@ -154,50 +187,67 @@ export default function PlotsMapPage() {
 
             {/* Карта */}
             <div className="flex-1 relative">
-                {isLoading ? (
-                    <div className="w-full h-full flex items-center justify-center">
-                        <p className="text-muted-foreground">Загрузка карты...</p>
+                <AdminPlotsMap
+                    plots={plots}
+                    clusters={clusters}
+                    mode={mode}
+                    selectedIds={selectedIds}
+                    onSelectionChange={setSelectedIds}
+                    onPlotClick={handlePlotClick}
+                    onViewportChange={handleViewportChange}
+                    lassoMode={lassoMode}
+                />
+                {isLoading && (
+                    <div className="absolute top-2 right-2 bg-white/80 rounded px-3 py-1 text-sm z-[1000]">
+                        Загрузка...
                     </div>
-                ) : (
-                    <AdminPlotsMap
-                        plots={plots}
-                        selectedIds={selectedIds}
-                        onSelectionChange={setSelectedIds}
-                        onPlotClick={handlePlotClick}
-                        lassoMode={lassoMode}
-                    />
                 )}
             </div>
 
             {/* Легенда */}
             <div className="absolute bottom-4 left-4 bg-white dark:bg-gray-900 rounded-lg shadow-lg p-3 text-sm z-[1000]">
                 <div className="font-medium mb-2">Легенда:</div>
-                <div className="flex items-center gap-2 mb-1">
-                    <div className="w-4 h-4 rounded bg-green-500" />
-                    <span>Без привязки</span>
-                </div>
-                <div className="flex items-center gap-2 mb-1">
-                    <div className="w-4 h-4 rounded bg-blue-500" />
-                    <span>Привязан к объявлению</span>
-                </div>
-                <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 rounded bg-amber-500" />
-                    <span>Выбран</span>
-                </div>
+                {mode === "clusters" ? (
+                    <div className="flex items-center gap-2">
+                        <div className="w-4 h-4 rounded-full bg-blue-500" />
+                        <span>Кластер участков</span>
+                    </div>
+                ) : (
+                    <>
+                        <div className="flex items-center gap-2 mb-1">
+                            <div className="w-4 h-4 rounded bg-green-500" />
+                            <span>Без привязки</span>
+                        </div>
+                        <div className="flex items-center gap-2 mb-1">
+                            <div className="w-4 h-4 rounded bg-blue-500" />
+                            <span>Привязан к объявлению</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <div className="w-4 h-4 rounded bg-amber-500" />
+                            <span>Выбран</span>
+                        </div>
+                    </>
+                )}
             </div>
 
             {/* Подсказка */}
             <div className="absolute bottom-4 right-4 bg-white dark:bg-gray-900 rounded-lg shadow-lg p-3 text-sm max-w-xs z-[1000]">
                 <div className="font-medium mb-1">Управление:</div>
                 <ul className="text-muted-foreground text-xs space-y-1">
-                    <li>• Клик — выбрать участок</li>
-                    <li>• Ctrl/Cmd + клик — мультивыбор</li>
-                    <li>• Лассо — обвести область</li>
+                    {mode === "clusters" ? (
+                        <li>• Клик на кластер — приблизить</li>
+                    ) : (
+                        <>
+                            <li>• Клик — выбрать участок</li>
+                            <li>• Ctrl/Cmd + клик — мультивыбор</li>
+                            <li>• Лассо — обвести область</li>
+                        </>
+                    )}
                 </ul>
             </div>
 
             {/* Информационная панель участка */}
-            {focusedPlot && (
+            {focusedPlot && mode === "plots" && (
                 <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-white dark:bg-gray-900 rounded-lg shadow-xl p-4 z-[1000] min-w-[350px] max-w-md">
                     <div className="flex items-start justify-between mb-3">
                         <div>

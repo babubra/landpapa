@@ -638,18 +638,49 @@ export interface PlotMapItem {
   polygon_coords: [number, number][];  // [[lat, lon], ...]
 }
 
-export interface PlotMapResponse {
-  items: PlotMapItem[];
-  total: number;
+export interface PlotClusterItem {
+  center: [number, number];  // [lat, lon]
+  count: number;
+  unassigned_count: number;
+  assigned_count: number;
+  bounds: [[number, number], [number, number]];  // [[south, west], [north, east]]
 }
 
-export async function getPlotsForMap(): Promise<PlotMapResponse> {
-  const response = await fetchWithAuth("/api/admin/plots/map");
+export interface PlotMapResponse {
+  items: PlotMapItem[];
+  clusters: PlotClusterItem[];
+  total: number;
+  mode: "plots" | "clusters";
+}
+
+export interface ViewportParams {
+  north: number;
+  south: number;
+  east: number;
+  west: number;
+  zoom: number;
+}
+
+export async function getPlotsForMap(viewport?: ViewportParams): Promise<PlotMapResponse> {
+  let url = "/api/admin/plots/map";
+
+  if (viewport) {
+    const params = new URLSearchParams();
+    params.set("north", String(viewport.north));
+    params.set("south", String(viewport.south));
+    params.set("east", String(viewport.east));
+    params.set("west", String(viewport.west));
+    params.set("zoom", String(viewport.zoom));
+    url += `?${params.toString()}`;
+  }
+
+  const response = await fetchWithAuth(url);
   if (!response.ok) {
     throw new Error("Ошибка загрузки участков для карты");
   }
   return response.json();
 }
+
 
 export async function bulkAssignPlots(
   plotIds: number[],

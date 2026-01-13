@@ -167,10 +167,22 @@ class PlotMapItem(BaseModel):
         from_attributes = True
 
 
+class PlotClusterItem(BaseModel):
+    """Кластер участков для отображения на карте при низком зуме."""
+    center: list[float] = Field(description="Центр кластера [lat, lon]")
+    count: int = Field(description="Количество участков в кластере")
+    unassigned_count: int = Field(0, description="Количество не привязанных к объявлениям")
+    assigned_count: int = Field(0, description="Количество привязанных к объявлениям")
+    bounds: list[list[float]] = Field(description="Границы кластера [[south, west], [north, east]]")
+
+
 class PlotMapResponse(BaseModel):
     """Ответ списка участков для карты."""
-    items: list[PlotMapItem]
+    items: list[PlotMapItem] = Field(default_factory=list)
+    clusters: list[PlotClusterItem] = Field(default_factory=list)
     total: int
+    mode: str = Field("plots", description="Режим: 'plots' или 'clusters'")
+
 
 
 class BulkAssignRequest(BaseModel):
