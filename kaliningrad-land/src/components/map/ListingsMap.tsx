@@ -1,30 +1,26 @@
 "use client";
 
-import { useEffect, useState, useRef, useCallback } from "react";
-import { MapContainer, TileLayer, Marker, LayersControl, useMapEvents, useMap, CircleMarker, Popup, Tooltip } from "react-leaflet";
+import React, { useEffect, useState } from "react";
+import { MapContainer, TileLayer, Marker, LayersControl, useMapEvents, useMap, CircleMarker, Tooltip } from "react-leaflet";
 import { LatLngBounds, LatLngExpression, DivIcon } from "leaflet";
 import "leaflet/dist/leaflet.css";
-import type { PlotViewportItem, ClusterItem, ViewportBounds } from "@/types/map";
+import type { MapMarkerItem, ViewportBounds } from "@/types/map";
 
 interface ListingsMapProps {
-    plots: PlotViewportItem[];
-    clusters: ClusterItem[];
-    selectedPlotId?: number;
+    markers: MapMarkerItem[];
+    selectedListingSlug?: string;
     onViewportChange: (bounds: ViewportBounds, zoom: number) => void;
-    onPlotClick: (plot: PlotViewportItem) => void;
-    onClusterClick: (cluster: ClusterItem) => void;
+    onMarkerClick: (marker: MapMarkerItem) => void;
     loading?: boolean;
+    initialCenter?: [number, number];
+    initialZoom?: number;
 }
 
 // Компонент для отслеживания событий карты
 function MapEventHandler({
     onViewportChange,
-    onClusterClick,
-    clusters,
 }: {
     onViewportChange: (bounds: ViewportBounds, zoom: number) => void;
-    onClusterClick: (cluster: ClusterItem) => void;
-    clusters: ClusterItem[];
 }) {
     const map = useMapEvents({
         moveend: () => {
@@ -73,66 +69,53 @@ function MapEventHandler({
     return null;
 }
 
-// Компонент кластера
-function ClusterMarker({
-    cluster,
-    onClusterClick,
+// Компонент кластера (мемоизированный)
+const ClusterMarker = React.memo(function ClusterMarker({
+    marker,
+    onClick,
 }: {
-    cluster: ClusterItem;
-    onClusterClick: (cluster: ClusterItem) => void;
+    marker: MapMarkerItem;
+    onClick: () => void;
 }) {
     const map = useMap();
 
     // Размер зависит от количества участков
-    const radius = Math.min(40, Math.max(20, 15 + Math.log10(cluster.count) * 12));
+    const radius = Math.min(40, Math.max(20, 15 + Math.log10(marker.count) * 12));
 
     const handleClick = () => {
         // Zoom к границам кластера
-        const bounds = new LatLngBounds(
-            [cluster.bounds[0][0], cluster.bounds[0][1]],
-            [cluster.bounds[1][0], cluster.bounds[1][1]]
-        );
-        map.fitBounds(bounds, { padding: [50, 50] });
-        onClusterClick(cluster);
+        if (marker.bounds) {
+            const bounds = new LatLngBounds(
+                [marker.bounds[0][0], marker.bounds[0][1]],
+                [marker.bounds[1][0], marker.bounds[1][1]]
+            );
+            map.fitBounds(bounds, { padding: [50, 50] });
+        }
+        onClick();
     };
 
     return (
         <CircleMarker
-            center={[cluster.center[0], cluster.center[1]]}
+            center={[marker.lat, marker.lon]}
             radius={radius}
             pathOptions={{
                 fillColor: "#14b8a6",  // teal-500
-                fillOpacity: 1,         // непрозрачный
+                fillOpacity: 1,
                 color: "#0f766e",       // teal-700 border
                 weight: 2,
             }}
             eventHandlers={{ click: handleClick }}
         >
-            {/* Постоянный tooltip с количеством */}
             <Tooltip permanent direction="center" className="cluster-count-tooltip">
-                <span className="font-bold text-white">{cluster.count}</span>
+                <span className="font-bold text-white">{marker.count}</span>
             </Tooltip>
-            <Popup>
-                <div className="text-center">
-                    <div className="font-bold text-lg">{cluster.count}</div>
-                    <div className="text-sm text-muted-foreground">участков</div>
-                    {cluster.price_range && (
-                        <div className="text-xs mt-1">
-                            от {(cluster.price_range[0] / 1000000).toFixed(1)} до{" "}
-                            {(cluster.price_range[1] / 1000000).toFixed(1)} млн ₽
-                        </div>
-                    )}
-
-                </div>
-            </Popup>
         </CircleMarker>
     );
-}
+});
 
 // Создание иконки маркера для участка
-function createPlotMarkerIcon(isSelected: boolean, listingId: number | null): DivIcon {
-    const hasListing = listingId !== null;
-    const color = isSelected ? "#3b82f6" : hasListing ? "#10b981" : "#6b7280";
+function createPlotMarkerIcon(isSelected: boolean): DivIcon {
+    const color = isSelected ? "#3b82f6" : "#10b981";  // blue-500 / emerald-500
     const size = isSelected ? 32 : 24;
 
     return new DivIcon({
@@ -162,14 +145,39 @@ function createPlotMarkerIcon(isSelected: boolean, listingId: number | null): Di
     });
 }
 
+// Компонент маркера точки (мемоизированный)
+const PointMarker = React.memo(function PointMarker({
+    marker,
+    isSelected,
+    onClick,
+}: {
+    marker: MapMarkerItem;
+    isSelected: boolean;
+    onClick: () => void;
+}) {
+    const icon = createPlotMarkerIcon(isSelected);
+
+    return (
+        <Marker
+            position={[marker.lat, marker.lon]}
+            icon={icon}
+            eventHandlers={{ click: onClick }}
+        />
+    );
+});
+
+// Дефолтные значения для Калининграда
+const DEFAULT_CENTER: [number, number] = [54.7104, 20.4522];
+const DEFAULT_ZOOM = 9;
+
 export function ListingsMap({
-    plots,
-    clusters,
-    selectedPlotId,
+    markers,
+    selectedListingSlug,
     onViewportChange,
-    onPlotClick,
-    onClusterClick,
+    onMarkerClick,
     loading,
+    initialCenter = DEFAULT_CENTER,
+    initialZoom = DEFAULT_ZOOM,
 }: ListingsMapProps) {
     const [isMounted, setIsMounted] = useState(false);
 
@@ -185,8 +193,7 @@ export function ListingsMap({
         );
     }
 
-    // Центр по умолчанию — Калининград
-    const defaultCenter: LatLngExpression = [54.7104, 20.4522];
+
 
     return (
         <div className="h-full w-full relative">
@@ -210,10 +217,9 @@ export function ListingsMap({
                 </div>
             )}
 
-
             <MapContainer
-                center={defaultCenter}
-                zoom={9}
+                center={initialCenter}
+                zoom={initialZoom}
                 className="h-full w-full"
                 scrollWheelZoom={true}
                 attributionControl={false}
@@ -227,47 +233,29 @@ export function ListingsMap({
                     </LayersControl.BaseLayer>
                 </LayersControl>
 
-                <MapEventHandler
-                    onViewportChange={onViewportChange}
-                    onClusterClick={onClusterClick}
-                    clusters={clusters}
-                />
+                <MapEventHandler onViewportChange={onViewportChange} />
 
-                {/* Отображение кластеров (при низком зуме) */}
-                {clusters.map((cluster, index) => (
-                    <ClusterMarker
-                        key={`cluster-${index}`}
-                        cluster={cluster}
-                        onClusterClick={onClusterClick}
-                    />
-                ))}
-
-                {/* Отображение участков (при высоком зуме) */}
-                {plots.map((plot) => {
-                    // Используем centroid из polygon_coords
-                    if (!plot.polygon_coords || plot.polygon_coords.length === 0) return null;
-
-                    // Вычисляем центроид полигона
-                    const latSum = plot.polygon_coords.reduce((sum, coord) => sum + coord[0], 0);
-                    const lonSum = plot.polygon_coords.reduce((sum, coord) => sum + coord[1], 0);
-                    const center: [number, number] = [
-                        latSum / plot.polygon_coords.length,
-                        lonSum / plot.polygon_coords.length,
-                    ];
-
-                    const isSelected = plot.listing_id === selectedPlotId;
-                    const icon = createPlotMarkerIcon(isSelected, plot.listing_id);
-
-                    return (
-                        <Marker
-                            key={`plot-${plot.id}`}
-                            position={center}
-                            icon={icon}
-                            eventHandlers={{
-                                click: () => onPlotClick(plot),
-                            }}
-                        />
-                    );
+                {/* Рендер маркеров */}
+                {markers.map((marker) => {
+                    if (marker.type === "cluster") {
+                        return (
+                            <ClusterMarker
+                                key={`cluster-${marker.id}`}
+                                marker={marker}
+                                onClick={() => onMarkerClick(marker)}
+                            />
+                        );
+                    } else {
+                        const isSelected = marker.listing_slug === selectedListingSlug;
+                        return (
+                            <PointMarker
+                                key={`point-${marker.id}`}
+                                marker={marker}
+                                isSelected={isSelected}
+                                onClick={() => onMarkerClick(marker)}
+                            />
+                        );
+                    }
                 })}
             </MapContainer>
         </div>

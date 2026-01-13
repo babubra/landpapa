@@ -1,19 +1,38 @@
 """
 Публичный API для работы с участками (viewport-based загрузка).
+Серверная кластеризация через ST_SnapToGrid.
 """
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
-from sqlalchemy import func, and_, or_
-from geoalchemy2.shape import to_shape
-from geoalchemy2.functions import ST_MakeEnvelope, ST_Intersects
+from sqlalchemy import func
+from geoalchemy2.functions import ST_MakeEnvelope, ST_Intersects, ST_SnapToGrid, ST_X, ST_Y
 
 from app.database import get_db
 from app.models.plot import Plot, PlotStatus
-from app.schemas.public_plot import PlotViewportResponse, PlotViewportItem, ClusterItem
+from app.schemas.public_plot import PlotViewportResponse, MapMarkerItem
 
 
 router = APIRouter()
+
+
+# Размер ячейки сетки для каждого уровня зума
+# Чем выше zoom — тем меньше ячейка (точнее группировка)
+GRID_SIZES = {
+    7: 1.0,
+    8: 0.5,
+    9: 0.25,
+    10: 0.15,
+    11: 0.08,
+    12: 0.04,
+}
+
+
+def get_grid_size(zoom: int) -> float:
+    """Получить размер ячейки сетки для кластеризации."""
+    if zoom >= 13:
+        return 0.00001  # Практически нет кластеров — показываем пины
+    return GRID_SIZES.get(zoom, 1.0)
 
 
 @router.get("/viewport", response_model=PlotViewportResponse)
@@ -35,12 +54,11 @@ async def get_plots_in_viewport(
     db: Session = Depends(get_db),
 ):
     """
-    Получить участки или кластеры в пределах viewport.
+    Получить маркеры (точки и кластеры) для отображения на карте.
     
-    - При zoom < 13: возвращает кластеры
-    - При zoom >= 13: возвращает полигоны участков
-    
-    Применяет фильтры из каталога для согласованности данных.
+    Использует серверную кластеризацию через ST_SnapToGrid.
+    При высоком зуме (13+) возвращает одиночные точки.
+    При низком зуме — кластеры с count > 1.
     """
     from app.models.listing import Listing
     from app.models.location import Settlement
@@ -48,14 +66,33 @@ async def get_plots_in_viewport(
     # Создаём envelope для viewport (SRID 4326 = WGS84)
     viewport_envelope = ST_MakeEnvelope(west, south, east, north, 4326)
     
-    # Базовый запрос: только активные участки с геометрией И с опубликованными объявлениями
-    query = db.query(Plot, Listing.slug.label('listing_slug')).join(
+    # Размер ячейки сетки для кластеризации
+    grid_size = get_grid_size(zoom)
+    
+    # Snap-точка для группировки
+    snapped = ST_SnapToGrid(Plot.centroid, grid_size)
+    
+    # Базовый запрос с агрегацией
+    query = db.query(
+        func.array_agg(Plot.id).label('ids'),
+        func.array_agg(Plot.price_public).label('prices'),
+        func.array_agg(Listing.slug).label('slugs'),
+        func.count().label('count'),
+        # Центр группы — среднее арифметическое центроидов
+        func.avg(ST_X(Plot.centroid)).label('lon'),
+        func.avg(ST_Y(Plot.centroid)).label('lat'),
+        # Границы группы (для zoom кластера)
+        func.min(ST_Y(Plot.centroid)).label('lat_min'),
+        func.max(ST_Y(Plot.centroid)).label('lat_max'),
+        func.min(ST_X(Plot.centroid)).label('lon_min'),
+        func.max(ST_X(Plot.centroid)).label('lon_max'),
+    ).join(
         Listing, Plot.listing_id == Listing.id
     ).filter(
         Plot.status == PlotStatus.active,
-        Plot.polygon.isnot(None),
+        Plot.centroid.isnot(None),
         Listing.is_published == True,
-        ST_Intersects(Plot.polygon, viewport_envelope)
+        ST_Intersects(Plot.centroid, viewport_envelope)
     )
     
     # Фильтры по местоположению (через связанные объявления)
@@ -81,154 +118,40 @@ async def get_plots_in_viewport(
     if area_max:
         query = query.filter(Plot.area <= area_max)
     
-    # Подсчёт общего количества
-    total_count = query.count()
+    # Группировка по snap-точке
+    query = query.group_by(snapped)
     
-    # Выбираем режим отображения по уровню зума
-    CLUSTER_ZOOM_THRESHOLD = 13
+    # Формируем маркеры
+    markers = []
+    total_count = 0
     
-    if zoom < CLUSTER_ZOOM_THRESHOLD:
-        # Режим кластеров: группируем участки по сетке
-        # Для кластеров нужны только Plot объекты
-        plots_for_clusters = db.query(Plot).join(
-            Listing, Plot.listing_id == Listing.id
-        ).filter(
-            Plot.status == PlotStatus.active,
-            Plot.polygon.isnot(None),
-            Listing.is_published == True,
-            ST_Intersects(Plot.polygon, viewport_envelope)
-        )
-        # Применяем те же фильтры
-        if district_id:
-            plots_for_clusters = plots_for_clusters.join(
-                Settlement, Listing.settlement_id == Settlement.id
-            ).filter(Settlement.district_id == district_id)
-        if settlements:
-            settlement_ids = [int(s.strip()) for s in settlements.split(",") if s.strip().isdigit()]
-            if settlement_ids:
-                plots_for_clusters = plots_for_clusters.filter(Listing.settlement_id.in_(settlement_ids))
-        if land_use_id:
-            plots_for_clusters = plots_for_clusters.filter(Plot.land_use_id == land_use_id)
-        if price_min:
-            plots_for_clusters = plots_for_clusters.filter(Plot.price_public >= price_min)
-        if price_max:
-            plots_for_clusters = plots_for_clusters.filter(Plot.price_public <= price_max)
-        if area_min:
-            plots_for_clusters = plots_for_clusters.filter(Plot.area >= area_min)
-        if area_max:
-            plots_for_clusters = plots_for_clusters.filter(Plot.area <= area_max)
-            
-        clusters = _generate_clusters(plots_for_clusters, viewport_envelope, zoom)
-        return PlotViewportResponse(
-            zoom=zoom,
-            plots=[],
-            clusters=clusters,
-            total_in_viewport=total_count
-        )
-    else:
-        # Режим полигонов: возвращаем участки
-        results = query.limit(1000).all()  # Лимит для безопасности
+    for row in query.all():
+        total_count += row.count
         
-        plot_items = []
-        for plot, listing_slug in results:
-            try:
-                poly = to_shape(plot.polygon)
-                coords = list(poly.exterior.coords)
-                polygon_coords = [[coord[1], coord[0]] for coord in coords]  # [lat, lon]
-                
-                plot_items.append(PlotViewportItem(
-                    id=plot.id,
-                    cadastral_number=plot.cadastral_number,
-                    area=plot.area,
-                    price_public=plot.price_public,
-                    status=plot.status,
-                    polygon_coords=polygon_coords,
-                    listing_id=plot.listing_id,
-                    listing_slug=listing_slug,
-                ))
-            except Exception:
-                # Пропускаем участки с невалидной геометрией
-                continue
-        
-        return PlotViewportResponse(
-            zoom=zoom,
-            plots=plot_items,
-            clusters=[],
-            total_in_viewport=total_count
-        )
-
-
-
-
-def _generate_clusters(query, viewport_envelope, zoom: int) -> list[ClusterItem]:
-    """
-    Генерация кластеров участков для низких зумов.
+        if row.count == 1:
+            # Одиночная точка
+            markers.append(MapMarkerItem(
+                type="point",
+                id=str(row.ids[0]),
+                lat=row.lat,
+                lon=row.lon,
+                count=1,
+                price=row.prices[0] if row.prices else None,
+                listing_slug=row.slugs[0] if row.slugs else None,
+            ))
+        else:
+            # Кластер
+            markers.append(MapMarkerItem(
+                type="cluster",
+                id=",".join(map(str, row.ids)),
+                lat=row.lat,
+                lon=row.lon,
+                count=row.count,
+                bounds=[[row.lat_min, row.lon_min], [row.lat_max, row.lon_max]],
+            ))
     
-    Использует простую сеточную кластеризацию на основе центроидов.
-    """
-    # Размер сетки зависит от зума (чем выше зум, тем меньше ячейки)
-    grid_size = 0.5 / (2 ** (zoom - 8))  # Примерная формула
-    
-    plots = query.all()
-    
-    if not plots:
-        return []
-    
-    # Группируем участки по ячейкам сетки
-    clusters_dict = {}
-    
-    for plot in plots:
-        if not plot.centroid:
-            continue
-        
-        try:
-            point = to_shape(plot.centroid)
-            lat, lon = point.y, point.x
-            
-            # Определяем ячейку сетки
-            grid_lat = int(lat / grid_size) * grid_size
-            grid_lon = int(lon / grid_size) * grid_size
-            grid_key = (grid_lat, grid_lon)
-            
-            if grid_key not in clusters_dict:
-                clusters_dict[grid_key] = {
-                    'plots': [],
-                    'min_lat': lat,
-                    'max_lat': lat,
-                    'min_lon': lon,
-                    'max_lon': lon,
-                }
-            
-            cluster = clusters_dict[grid_key]
-            cluster['plots'].append(plot)
-            cluster['min_lat'] = min(cluster['min_lat'], lat)
-            cluster['max_lat'] = max(cluster['max_lat'], lat)
-            cluster['min_lon'] = min(cluster['min_lon'], lon)
-            cluster['max_lon'] = max(cluster['max_lon'], lon)
-        except Exception:
-            continue
-    
-    # Формируем результат
-    cluster_items = []
-    for grid_key, cluster_data in clusters_dict.items():
-        plots_in_cluster = cluster_data['plots']
-        
-        # Центр кластера
-        center_lat = (cluster_data['min_lat'] + cluster_data['max_lat']) / 2
-        center_lon = (cluster_data['min_lon'] + cluster_data['max_lon']) / 2
-        
-        # Диапазон цен
-        prices = [p.price_public for p in plots_in_cluster if p.price_public]
-        price_range = (min(prices), max(prices)) if prices else None
-        
-        cluster_items.append(ClusterItem(
-            center=[center_lat, center_lon],
-            count=len(plots_in_cluster),
-            bounds=[
-                [cluster_data['min_lat'], cluster_data['min_lon']],
-                [cluster_data['max_lat'], cluster_data['max_lon']]
-            ],
-            price_range=price_range
-        ))
-    
-    return cluster_items
+    return PlotViewportResponse(
+        zoom=zoom,
+        markers=markers,
+        total_in_viewport=total_count
+    )

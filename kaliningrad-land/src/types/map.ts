@@ -2,28 +2,22 @@
  * Типы для viewport-based загрузки участков на карте.
  */
 
-export interface PlotViewportItem {
-    id: number;
-    cadastral_number: string | null;
-    area: number | null;
-    price_public: number | null;
-    status: "active" | "sold" | "reserved";
-    polygon_coords: [number, number][];  // [[lat, lon], ...]
-    listing_id: number | null;
-    listing_slug: string | null;
-}
-
-export interface ClusterItem {
-    center: [number, number];  // [lat, lon]
+export interface MapMarkerItem {
+    type: "point" | "cluster";
+    id: string;  // "123" для точки, "123,456,789" для кластера
+    lat: number;
+    lon: number;
     count: number;
-    bounds: [[number, number], [number, number]];  // [[south, west], [north, east]]
-    price_range: [number, number] | null;
+    // Только для point:
+    price?: number | null;
+    listing_slug?: string | null;
+    // Только для cluster:
+    bounds?: [[number, number], [number, number]] | null;  // [[south, west], [north, east]]
 }
 
 export interface PlotViewportResponse {
     zoom: number;
-    plots: PlotViewportItem[];
-    clusters: ClusterItem[];
+    markers: MapMarkerItem[];
     total_in_viewport: number;
 }
 

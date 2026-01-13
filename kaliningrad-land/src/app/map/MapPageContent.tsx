@@ -1,24 +1,53 @@
 "use client";
 
-import { useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useState, useRef } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
+import { useCallback, useEffect, useState, useRef, useMemo } from "react";
 import { CatalogFilters } from "@/components/catalog/CatalogFilters";
 import { ListingsMapClient } from "@/components/map/ListingsMapClient";
 import { ListingPreview } from "@/components/map/ListingPreview";
 import type { ListingData } from "@/types/listing";
-import type { PlotViewportItem, ClusterItem, ViewportBounds } from "@/types/map";
+import type { MapMarkerItem, ViewportBounds } from "@/types/map";
 
 interface ViewportState {
     bounds: ViewportBounds;
     zoom: number;
 }
 
+// Дефолтные значения для Калининграда
+const DEFAULT_CENTER: [number, number] = [54.7104, 20.4522];
+const DEFAULT_ZOOM = 9;
+
 export function MapPageContent() {
     const searchParams = useSearchParams();
+    const router = useRouter();
+
+    // Начальные значения из URL (для восстановления при навигации "назад")
+    const initialCenter = useMemo((): [number, number] => {
+        const lat = searchParams.get("lat");
+        const lon = searchParams.get("lon");
+        if (lat && lon) {
+            const parsedLat = parseFloat(lat);
+            const parsedLon = parseFloat(lon);
+            if (!isNaN(parsedLat) && !isNaN(parsedLon)) {
+                return [parsedLat, parsedLon];
+            }
+        }
+        return DEFAULT_CENTER;
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+    const initialZoom = useMemo((): number => {
+        const zoom = searchParams.get("zoom");
+        if (zoom) {
+            const parsed = parseInt(zoom, 10);
+            if (!isNaN(parsed) && parsed >= 1 && parsed <= 20) {
+                return parsed;
+            }
+        }
+        return DEFAULT_ZOOM;
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
     // Данные с API
-    const [plots, setPlots] = useState<PlotViewportItem[]>([]);
-    const [clusters, setClusters] = useState<ClusterItem[]>([]);
+    const [markers, setMarkers] = useState<MapMarkerItem[]>([]);
     const [totalInViewport, setTotalInViewport] = useState(0);
 
     // Состояние карты
@@ -31,6 +60,7 @@ export function MapPageContent() {
 
     // Debounce для запросов
     const fetchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const urlUpdateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
     // Загрузка данных при изменении viewport или фильтров
     const fetchData = useCallback(async (vp: ViewportState) => {
@@ -45,7 +75,7 @@ export function MapPageContent() {
         params.set("west", String(vp.bounds.west));
         params.set("zoom", String(vp.zoom));
 
-        // Копируем фильтры из URL
+        // Копируем фильтры из URL (исключая параметры карты)
         searchParams.forEach((value, key) => {
             if (key === "district") params.set("district_id", value);
             else if (key === "settlement") params.set("settlement_id", value);
@@ -61,14 +91,11 @@ export function MapPageContent() {
             const res = await fetch(`/api/public-plots/viewport?${params.toString()}`);
             const data = await res.json();
 
-            setPlots(data.plots || []);
-            setClusters(data.clusters || []);
+            setMarkers(data.markers || []);
             setTotalInViewport(data.total_in_viewport || 0);
         } catch (error) {
             console.error("Error fetching viewport data:", error);
             // Не очищаем данные при ошибке, чтобы избежать мигания
-            // setPlots([]);
-            // setClusters([]);
         } finally {
             setLoading(false);
         }
@@ -79,17 +106,35 @@ export function MapPageContent() {
         const newViewport = { bounds, zoom };
         setViewport(newViewport);
 
-        // Debounce запроса
+        // Debounce запроса данных
         if (fetchTimeoutRef.current) {
             clearTimeout(fetchTimeoutRef.current);
         }
-
         fetchTimeoutRef.current = setTimeout(() => {
             fetchData(newViewport);
         }, 300);
-    }, [fetchData]);
 
-    // Перезагрузка при изменении фильтров
+        // Debounce обновления URL (реже, чтобы не спамить историю)
+        if (urlUpdateTimeoutRef.current) {
+            clearTimeout(urlUpdateTimeoutRef.current);
+        }
+        urlUpdateTimeoutRef.current = setTimeout(() => {
+            // Вычисляем центр viewport
+            const centerLat = (bounds.north + bounds.south) / 2;
+            const centerLon = (bounds.east + bounds.west) / 2;
+
+            // Сохраняем существующие фильтры
+            const params = new URLSearchParams(searchParams.toString());
+            params.set("lat", centerLat.toFixed(4));
+            params.set("lon", centerLon.toFixed(4));
+            params.set("zoom", String(zoom));
+
+            // Обновляем URL без создания новой записи в истории
+            router.replace(`/map?${params.toString()}`, { scroll: false });
+        }, 500);
+    }, [fetchData, searchParams, router]);
+
+    // Перезагрузка при изменении фильтров (кроме параметров карты)
     useEffect(() => {
         if (viewport) {
             fetchData(viewport);
@@ -100,13 +145,17 @@ export function MapPageContent() {
         setSelectedListing(null);
     }, []);
 
-    // Клик по участку — загрузить превью объявления
-    const handlePlotClick = useCallback(async (plot: PlotViewportItem) => {
-        if (!plot.listing_slug) return;
+    // Клик по маркеру
+    const handleMarkerClick = useCallback(async (marker: MapMarkerItem) => {
+        // Кластер — обрабатывается в компоненте карты (zoom к bounds)
+        if (marker.type === "cluster") return;
+
+        // Точка — загрузить превью объявления
+        if (!marker.listing_slug) return;
 
         setLoadingPreview(true);
         try {
-            const res = await fetch(`/api/listings/${plot.listing_slug}`);
+            const res = await fetch(`/api/listings/${marker.listing_slug}`);
             if (res.ok) {
                 const listing = await res.json();
                 setSelectedListing(listing);
@@ -118,10 +167,8 @@ export function MapPageContent() {
         }
     }, []);
 
-    // Клик по кластеру — zoom к его границам (обрабатывается в компоненте карты)
-    const handleClusterClick = useCallback((cluster: ClusterItem) => {
-        // Карта сама обработает zoom к bounds кластера
-    }, []);
+    // Подсчёт кластеров для статистики
+    const clustersCount = markers.filter(m => m.type === "cluster").length;
 
     return (
         <div className="container mx-auto px-4 py-8 max-w-7xl">
@@ -134,7 +181,7 @@ export function MapPageContent() {
                     {totalInViewport > 0 && (
                         <p className="text-xs text-muted-foreground mt-2">
                             В области просмотра: {totalInViewport} участков
-                            {clusters.length > 0 && ` (${clusters.length} кластеров)`}
+                            {clustersCount > 0 && ` (${clustersCount} кластеров)`}
                         </p>
                     )}
                 </aside>
@@ -144,13 +191,13 @@ export function MapPageContent() {
                     {/* Карта */}
                     <div className="h-[500px] rounded-lg overflow-hidden border relative z-0">
                         <ListingsMapClient
-                            plots={plots}
-                            clusters={clusters}
-                            selectedPlotId={selectedListing?.id}
+                            markers={markers}
+                            selectedListingSlug={selectedListing?.slug}
                             onViewportChange={handleViewportChange}
-                            onPlotClick={handlePlotClick}
-                            onClusterClick={handleClusterClick}
+                            onMarkerClick={handleMarkerClick}
                             loading={loading}
+                            initialCenter={initialCenter}
+                            initialZoom={initialZoom}
                         />
                     </div>
 
