@@ -23,6 +23,8 @@ git log -1 --oneline
 echo ""
 echo "🔨 Пересборка контейнеров..."
 docker compose -f docker-compose.prod.yml up -d --build
+echo "🔄 Перезапуск Nginx для обновления DNS..."
+docker compose -f docker-compose.prod.yml restart nginx
 
 # 3. Применение миграций БД
 echo ""
