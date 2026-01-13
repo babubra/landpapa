@@ -50,7 +50,11 @@ export async function generateMetadata(): Promise<Metadata> {
       },
     },
     icons: {
-      icon: "/api/site-icon",
+      icon: [
+        { url: "/favicon.svg", type: "image/svg+xml" },
+      ],
+      shortcut: "/favicon.svg",
+      apple: "/favicon.svg",
     },
   };
 }
