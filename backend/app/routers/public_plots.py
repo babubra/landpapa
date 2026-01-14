@@ -18,13 +18,14 @@ router = APIRouter()
 
 # Размер ячейки сетки для каждого уровня зума
 # Чем выше zoom — тем меньше ячейка (точнее группировка)
+# Чем больше значение — тем агрессивнее кластеризация
 GRID_SIZES = {
-    7: 1.0,
-    8: 0.5,
-    9: 0.25,
-    10: 0.15,
-    11: 0.08,
-    12: 0.04,
+    7: 1.5,
+    8: 0.8,
+    9: 0.4,
+    10: 0.2,
+    11: 0.1,
+    12: 0.1,   # Увеличено с 0.05 для объединения близких кластеров
 }
 
 
@@ -155,3 +156,25 @@ async def get_plots_in_viewport(
         markers=markers,
         total_in_viewport=total_count
     )
+
+
+@router.get("/count")
+async def get_active_plots_count(
+    db: Session = Depends(get_db),
+):
+    """
+    Получить общее количество активных участков.
+    
+    Учитываются только участки со статусом 'active',
+    привязанные к опубликованным объявлениям.
+    """
+    from app.models.listing import Listing
+    
+    count = db.query(func.count(Plot.id)).join(
+        Listing, Plot.listing_id == Listing.id
+    ).filter(
+        Plot.status == PlotStatus.active,
+        Listing.is_published == True
+    ).scalar()
+    
+    return {"count": count or 0}

@@ -125,6 +125,15 @@ class Listing(Base):
         areas = [p.area for p in self.plots if p.status == "active" and p.area]
         return max(areas) if areas else None
 
+    @property
+    def viewable_plots(self) -> list["Plot"]:
+        """Участки для публичного отображения (в продаже или в резерве).
+        
+        Проданные участки (sold) исключаются из публичной страницы,
+        но сохраняются в базе данных.
+        """
+        return [p for p in self.plots if p.status in ("active", "reserved")]
+
 
 # Импорт для relationship
 from app.models.realtor import Realtor

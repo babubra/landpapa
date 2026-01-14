@@ -15,6 +15,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { LocationFilter } from "@/components/filters/LocationFilter";
 import { Search, MapPin } from "lucide-react";
+import { pluralize } from "@/lib/utils";
 
 interface Reference {
   id: number;
@@ -27,6 +28,7 @@ export function SearchFilter() {
 
   // Данные из API
   const [landUseOptions, setLandUseOptions] = useState<Reference[]>([]);
+  const [plotsCount, setPlotsCount] = useState<number | null>(null);
 
   // Значения фильтров
   const [settlementIds, setSettlementIds] = useState<number[]>([]);
@@ -41,6 +43,11 @@ export function SearchFilter() {
     fetch("/api/references/?type=land_use")
       .then((res) => res.json())
       .then(setLandUseOptions)
+      .catch(console.error);
+
+    fetch("/api/public-plots/count")
+      .then((res) => res.json())
+      .then((data) => setPlotsCount(data.count))
       .catch(console.error);
   }, []);
 
@@ -57,13 +64,34 @@ export function SearchFilter() {
   };
 
   const handleShowOnMap = () => {
-    router.push("/map");
+    const params = new URLSearchParams();
+    if (settlementIds.length > 0) params.set("settlements", settlementIds.join(","));
+    if (landUseId) params.set("land_use", landUseId);
+    if (areaMin) params.set("area_min", (parseFloat(areaMin) * 100).toString());
+    if (areaMax) params.set("area_max", (parseFloat(areaMax) * 100).toString());
+    if (priceMin) params.set("price_min", priceMin);
+    if (priceMax) params.set("price_max", priceMax);
+
+    const queryString = params.toString();
+    router.push(queryString ? `/map?${queryString}` : "/map");
   };
 
   return (
     <Card>
       <CardHeader className="pb-3">
-        <CardTitle className="text-xl">Подобрать участок</CardTitle>
+        {plotsCount !== null ? (
+          <CardTitle className="text-lg leading-snug">
+            <span className="text-muted-foreground font-normal">Выбирайте из</span>{" "}
+            <span className="text-2xl font-bold bg-gradient-to-r from-green-500 to-emerald-600 bg-clip-text text-transparent">
+              {plotsCount.toLocaleString('ru-RU')}
+            </span>{" "}
+            <span className="text-muted-foreground font-normal">
+              {pluralize(plotsCount, ['земельного участка', 'земельных участков', 'земельных участков'])}
+            </span>
+          </CardTitle>
+        ) : (
+          <CardTitle className="text-xl">Подобрать участок</CardTitle>
+        )}
       </CardHeader>
       <CardContent className="space-y-3">
         {/* Местоположение */}

@@ -111,7 +111,7 @@ class ListingDetail(BaseModel):
     area_max: float | None = None  # Максимальная площадь участка
     plots_count: int
     realtor: RealtorItem
-    plots: list[PlotListItem]
+    plots: list[PlotListItem] = Field(default=[], validation_alias="viewable_plots")
     images: list[ImageItem] = []
     meta_title: str | None
     meta_description: str | None

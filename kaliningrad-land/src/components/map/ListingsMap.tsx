@@ -79,8 +79,8 @@ const ClusterMarker = React.memo(function ClusterMarker({
 }) {
     const map = useMap();
 
-    // Размер зависит от количества участков
-    const radius = Math.min(40, Math.max(20, 15 + Math.log10(marker.count) * 12));
+    // Фиксированный размер кластера (не зависит от количества участков)
+    const radius = 18;
 
     const handleClick = () => {
         // Zoom к границам кластера
