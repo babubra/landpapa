@@ -11,6 +11,7 @@ import { useAuth } from "@/lib/auth";
 import { getPlotsForMap, bulkAssignPlots, PlotMapItem, PlotClusterItem, ViewportParams } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { AssignListingModal } from "@/components/plots/AssignListingModal";
+import { ListingFormModal } from "@/components/listings/listing-form-modal";
 
 // Динамический импорт карты (без SSR)
 const AdminPlotsMap = dynamic(
@@ -30,6 +31,7 @@ export default function PlotsMapPage() {
     const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
     const [lassoMode, setLassoMode] = useState(false);
     const [assignModalOpen, setAssignModalOpen] = useState(false);
+    const [createModalOpen, setCreateModalOpen] = useState(false);
     const [focusedPlot, setFocusedPlot] = useState<PlotMapItem | null>(null);
 
     // Debounce для запросов
@@ -81,6 +83,16 @@ export default function PlotsMapPage() {
         toast.success(`Привязано участков: ${result.updated_count}`);
         setSelectedIds(new Set());
         // Перезагружаем с текущим viewport
+        if (currentViewportRef.current) {
+            loadPlots(currentViewportRef.current);
+        }
+    };
+
+    // Callback после создания объявления
+    const handleListingCreated = () => {
+        setSelectedIds(new Set());
+        setCreateModalOpen(false);
+        // Перезагружаем карту с текущего viewport
         if (currentViewportRef.current) {
             loadPlots(currentViewportRef.current);
         }
@@ -171,10 +183,7 @@ export default function PlotsMapPage() {
                 <Button
                     variant="secondary"
                     size="sm"
-                    onClick={() => {
-                        const ids = Array.from(selectedIds).join(',');
-                        router.push(`/listings?plot_ids=${ids}`);
-                    }}
+                    onClick={() => setCreateModalOpen(true)}
                 >
                     <Plus className="h-4 w-4 mr-2" />
                     Создать объявление
@@ -310,6 +319,14 @@ export default function PlotsMapPage() {
                 onOpenChange={setAssignModalOpen}
                 selectedCount={selectedIds.size}
                 onAssign={handleAssign}
+            />
+
+            {/* Модальное окно создания объявления */}
+            <ListingFormModal
+                open={createModalOpen}
+                onOpenChange={setCreateModalOpen}
+                initialPlotIds={Array.from(selectedIds)}
+                onSuccess={handleListingCreated}
             />
         </div>
     );

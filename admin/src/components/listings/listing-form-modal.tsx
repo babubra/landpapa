@@ -138,7 +138,8 @@ export function ListingFormModal({
 
             loadData();
         }
-    }, [open, listingId]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [open, listingId, JSON.stringify(initialPlotIds)]);
 
     const resetForm = () => {
         setTitle("");
