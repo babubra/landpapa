@@ -1,29 +1,20 @@
 /**
- * Типы для viewport-based загрузки участков на карте.
+ * Типы для загрузки участков на карте.
  */
 
-export interface MapMarkerItem {
-    type: "point" | "cluster";
-    id: string;  // "123" для точки, "123,456,789" для кластера
+export interface PlotPoint {
+    id: number;
     lat: number;
     lon: number;
-    count: number;
-    // Только для point:
-    price?: number | null;
-    listing_slug?: string | null;
-    // Только для cluster:
-    bounds?: [[number, number], [number, number]] | null;  // [[south, west], [north, east]]
+    price: number | null;
+    listing_slug: string;
 }
 
-export interface PlotViewportResponse {
-    zoom: number;
-    markers: MapMarkerItem[];
-    total_in_viewport: number;
+export interface PlotAllResponse {
+    plots: PlotPoint[];
+    total: number;
 }
 
-export interface ViewportBounds {
-    north: number;
-    south: number;
-    east: number;
-    west: number;
-}
+// Дефолтные значения для карты (Калининград)
+export const DEFAULT_MAP_CENTER: [number, number] = [54.7104, 20.4522];
+export const DEFAULT_MAP_ZOOM = 9;
