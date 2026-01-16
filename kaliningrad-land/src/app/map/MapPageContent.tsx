@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { MapFilters } from "@/components/map/MapFilters";
 import { ListingsMapClient } from "@/components/map/ListingsMapClient";
@@ -14,7 +14,6 @@ const HEADER_HEIGHT = 64;
 const FILTERS_HEIGHT = 56;
 
 export function MapPageContent() {
-    const router = useRouter();
     const searchParams = useSearchParams();
     const isMobile = useIsMobile();
 
@@ -23,7 +22,8 @@ export function MapPageContent() {
     const [total, setTotal] = useState(0);
     const [loading, setLoading] = useState(true);
 
-    // Выбранное объявление для превью
+    // Выбранное объявление для превью и выделения пинов (только desktop)
+    const [selectedListingSlug, setSelectedListingSlug] = useState<string | null>(null);
     const [selectedListing, setSelectedListing] = useState<ListingData | null>(null);
     const [loadingPreview, setLoadingPreview] = useState(false);
 
@@ -33,7 +33,7 @@ export function MapPageContent() {
 
         const params = new URLSearchParams();
 
-        // Копируем фильтры из URL
+        // Копируем фильтры из URL (исключаем lat, lon, zoom — это для карты)
         searchParams.forEach((value, key) => {
             if (key === "district") params.set("district_id", value);
             else if (key === "settlements") params.set("settlements", value);
@@ -67,32 +67,34 @@ export function MapPageContent() {
 
     const handleFiltersChange = useCallback(() => {
         setSelectedListing(null);
+        setSelectedListingSlug(null);
     }, []);
 
-    // Клик по маркеру — загрузить превью объявления или перейти на страницу (мобильная версия)
+    // Клик по маркеру:
+    // - На мобильных — popup открывается автоматически в карте
+    // - На десктопе — показываем боковую панель превью
     const handleMarkerClick = useCallback(async (plot: PlotPoint) => {
         if (!plot.listing_slug) return;
 
-        // На мобильных — сразу переходим на страницу объявления
-        if (isMobile) {
-            router.push(`/listing/${plot.listing_slug}`);
-            return;
-        }
+        // Сохраняем slug для выделения ВСЕХ участков этого объявления
+        setSelectedListingSlug(plot.listing_slug);
 
         // На десктопе — показываем превью сбоку
-        setLoadingPreview(true);
-        try {
-            const res = await fetch(`/api/listings/${plot.listing_slug}`);
-            if (res.ok) {
-                const listing = await res.json();
-                setSelectedListing(listing);
+        if (!isMobile) {
+            setLoadingPreview(true);
+            try {
+                const res = await fetch(`/api/listings/${plot.listing_slug}`);
+                if (res.ok) {
+                    const listing = await res.json();
+                    setSelectedListing(listing);
+                }
+            } catch (error) {
+                console.error("Ошибка загрузки превью:", error);
+            } finally {
+                setLoadingPreview(false);
             }
-        } catch (error) {
-            console.error("Ошибка загрузки превью:", error);
-        } finally {
-            setLoadingPreview(false);
         }
-    }, [isMobile, router]);
+    }, [isMobile]);
 
     // Расчёт высоты карты
     const mapHeight = `calc(100vh - ${HEADER_HEIGHT}px - ${FILTERS_HEIGHT}px)`;
@@ -113,7 +115,10 @@ export function MapPageContent() {
                     <div className="absolute left-0 top-0 bottom-0 z-[1000]">
                         <ListingPreview
                             listing={selectedListing}
-                            onClose={() => setSelectedListing(null)}
+                            onClose={() => {
+                                setSelectedListing(null);
+                                setSelectedListingSlug(null);
+                            }}
                         />
                     </div>
                 )}
@@ -129,11 +134,12 @@ export function MapPageContent() {
                 <div className="flex-1 relative">
                     <ListingsMapClient
                         plots={plots}
-                        selectedListingSlug={selectedListing?.slug}
+                        selectedListingSlug={selectedListingSlug ?? undefined}
                         onMarkerClick={handleMarkerClick}
                         loading={loading}
                         initialCenter={DEFAULT_MAP_CENTER}
                         initialZoom={DEFAULT_MAP_ZOOM}
+                        isMobile={isMobile}
                     />
                 </div>
             </div>

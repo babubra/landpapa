@@ -41,6 +41,7 @@ async def get_all_plots(
         ST_X(Plot.centroid).label('lon'),
         Plot.price_public.label('price'),
         Listing.slug.label('listing_slug'),
+        Listing.title.label('title'),
     ).join(
         Listing, Plot.listing_id == Listing.id
     ).filter(
@@ -82,6 +83,7 @@ async def get_all_plots(
                 lon=p.lon,
                 price=p.price,
                 listing_slug=p.listing_slug,
+                title=p.title,
             )
             for p in plots
         ],

@@ -1,13 +1,21 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { MapContainer, TileLayer, Marker, LayersControl, ZoomControl } from "react-leaflet";
+import { useRouter } from "next/navigation";
+import { MapContainer, TileLayer, Marker, Popup, LayersControl, ZoomControl } from "react-leaflet";
 import { DivIcon } from "leaflet";
 import MarkerClusterGroup from "react-leaflet-cluster";
 import "leaflet/dist/leaflet.css";
 import "react-leaflet-cluster/dist/assets/MarkerCluster.css";
 import "react-leaflet-cluster/dist/assets/MarkerCluster.Default.css";
+import "@/styles/popup.css";
 import { PlotPoint, DEFAULT_MAP_CENTER, DEFAULT_MAP_ZOOM } from "@/types/map";
+import { MapUrlSync } from "./MapUrlSync";
+
+// Форматирование цены
+function formatPrice(price: number): string {
+    return new Intl.NumberFormat("ru-RU").format(price);
+}
 
 // Кружки вместо булавок — простой и компактный вид
 const defaultIcon = new DivIcon({
@@ -41,14 +49,13 @@ const selectedIcon = new DivIcon({
 
 interface ListingsMapProps {
     plots: PlotPoint[];
-    selectedListingSlug?: string;
-    onMarkerClick: (plot: PlotPoint) => void;
+    selectedListingSlug?: string;  // Slug выбранного объявления для выделения ВСЕХ его участков
+    onMarkerClick?: (plot: PlotPoint) => void;
     loading?: boolean;
     initialCenter?: [number, number];
     initialZoom?: number;
+    isMobile?: boolean;  // Показывать popup только на мобильных
 }
-
-
 
 export function ListingsMap({
     plots,
@@ -57,12 +64,29 @@ export function ListingsMap({
     loading,
     initialCenter = DEFAULT_MAP_CENTER,
     initialZoom = DEFAULT_MAP_ZOOM,
+    isMobile = false,
 }: ListingsMapProps) {
+    const router = useRouter();
     const [isMounted, setIsMounted] = useState(false);
+    const [activeListingSlug, setActiveListingSlug] = useState<string | null>(null);
 
     useEffect(() => {
         setIsMounted(true);
     }, []);
+
+    // Переход на страницу участка
+    const handleDetailsClick = (plot: PlotPoint) => {
+        router.push(`/listing/${plot.listing_slug}`);
+    };
+
+    // Клик по маркеру — выделить все участки этого объявления
+    const handleMarkerClick = (plot: PlotPoint) => {
+        setActiveListingSlug(plot.listing_slug);
+        onMarkerClick?.(plot);
+    };
+
+    // Определяем выбранный slug (из пропса или из локального состояния)
+    const currentSelectedSlug = selectedListingSlug || activeListingSlug;
 
     if (!isMounted) {
         return (
@@ -88,6 +112,9 @@ export function ListingsMap({
                 attributionControl={false}
                 zoomControl={false}
             >
+                {/* Синхронизация позиции карты с URL */}
+                <MapUrlSync />
+
                 {/* ZoomControl справа, чтобы не перекрывать панель объявления */}
                 <ZoomControl position="bottomright" />
 
@@ -109,16 +136,40 @@ export function ListingsMap({
                     disableClusteringAtZoom={16}
                 >
                     {plots.map((plot) => {
-                        const isSelected = plot.listing_slug === selectedListingSlug;
+                        // Выделяем ВСЕ участки, которые принадлежат выбранному объявлению
+                        const isSelected = plot.listing_slug === currentSelectedSlug;
+
                         return (
                             <Marker
                                 key={plot.id}
                                 position={[plot.lat, plot.lon]}
                                 icon={isSelected ? selectedIcon : defaultIcon}
                                 eventHandlers={{
-                                    click: () => onMarkerClick(plot),
+                                    click: () => handleMarkerClick(plot),
                                 }}
-                            />
+                            >
+                                {/* Popup показывается ТОЛЬКО на мобильных */}
+                                {isMobile && (
+                                    <Popup className="plot-popup" closeButton={false}>
+                                        <h3 className="plot-popup-title">{plot.title}</h3>
+                                        <p className="plot-popup-price">
+                                            {plot.price ? `${formatPrice(plot.price)} ₽` : "Цена по запросу"}
+                                        </p>
+                                        <p className="plot-popup-hint">
+                                            Для просмотра детальной информации и контура участка нажмите Подробнее
+                                        </p>
+                                        <button
+                                            className="plot-popup-button"
+                                            onClick={() => handleDetailsClick(plot)}
+                                        >
+                                            Подробнее
+                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+                                            </svg>
+                                        </button>
+                                    </Popup>
+                                )}
+                            </Marker>
                         );
                     })}
                 </MarkerClusterGroup>

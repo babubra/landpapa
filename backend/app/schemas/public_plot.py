@@ -12,6 +12,7 @@ class PlotPoint(BaseModel):
     lon: float
     price: int | None = None
     listing_slug: str
+    title: str  # Название объявления для popup
 
 
 class PlotAllResponse(BaseModel):
