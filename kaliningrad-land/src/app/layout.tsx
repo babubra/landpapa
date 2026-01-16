@@ -22,21 +22,28 @@ import { getSiteSettings, SITE_URL } from "@/lib/config";
 
 export async function generateMetadata(): Promise<Metadata> {
   const settings = await getSiteSettings();
-  const title = settings.site_title || "";
-  const description = settings.site_subtitle || "";
+  const title = settings.site_title || "РКК земля";
+  const subtitle = settings.site_subtitle || "Купить земельные участки в Калининграде и Калининградской области";
 
   return {
     metadataBase: new URL(SITE_URL),
     title: {
-      default: title,
+      default: `${title} - ${subtitle}`,
       template: `%s | ${title}`,
     },
-    description: description,
+    description: subtitle,
     openGraph: {
       type: "website",
       siteName: title,
       locale: "ru_RU",
       url: SITE_URL,
+      title: `${title} - ${subtitle}`,
+      description: subtitle,
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: `${title} - ${subtitle}`,
+      description: subtitle,
     },
     robots: {
       index: true,
@@ -52,10 +59,11 @@ export async function generateMetadata(): Promise<Metadata> {
     icons: {
       icon: [
         { url: "/favicon.svg", type: "image/svg+xml" },
+        { url: "/favicon.ico", sizes: "any" }, // Fallback for legacy browsers
       ],
-      shortcut: "/favicon.svg",
-      apple: "/favicon.svg",
+      apple: "/apple-touch-icon.png", // We will need to ensure this exists or use logic to point to a png
     },
+    manifest: "/manifest.json",
   };
 }
 

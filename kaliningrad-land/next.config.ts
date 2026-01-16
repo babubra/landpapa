@@ -50,6 +50,20 @@ const nextConfig: NextConfig = {
       ],
     };
   },
+
+  /**
+   * Редиректы со старых URL
+   */
+  async redirects() {
+    return [
+      // Пример редиректа (раскомментировать и заполнить)
+      // {
+      //   source: '/old-page',
+      //   destination: '/new-page',
+      //   permanent: true,
+      // },
+    ];
+  },
 };
 
 export default nextConfig;

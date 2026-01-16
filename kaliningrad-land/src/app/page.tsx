@@ -14,10 +14,18 @@ export default async function Home() {
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "Organization",
-    "name": settings.site_title || "КалининградЗем",
+    "name": settings.site_title || "РКК земля",
     "url": SITE_URL,
+    "logo": `${SITE_URL}/logo.png`,
     "description": settings.site_subtitle,
     "telephone": settings.site_phone,
+    "address": {
+      "@type": "PostalAddress",
+      "streetAddress": "ул. Брамса, 40",
+      "addressLocality": "Калининград",
+      "addressRegion": "Калининградская область",
+      "addressCountry": "RU"
+    }
   };
 
   return (

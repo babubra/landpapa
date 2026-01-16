@@ -85,14 +85,30 @@ export async function generateMetadata({
         return { title: "Объявление не найдено" };
     }
 
-    let title = listing.meta_title || listing.title;
+    // --- Auto-Generation Logic ---
 
-    // SEO: Добавляем регион, если его нет в заголовке
-    if (!title.toLowerCase().includes("калининград")) {
-        title = `${title}, Калининградская область`;
+    // 1. Формируем локацию
+    const locationParts = [];
+    if (listing.settlement?.district?.name) locationParts.push(listing.settlement.district.name);
+    if (listing.settlement?.name) locationParts.push(listing.settlement.name);
+    const locationStr = locationParts.join(", ");
+
+    // 2. Title
+    let title = listing.meta_title;
+    if (!title) {
+        // Автогенерация: Продажа участка {area} соток {district}, {settlement}, Калининградская область
+        const areaStr = listing.plots[0]?.area ? (listing.plots[0].area / 100).toFixed(2).replace(".00", "") : "?";
+        title = `Продажа участка ${areaStr} соток ${locationStr ? `${locationStr}, ` : ""}Калининградская область`;
     }
 
-    const description = listing.meta_description || `Земельный участок: ${listing.title}. ${listing.settlement?.name || "Калининградская область"}.`;
+    // 3. Description
+    let description = listing.meta_description;
+    if (!description) {
+        // Автогенерация: Земельный участок: {title}. {location}, Калининградская область.
+        // Если title совпадал с автогенерацией, можно использовать listing.title
+        const baseTitle = listing.title;
+        description = `Земельный участок: ${baseTitle}. ${locationStr ? `${locationStr}, ` : ""}Калининградская область.`;
+    }
 
     const ogImages = [];
     if (listing.images && listing.images.length > 0) {
@@ -154,6 +170,11 @@ export default async function ListingPage({ params }: ListingPageProps) {
     // Определяем основное назначение земли
     const landUse = listing.plots[0]?.land_use?.name;
 
+    // Формируем заголовок для UI и ALT-тегов (с регионом)
+    const displayTitle = listing.title.toLowerCase().includes("калининград")
+        ? listing.title
+        : `${listing.title}, Калининградская область`;
+
     return (
         <div className="min-h-screen bg-background">
             <SeoJsonLd data={jsonLd} />
@@ -164,7 +185,7 @@ export default async function ListingPage({ params }: ListingPageProps) {
                 </div>
 
                 {/* Заголовок */}
-                <h1 className="text-3xl font-bold mb-8">{listing.title}</h1>
+                <h1 className="text-3xl font-bold mb-8">{displayTitle}</h1>
 
                 {/* Основной контент */}
                 <div className="grid lg:grid-cols-3 gap-8">
@@ -173,7 +194,7 @@ export default async function ListingPage({ params }: ListingPageProps) {
                         {/* Галерея */}
                         <ListingGallery
                             images={listing.images}
-                            title={listing.title}
+                            title={displayTitle}
                             placeholderImage={getImageUrl(settings.placeholder_image)}
                         />
 
