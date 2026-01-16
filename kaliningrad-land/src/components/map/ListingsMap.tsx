@@ -1,33 +1,42 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { MapContainer, TileLayer, Marker, LayersControl } from "react-leaflet";
-import { Icon } from "leaflet";
+import { MapContainer, TileLayer, Marker, LayersControl, ZoomControl } from "react-leaflet";
+import { DivIcon } from "leaflet";
 import MarkerClusterGroup from "react-leaflet-cluster";
 import "leaflet/dist/leaflet.css";
 import "react-leaflet-cluster/dist/assets/MarkerCluster.css";
 import "react-leaflet-cluster/dist/assets/MarkerCluster.Default.css";
 import { PlotPoint, DEFAULT_MAP_CENTER, DEFAULT_MAP_ZOOM } from "@/types/map";
 
-// Фикс для иконок Leaflet в Next.js
-const defaultIcon = new Icon({
-    iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
-    iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
-    shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
-    iconSize: [25, 41],
-    iconAnchor: [12, 41],
-    popupAnchor: [1, -34],
-    shadowSize: [41, 41],
+// Кружки вместо булавок — простой и компактный вид
+const defaultIcon = new DivIcon({
+    className: "custom-marker",
+    html: `<div style="
+        width: 14px;
+        height: 14px;
+        background: #3b82f6;
+        border: 2px solid white;
+        border-radius: 50%;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    "></div>`,
+    iconSize: [14, 14],
+    iconAnchor: [7, 7],
 });
 
-// Зелёная иконка для выбранных маркеров
-const selectedIcon = new Icon({
-    iconUrl: "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png",
-    shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
-    iconSize: [25, 41],
-    iconAnchor: [12, 41],
-    popupAnchor: [1, -34],
-    shadowSize: [41, 41],
+// Зелёный кружок для выбранного маркера
+const selectedIcon = new DivIcon({
+    className: "custom-marker-selected",
+    html: `<div style="
+        width: 18px;
+        height: 18px;
+        background: #22c55e;
+        border: 3px solid white;
+        border-radius: 50%;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+    "></div>`,
+    iconSize: [18, 18],
+    iconAnchor: [9, 9],
 });
 
 interface ListingsMapProps {
@@ -77,7 +86,11 @@ export function ListingsMap({
                 className="h-full w-full"
                 scrollWheelZoom={true}
                 attributionControl={false}
+                zoomControl={false}
             >
+                {/* ZoomControl справа, чтобы не перекрывать панель объявления */}
+                <ZoomControl position="bottomright" />
+
                 <LayersControl position="topright">
                     <LayersControl.BaseLayer checked name="Карта">
                         <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
@@ -90,7 +103,7 @@ export function ListingsMap({
                 <MarkerClusterGroup
                     chunkedLoading
                     maxClusterRadius={80}
-                    spiderfyOnMaxZoom={true}
+                    spiderfyOnMaxZoom={false}
                     showCoverageOnHover={false}
                     zoomToBoundsOnClick={true}
                     disableClusteringAtZoom={16}

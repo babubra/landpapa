@@ -1,17 +1,22 @@
 "use client";
 
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
-import { CatalogFilters } from "@/components/catalog/CatalogFilters";
+import { MapFilters } from "@/components/map/MapFilters";
 import { ListingsMapClient } from "@/components/map/ListingsMapClient";
 import { ListingPreview } from "@/components/map/ListingPreview";
+import { useIsMobile } from "@/hooks/useIsMobile";
 import type { ListingData } from "@/types/listing";
 import { PlotPoint, DEFAULT_MAP_CENTER, DEFAULT_MAP_ZOOM } from "@/types/map";
 
-
+// Высота хедера (h-16 = 64px) + высота фильтров (~56px)
+const HEADER_HEIGHT = 64;
+const FILTERS_HEIGHT = 56;
 
 export function MapPageContent() {
+    const router = useRouter();
     const searchParams = useSearchParams();
+    const isMobile = useIsMobile();
 
     // Данные с API
     const [plots, setPlots] = useState<PlotPoint[]>([]);
@@ -64,10 +69,17 @@ export function MapPageContent() {
         setSelectedListing(null);
     }, []);
 
-    // Клик по маркеру — загрузить превью объявления
+    // Клик по маркеру — загрузить превью объявления или перейти на страницу (мобильная версия)
     const handleMarkerClick = useCallback(async (plot: PlotPoint) => {
         if (!plot.listing_slug) return;
 
+        // На мобильных — сразу переходим на страницу объявления
+        if (isMobile) {
+            router.push(`/listing/${plot.listing_slug}`);
+            return;
+        }
+
+        // На десктопе — показываем превью сбоку
         setLoadingPreview(true);
         try {
             const res = await fetch(`/api/listings/${plot.listing_slug}`);
@@ -80,51 +92,49 @@ export function MapPageContent() {
         } finally {
             setLoadingPreview(false);
         }
-    }, []);
+    }, [isMobile, router]);
+
+    // Расчёт высоты карты
+    const mapHeight = `calc(100vh - ${HEADER_HEIGHT}px - ${FILTERS_HEIGHT}px)`;
 
     return (
-        <div className="container mx-auto px-4 py-8 max-w-7xl">
-            <h1 className="text-3xl font-bold mb-6">Карта участков</h1>
+        <div className="flex flex-col h-screen">
+            {/* Компактные фильтры сверху */}
+            <MapFilters
+                onFiltersChange={handleFiltersChange}
+                total={total}
+                isMobile={isMobile}
+            />
 
-            <div className="flex flex-col lg:flex-row gap-8">
-                {/* Левая панель — фильтры */}
-                <aside className="w-full lg:w-80 flex-shrink-0">
-                    <CatalogFilters onFiltersChange={handleFiltersChange} baseUrl="/map" total={total} />
-                    {total > 0 && (
-                        <p className="text-xs text-muted-foreground mt-2">
-                            Найдено: {total} участков
-                        </p>
-                    )}
-                </aside>
-
-                {/* Правая область — карта и превью */}
-                <div className="flex-1 flex flex-col gap-4">
-                    {/* Карта */}
-                    <div className="h-[500px] rounded-lg overflow-hidden border relative z-0">
-                        <ListingsMapClient
-                            plots={plots}
-                            selectedListingSlug={selectedListing?.slug}
-                            onMarkerClick={handleMarkerClick}
-                            loading={loading}
-                            initialCenter={DEFAULT_MAP_CENTER}
-                            initialZoom={DEFAULT_MAP_ZOOM}
+            {/* Основная область: карточка слева + карта */}
+            <div className="flex flex-1 relative" style={{ height: mapHeight }}>
+                {/* Карточка превью слева поверх карты (только desktop) */}
+                {!isMobile && selectedListing && !loadingPreview && (
+                    <div className="absolute left-0 top-0 bottom-0 z-[1000]">
+                        <ListingPreview
+                            listing={selectedListing}
+                            onClose={() => setSelectedListing(null)}
                         />
                     </div>
+                )}
 
-                    {/* Превью объявления */}
-                    {loadingPreview && (
-                        <div className="border rounded-lg bg-card p-4">
-                            <p className="text-muted-foreground text-center">Загрузка...</p>
-                        </div>
-                    )}
-                    {selectedListing && !loadingPreview && (
-                        <div className="border rounded-lg bg-card">
-                            <ListingPreview
-                                listing={selectedListing}
-                                onClose={() => setSelectedListing(null)}
-                            />
-                        </div>
-                    )}
+                {/* Загрузка превью */}
+                {!isMobile && loadingPreview && (
+                    <div className="absolute left-0 top-0 bottom-0 z-[1000] w-[350px] border-r bg-card flex items-center justify-center">
+                        <p className="text-muted-foreground">Загрузка...</p>
+                    </div>
+                )}
+
+                {/* Карта */}
+                <div className="flex-1 relative">
+                    <ListingsMapClient
+                        plots={plots}
+                        selectedListingSlug={selectedListing?.slug}
+                        onMarkerClick={handleMarkerClick}
+                        loading={loading}
+                        initialCenter={DEFAULT_MAP_CENTER}
+                        initialZoom={DEFAULT_MAP_ZOOM}
+                    />
                 </div>
             </div>
         </div>

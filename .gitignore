@@ -75,3 +75,9 @@ htmlcov/
 # === Build ===
 *.pyc
 *.pyo
+
+# === Temporary scripts ===
+gemini\ flash.ps1
+gemini\ pso.ps1
+opus.ps1
+sonnet.ps1

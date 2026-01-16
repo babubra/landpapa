@@ -229,3 +229,36 @@
 .polygon-label::before {
   display: none !important;
 }
+
+/* Leaflet карта — пониженный z-index для корректной работы UI */
+.leaflet-container {
+  z-index: 0 !important;
+}
+
+.leaflet-pane {
+  z-index: 0 !important;
+}
+
+.leaflet-top,
+.leaflet-bottom {
+  z-index: 10 !important;
+}
+
+.leaflet-control {
+  z-index: 10 !important;
+}
+
+/* Sheet/Dialog overlay и content поверх всего */
+[data-radix-portal] {
+  z-index: 9999 !important;
+}
+
+[data-state="open"][data-radix-dialog-overlay],
+[data-state="open"][data-radix-sheet-overlay] {
+  z-index: 9999 !important;
+}
+
+[data-state="open"][data-radix-dialog-content],
+[data-state="open"][data-radix-sheet-content] {
+  z-index: 9999 !important;
+}

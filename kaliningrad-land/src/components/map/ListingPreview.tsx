@@ -29,6 +29,10 @@ function formatPriceRange(min: number | null, max: number | null): string {
     return `от ${formatPrice(min!)} ₽`;
 }
 
+/**
+ * Вертикальная карточка превью объявления для боковой панели карты.
+ * Фиксированная ширина 350px, вертикальный layout.
+ */
 export function ListingPreview({ listing, onClose }: ListingPreviewProps) {
     const placeholderImage = usePlaceholderImage();
     const locationText = listing.settlement
@@ -42,41 +46,53 @@ export function ListingPreview({ listing, onClose }: ListingPreviewProps) {
     const imageUrl = imgData ? (imgData.thumbnail_url || imgData.url) : null;
 
     return (
-        <div className="p-4 flex gap-4 items-start">
-            {/* Изображение */}
-            <div className="relative w-40 h-28 flex-shrink-0 rounded-lg overflow-hidden bg-muted">
-                <Image
-                    src={getImageUrl(imageUrl, placeholderImage)}
-                    alt={listing.title}
-                    fill
-                    className="object-cover"
-                    unoptimized
-                />
-                {listing.is_featured && (
-                    <div className="absolute top-1 left-1 bg-primary text-primary-foreground px-2 py-0.5 rounded text-xs font-medium">
-                        Спец
-                    </div>
-                )}
+        <div className="w-[350px] h-full flex flex-col bg-card border-r overflow-hidden">
+            {/* Кнопка закрытия */}
+            <div className="absolute top-2 right-2 z-10">
+                <Button
+                    variant="secondary"
+                    size="icon"
+                    onClick={onClose}
+                    className="h-8 w-8 rounded-full bg-background/80 backdrop-blur-sm hover:bg-background"
+                >
+                    <X className="h-4 w-4" />
+                </Button>
+            </div>
+
+            {/* Изображение сверху с паддингом */}
+            <div className="p-4 pb-0">
+                <div className="relative w-full h-44 rounded-lg overflow-hidden">
+                    <Image
+                        src={getImageUrl(imageUrl, placeholderImage)}
+                        alt={listing.title}
+                        fill
+                        className="object-cover"
+                        unoptimized
+                    />
+                    {listing.is_featured && (
+                        <div className="absolute top-2 left-2 bg-primary text-primary-foreground px-2 py-1 rounded text-xs font-medium">
+                            Спецпредложение
+                        </div>
+                    )}
+                </div>
             </div>
 
             {/* Информация */}
-            <div className="flex-1 min-w-0">
-                <div className="flex items-start justify-between gap-2">
-                    <h3 className="font-semibold text-lg line-clamp-1">{listing.title}</h3>
-                    <Button variant="ghost" size="icon" onClick={onClose} className="flex-shrink-0">
-                        <X className="h-4 w-4" />
-                    </Button>
-                </div>
+            <div className="flex-1 p-4 flex flex-col overflow-y-auto">
+                <h3 className="font-semibold text-lg line-clamp-2 mb-2">
+                    {listing.title}
+                </h3>
 
-                <div className="flex items-center gap-1 text-muted-foreground text-sm mt-1">
-                    <MapPin className="h-3 w-3 flex-shrink-0" />
+                <div className="flex items-center gap-1 text-muted-foreground text-sm mb-3">
+                    <MapPin className="h-4 w-4 flex-shrink-0" />
                     <span className="line-clamp-1">{locationText}</span>
                 </div>
 
-                <div className="flex gap-4 mt-2 text-sm">
+                {/* Характеристики */}
+                <div className="flex flex-wrap gap-3 text-sm mb-4">
                     {listing.plots_count > 1 && listing.area_min && listing.area_max ? (
                         <div className="flex items-center gap-1">
-                            <Maximize className="h-3 w-3 text-muted-foreground" />
+                            <Maximize className="h-4 w-4 text-muted-foreground" />
                             <span>
                                 {listing.area_min === listing.area_max
                                     ? `${formatArea(listing.area_min)} сот.`
@@ -85,34 +101,35 @@ export function ListingPreview({ listing, onClose }: ListingPreviewProps) {
                         </div>
                     ) : listing.total_area && (
                         <div className="flex items-center gap-1">
-                            <Maximize className="h-3 w-3 text-muted-foreground" />
+                            <Maximize className="h-4 w-4 text-muted-foreground" />
                             <span>{formatArea(listing.total_area)} сот.</span>
                         </div>
                     )}
                     {listing.plots_count > 1 && (
                         <span className="text-muted-foreground">
-                            {listing.plots_count} уч.
+                            {listing.plots_count} участков
                         </span>
                     )}
                 </div>
 
-                <div className="flex items-center justify-between mt-3">
-                    <p className="text-xl font-bold text-primary">
-                        {formatPriceRange(listing.price_min, listing.price_max)}
-                    </p>
-                    <div className="flex gap-2">
-                        <Button variant="outline" size="sm" asChild>
-                            <a href={`tel:${listing.realtor.phone}`}>
-                                <Phone className="h-4 w-4 mr-1" />
-                                Позвонить
-                            </a>
-                        </Button>
-                        <Button size="sm" asChild>
-                            <Link href={`/listing/${listing.slug}`}>
-                                Подробнее
-                            </Link>
-                        </Button>
-                    </div>
+                {/* Цена и кнопка подробнее */}
+                <p className="text-2xl font-bold text-primary mb-3">
+                    {formatPriceRange(listing.price_min, listing.price_max)}
+                </p>
+
+                {/* Кнопки */}
+                <div className="space-y-2">
+                    <Button className="w-full" asChild>
+                        <Link href={`/listing/${listing.slug}`}>
+                            Подробнее
+                        </Link>
+                    </Button>
+                    <Button variant="outline" className="w-full" asChild>
+                        <a href={`tel:${listing.realtor.phone}`}>
+                            <Phone className="h-4 w-4 mr-2" />
+                            Позвонить
+                        </a>
+                    </Button>
                 </div>
             </div>
         </div>
