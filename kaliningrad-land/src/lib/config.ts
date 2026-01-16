@@ -53,7 +53,9 @@ export const API_URL = "";
  */
 export const SSR_API_URL = INTERNAL_API_URL;
 
-export const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+// Основной URL сайта для SEO и canonical ссылок
+// ВАЖНО: Должен быть без слеша в конце
+export const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://rkkland.ru";
 
 /**
  * Публичные настройки сайта.

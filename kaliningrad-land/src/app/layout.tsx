@@ -56,12 +56,15 @@ export async function generateMetadata(): Promise<Metadata> {
         "max-snippet": -1,
       },
     },
+    alternates: {
+      canonical: SITE_URL,
+    },
     icons: {
       icon: [
+        { url: "/favicon.ico", sizes: "any" },
         { url: "/favicon.svg", type: "image/svg+xml" },
-        { url: "/favicon.ico", sizes: "any" }, // Fallback for legacy browsers
       ],
-      apple: "/apple-touch-icon.png", // We will need to ensure this exists or use logic to point to a png
+      apple: "/apple-touch-icon.png",
     },
     manifest: "/manifest.json",
   };
