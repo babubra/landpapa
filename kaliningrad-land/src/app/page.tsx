@@ -4,28 +4,50 @@ import { AboutCarousel } from "@/components/home/AboutCarousel";
 import { MaternityCapitalSection } from "@/components/home/MaternityCapitalSection";
 import { PopularPlotsSection } from "@/components/home/PopularPlotsSection";
 import { NewsSection } from "@/components/home/NewsSection";
+import { AboutTextSection } from "@/components/home/AboutTextSection";
 
-import { getSiteSettings, SITE_URL } from "@/lib/config";
+import { SITE_URL } from "@/lib/config";
+import { getSiteSettings } from "@/lib/server-config";
 import { SeoJsonLd } from "@/components/seo/SeoJsonLd";
 
 export default async function Home() {
   const settings = await getSiteSettings();
 
+  // Собираем ссылки на соцсети
+  const sameAs = [
+    settings.org_vk_url,
+    settings.org_telegram_url,
+    settings.org_max_url,
+  ].filter(Boolean);
+
   const jsonLd = {
     "@context": "https://schema.org",
-    "@type": "Organization",
-    "name": settings.site_title || "РКК земля",
+    "@type": "RealEstateAgent",
+    "name": settings.site_name || "РКК земля",
     "url": SITE_URL,
     "logo": `${SITE_URL}/logo.png`,
-    "description": settings.site_subtitle,
+    "description": settings.site_description || settings.site_subtitle,
     "telephone": settings.site_phone,
+    "email": settings.site_email,
     "address": {
       "@type": "PostalAddress",
-      "streetAddress": "ул. Брамса, 40",
+      "streetAddress": settings.site_address || "ул. Брамса, 40",
       "addressLocality": "Калининград",
       "addressRegion": "Калининградская область",
+      "postalCode": "236000",
       "addressCountry": "RU"
-    }
+    },
+    "areaServed": {
+      "@type": "State",
+      "name": "Калининградская область"
+    },
+    "contactPoint": {
+      "@type": "ContactPoint",
+      "telephone": settings.site_phone,
+      "contactType": "sales",
+      "availableLanguage": "Russian"
+    },
+    ...(sameAs.length > 0 && { sameAs })
   };
 
   return (
@@ -44,8 +66,20 @@ export default async function Home() {
         </div>
       </div>
 
-      {/* Карусель "О нас" */}
-      <AboutCarousel />
+      {/* SEO-текст о компании + Карусель услуг */}
+      <section className="pt-6">
+        <div className="grid gap-6 lg:grid-cols-4">
+          {/* SEO-текст */}
+          <div className="lg:col-span-2">
+            <AboutTextSection />
+          </div>
+
+          {/* Карусель услуг*/}
+          <div className="lg:col-span-2">
+            <AboutCarousel />
+          </div>
+        </div>
+      </section>
 
       {/* Популярные участки */}
       <PopularPlotsSection />

@@ -6,6 +6,7 @@ import { useAuth } from "@/lib/auth";
 import { getSettings, updateSetting, SettingItem } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { Loader2, Save, ArrowLeft, FileText } from "lucide-react";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
@@ -23,6 +24,13 @@ const PAGE_CONFIGS = [
         label: "О нас",
         description: "Контент страницы «О нас», отображаемый на странице /about",
         url: "/about",
+    },
+    {
+        key: "contacts_page",
+        label: "Контакты",
+        description: "Описание и дополнительная информация на странице контактов",
+        url: "/contacts",
+        mapKey: "contacts_map_iframe",
     },
 ];
 
@@ -154,6 +162,52 @@ export default function PagesPage() {
                                     }
                                     className="bg-background min-h-[400px]"
                                 />
+
+                                {/* Поле для карты (только для Контактов) */}
+                                {config.mapKey && (
+                                    <div className="mt-6 pt-6 border-t space-y-3">
+                                        <div>
+                                            <Label htmlFor={config.mapKey}>🗺️ Карта офиса</Label>
+                                            <p className="text-sm text-muted-foreground mt-1">
+                                                Вставьте iframe-код из{" "}
+                                                <a
+                                                    href="https://yandex.ru/map-constructor/"
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="text-primary hover:underline"
+                                                >
+                                                    Конструктора Яндекс.Карт
+                                                </a>
+                                            </p>
+                                        </div>
+                                        <Textarea
+                                            id={config.mapKey}
+                                            value={values[config.mapKey] || ""}
+                                            onChange={(e) =>
+                                                setValues((prev) => ({
+                                                    ...prev,
+                                                    [config.mapKey!]: e.target.value,
+                                                }))
+                                            }
+                                            placeholder='<iframe src="https://yandex.ru/map-widget/v1/..." ...></iframe>'
+                                            rows={3}
+                                            className="font-mono text-sm"
+                                        />
+                                        <Button
+                                            onClick={() => handleSave(config.mapKey!)}
+                                            disabled={saving === config.mapKey}
+                                            size="sm"
+                                            variant="outline"
+                                        >
+                                            {saving === config.mapKey ? (
+                                                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                            ) : (
+                                                <Save className="h-4 w-4 mr-2" />
+                                            )}
+                                            Сохранить карту
+                                        </Button>
+                                    </div>
+                                )}
 
                                 <div className="mt-4 pt-4 border-t">
                                     <p className="text-xs text-muted-foreground">

@@ -74,10 +74,13 @@ async def update_setting(
     """Обновить настройку."""
     setting = db.query(Setting).filter(Setting.key == key).first()
     if not setting:
-        raise HTTPException(status_code=404, detail="Настройка не найдена")
+        # Если настройки нет - создаём новую (Upsert)
+        setting = Setting(key=key, value=data.value)
+        db.add(setting)
+    else:
+        setting.value = data.value
+        setting.updated_at = datetime.utcnow()
     
-    setting.value = data.value
-    setting.updated_at = datetime.utcnow()
     db.commit()
     db.refresh(setting)
     

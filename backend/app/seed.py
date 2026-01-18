@@ -183,6 +183,90 @@ def seed_settings(db: Session):
             "value": "",
             "description": "Контент страницы «О нас» (HTML)"
         },
+        # Страница "Контакты"
+        {
+            "key": "contacts_page",
+            "value": "",
+            "description": "Описание и дополнительная информация на странице контактов (HTML)"
+        },
+        {
+            "key": "contacts_map_iframe",
+            "value": '<iframe src="https://yandex.ru/map-widget/v1/?um=constructor%3A3b2e50185e134c71df3b8434922b7f9d9a3b537c084a4b0df8f6c51701efd9ed&amp;source=constructor" width="100%" height="400" frameborder="0"></iframe>',
+            "description": "Код iframe для Яндекс.Карт на странице контактов"
+        },
+        # SEO-текст на главной
+        {
+            "key": "seo_homepage_text",
+            "value": "",
+            "description": "SEO-текст на главной странице (HTML, рекомендуется 300-400 слов)"
+        },
+        # Метаданные страниц
+        {
+            "key": "seo_catalog_title",
+            "value": "",
+            "description": "Title страницы «Каталог»"
+        },
+        {
+            "key": "seo_catalog_description",
+            "value": "",
+            "description": "Description страницы «Каталог»"
+        },
+        {
+            "key": "seo_about_title",
+            "value": "",
+            "description": "Title страницы «О нас»"
+        },
+        {
+            "key": "seo_about_description",
+            "value": "",
+            "description": "Description страницы «О нас»"
+        },
+        {
+            "key": "seo_contacts_title",
+            "value": "",
+            "description": "Title страницы «Контакты»"
+        },
+        {
+            "key": "seo_contacts_description",
+            "value": "",
+            "description": "Description страницы «Контакты»"
+        },
+        {
+            "key": "seo_news_title",
+            "value": "",
+            "description": "Title страницы «Новости»"
+        },
+        {
+            "key": "seo_news_description",
+            "value": "",
+            "description": "Description страницы «Новости»"
+        },
+        {
+            "key": "seo_map_title",
+            "value": "",
+            "description": "Title страницы «Карта»"
+        },
+        {
+            "key": "seo_map_description",
+            "value": "",
+            "description": "Description страницы «Карта»"
+        },
+        # Ссылки на соцсети
+        {
+            "key": "org_vk_url",
+            "value": "",
+            "description": "Ссылка на группу VK"
+        },
+        {
+            "key": "org_telegram_url",
+            "value": "",
+            "description": "Ссылка на Telegram"
+        },
+        {
+            "key": "org_max_url",
+            "value": "",
+            "description": "Ссылка на мессенджер Max"
+        },
     ]
     
     created = 0

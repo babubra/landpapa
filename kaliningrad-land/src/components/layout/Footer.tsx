@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Phone, Mail, MapPin } from "lucide-react";
-import { getSiteSettings } from "@/lib/config";
+import { getSiteSettings } from "@/lib/server-config";
 
 const navigation = [
     { name: "Каталог", href: "/catalog" },

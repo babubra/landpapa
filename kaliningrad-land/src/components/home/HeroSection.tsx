@@ -1,7 +1,8 @@
 import Image from "next/image";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { getSiteSettings, getImageUrl } from "@/lib/config";
+import { getImageUrl } from "@/lib/config";
+import { getSiteSettings } from "@/lib/server-config";
 
 export async function HeroSection() {
   const settings = await getSiteSettings();

@@ -26,10 +26,21 @@ http {
         }
     }
 
+    # === Redirect WWW to Non-WWW (HTTPS) ===
+    server {
+        listen 443 ssl;
+        server_name www.rkkland.ru;
+
+        ssl_certificate /etc/letsencrypt/live/rkkland.ru/fullchain.pem;
+        ssl_certificate_key /etc/letsencrypt/live/rkkland.ru/privkey.pem;
+
+        return 301 https://rkkland.ru$request_uri;
+    }
+
     # === Frontend HTTPS (Main Site) ===
     server {
         listen 443 ssl default_server;
-        server_name rkkland.ru www.rkkland.ru;
+        server_name rkkland.ru;
         
         # SSL
         ssl_certificate /etc/letsencrypt/live/rkkland.ru/fullchain.pem;

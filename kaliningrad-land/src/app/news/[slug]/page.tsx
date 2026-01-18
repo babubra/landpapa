@@ -1,9 +1,8 @@
 import { Metadata } from "next";
 import { notFound } from "next/navigation";
-import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
 import { SSR_API_URL, SITE_URL } from "@/lib/config";
 import { SeoJsonLd } from "@/components/seo/SeoJsonLd";
+import { Breadcrumbs } from "@/components/seo/Breadcrumbs";
 
 interface NewsPageProps {
     params: Promise<{ slug: string }>;
@@ -50,9 +49,15 @@ export default async function NewsDetailPage({ params }: NewsPageProps) {
         "headline": news.title,
         "datePublished": news.published_at,
         "description": news.excerpt,
+        "url": `${SITE_URL}/news/${slug}`,
         "author": {
             "@type": "Organization",
-            "name": "КалининградЗем"
+            "name": "РКК земля"
+        },
+        "publisher": {
+            "@type": "Organization",
+            "name": "РКК земля",
+            "url": SITE_URL
         }
     };
 
@@ -60,10 +65,10 @@ export default async function NewsDetailPage({ params }: NewsPageProps) {
         <div className="container mx-auto px-4 py-8 max-w-4xl min-h-screen">
             <SeoJsonLd data={jsonLd} />
 
-            <Link href="/news" className="inline-flex items-center text-sm text-muted-foreground hover:text-primary mb-6 transition-colors">
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Все новости
-            </Link>
+            <Breadcrumbs items={[
+                { name: "Новости", href: "/news" },
+                { name: news.title, href: `/news/${slug}` }
+            ]} />
 
             <article className="prose prose-lg max-w-none dark:prose-invert">
                 <h1 className="mb-4">{news.title}</h1>

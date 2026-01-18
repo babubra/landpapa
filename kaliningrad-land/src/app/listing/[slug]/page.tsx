@@ -72,6 +72,7 @@ async function getListing(slug: string): Promise<ListingDetail | null> {
 
 import { getImageUrl, SITE_URL, getSiteSettings } from "@/lib/config";
 import { SeoJsonLd } from "@/components/seo/SeoJsonLd";
+import { Breadcrumbs } from "@/components/seo/Breadcrumbs";
 
 // ... (existing imports)
 
@@ -179,10 +180,11 @@ export default async function ListingPage({ params }: ListingPageProps) {
         <div className="min-h-screen bg-background">
             <SeoJsonLd data={jsonLd} />
             <div className="container mx-auto px-4 py-8 max-w-6xl">
-                {/* Назад */}
-                <div className="mb-6">
-                    <BackButton />
-                </div>
+                {/* Хлебные крошки */}
+                <Breadcrumbs items={[
+                    { name: "Каталог", href: "/catalog" },
+                    { name: listing.title, href: `/listing/${slug}` }
+                ]} />
 
                 {/* Заголовок */}
                 <h1 className="text-3xl font-bold mb-8">{displayTitle}</h1>

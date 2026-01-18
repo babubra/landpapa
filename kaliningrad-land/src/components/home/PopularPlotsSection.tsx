@@ -37,24 +37,22 @@ export function PopularPlotsSection() {
 
     if (isLoading) {
         return (
-            <section className="py-16 bg-background">
-                <div className="container mx-auto px-4">
-                    <div className="flex justify-between items-center mb-8">
-                        <div>
-                            <h2 className="text-3xl font-bold mb-2">Популярные участки</h2>
-                            <p className="text-muted-foreground">
-                                Лучшие предложения этой недели
-                            </p>
-                        </div>
+            <section className="pt-6">
+                <div className="flex justify-between items-center mb-6">
+                    <div>
+                        <h2 className="text-2xl font-bold mb-1">Популярные участки</h2>
+                        <p className="text-muted-foreground text-sm">
+                            Лучшие предложения этой недели
+                        </p>
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                        {[1, 2, 3, 4].map((i) => (
-                            <div
-                                key={i}
-                                className="h-80 animate-pulse bg-muted rounded-lg"
-                            />
-                        ))}
-                    </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    {[1, 2, 3, 4].map((i) => (
+                        <div
+                            key={i}
+                            className="h-80 animate-pulse bg-muted rounded-lg"
+                        />
+                    ))}
                 </div>
             </section>
         );
@@ -65,29 +63,27 @@ export function PopularPlotsSection() {
     }
 
     return (
-        <section className="py-16 bg-background">
-            <div className="container mx-auto px-4">
-                <div className="flex justify-between items-center mb-8">
-                    <div>
-                        <h2 className="text-3xl font-bold mb-2">Популярные участки</h2>
-                        <p className="text-muted-foreground">
-                            Лучшие предложения этой недели
-                        </p>
-                    </div>
-                    <Button asChild variant="outline">
-                        <Link href="/catalog">Смотреть все</Link>
-                    </Button>
+        <section className="pt-6">
+            <div className="flex justify-between items-center mb-6">
+                <div>
+                    <h2 className="text-2xl font-bold mb-1">Популярные участки</h2>
+                    <p className="text-muted-foreground text-sm">
+                        Лучшие предложения этой недели
+                    </p>
                 </div>
+                <Button asChild variant="outline">
+                    <Link href="/catalog">Смотреть все</Link>
+                </Button>
+            </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                    {listings.map((listing) => (
-                        <ListingCard
-                            key={listing.id}
-                            listing={listing}
-                            variant="compact"
-                        />
-                    ))}
-                </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                {listings.map((listing) => (
+                    <ListingCard
+                        key={listing.id}
+                        listing={listing}
+                        variant="compact"
+                    />
+                ))}
             </div>
         </section>
     );

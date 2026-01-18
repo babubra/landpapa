@@ -100,6 +100,13 @@ export default function DashboardPage() {
                 </Card>
               </Link>
 
+              <Link href="/seo">
+                <Card className="p-4 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer border-indigo-200 dark:border-indigo-800 ring-1 ring-indigo-500/20">
+                  <h3 className="font-semibold mb-1 text-indigo-700 dark:text-indigo-400">🔍 SEO</h3>
+                  <p className="text-sm text-muted-foreground">Мета-теги, соцсети</p>
+                </Card>
+              </Link>
+
               <Link href="/settings">
                 <Card className="p-4 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
                   <h3 className="font-semibold mb-1">⚙️ Настройки</h3>

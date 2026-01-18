@@ -4,6 +4,7 @@ import { ThemeProvider } from "@/components/providers/ThemeProvider";
 import { SiteSettingsProvider } from "@/contexts/SiteSettingsContext";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
+import { SiteNavigationSchema } from "@/components/seo/SiteNavigationSchema";
 import "./globals.css";
 
 const montserrat = Montserrat({
@@ -18,32 +19,43 @@ const manrope = Manrope({
   weight: ["400", "500", "600", "700"],
 });
 
-import { getSiteSettings, SITE_URL } from "@/lib/config";
+import { getSiteSettings } from "@/lib/server-config";
+import { SITE_URL } from "@/lib/config";
 
 export async function generateMetadata(): Promise<Metadata> {
   const settings = await getSiteSettings();
-  const title = settings.site_title || "РКК земля";
-  const subtitle = settings.site_subtitle || "Купить земельные участки в Калининграде и Калининградской области";
+
+  // SEO Title: из настроек или дефолт
+  const title = settings.site_title || "РКК земля - Земельные участки в Калининграде";
+
+  // SEO Description: из настроек или "мягкий" дефолт из подзаголовка
+  const description = settings.site_description || settings.site_subtitle || "Продажа земельных участков в Калининградской области";
+
+  // Keywords
+  const keywords = settings.site_keywords ? settings.site_keywords.split(",").map(k => k.trim()) : ["земельные участки", "калининград", "ижс", "купить землю"];
 
   return {
     metadataBase: new URL(SITE_URL),
     title: {
-      default: `${title} - ${subtitle}`,
-      template: `%s | ${title}`,
+      default: title,
+      template: `%s | ${settings.site_name || "РКК земля"}`,
     },
-    description: subtitle,
+    description: description,
+    keywords: keywords,
     openGraph: {
       type: "website",
-      siteName: title,
+      siteName: settings.site_name || "РКК земля",
       locale: "ru_RU",
       url: SITE_URL,
-      title: `${title} - ${subtitle}`,
-      description: subtitle,
+      title: title,
+      description: description,
+      images: settings.og_image ? [{ url: settings.og_image }] : undefined,
     },
     twitter: {
       card: "summary_large_image",
-      title: `${title} - ${subtitle}`,
-      description: subtitle,
+      title: title,
+      description: description,
+      images: settings.og_image ? [settings.og_image] : undefined,
     },
     robots: {
       index: true,
@@ -79,6 +91,7 @@ export default function RootLayout({
       <body
         className={`${montserrat.variable} ${manrope.variable} antialiased font-sans`}
       >
+        <SiteNavigationSchema />
         <ThemeProvider
           attribute="class"
           defaultTheme="light"

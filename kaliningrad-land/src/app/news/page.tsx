@@ -1,14 +1,23 @@
 import { Metadata } from "next";
-import { SSR_API_URL, SITE_URL } from "@/lib/config";
 import Link from "next/link";
+import { SSR_API_URL, SITE_URL } from "@/lib/config";
+import { getSiteSettings } from "@/lib/server-config";
+import { Breadcrumbs } from "@/components/seo/Breadcrumbs";
 
-export const metadata: Metadata = {
-    title: "Новости — КалининградЗем",
-    description: "Новости рынка загородной недвижимости Калининградской области.",
-    alternates: {
-        canonical: `${SITE_URL}/news`,
-    }
-};
+export async function generateMetadata(): Promise<Metadata> {
+    const settings = await getSiteSettings();
+
+    const title = settings.seo_news_title || "Новости";
+    const description = settings.seo_news_description || "Новости рынка загородной недвижимости Калининградской области.";
+
+    return {
+        title,
+        description,
+        alternates: {
+            canonical: `${SITE_URL}/news`,
+        },
+    };
+}
 
 async function getNews() {
     try {
@@ -24,6 +33,7 @@ export default async function NewsListPage() {
 
     return (
         <div className="container mx-auto px-4 py-8 max-w-6xl">
+            <Breadcrumbs items={[{ name: "Новости", href: "/news" }]} />
             <h1 className="text-3xl font-bold mb-8">Новости</h1>
             {news.length === 0 ? (
                 <p className="text-muted-foreground">Новостей пока нет.</p>

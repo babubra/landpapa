@@ -76,6 +76,29 @@ export interface SiteSettings {
     placeholder_image: string | null;
     privacy_policy: string | null;
     about_page: string | null;
+    contacts_page: string | null;
+    contacts_map_iframe: string | null;
+    // SEO
+    site_description: string | null;
+    site_keywords: string | null;
+    og_image: string | null;
+    // SEO-текст на главной
+    seo_homepage_text: string | null;
+    // Метаданные страниц
+    seo_catalog_title: string | null;
+    seo_catalog_description: string | null;
+    seo_about_title: string | null;
+    seo_about_description: string | null;
+    seo_contacts_title: string | null;
+    seo_contacts_description: string | null;
+    seo_news_title: string | null;
+    seo_news_description: string | null;
+    seo_map_title: string | null;
+    seo_map_description: string | null;
+    // Соцсети
+    org_vk_url: string | null;
+    org_telegram_url: string | null;
+    org_max_url: string | null;
 }
 
 /**
@@ -114,6 +137,25 @@ export async function getSiteSettings(): Promise<SiteSettings> {
             placeholder_image: null,
             privacy_policy: null,
             about_page: null,
+            contacts_page: null,
+            contacts_map_iframe: null,
+            site_description: null,
+            site_keywords: null,
+            og_image: null,
+            seo_homepage_text: null,
+            seo_catalog_title: null,
+            seo_catalog_description: null,
+            seo_about_title: null,
+            seo_about_description: null,
+            seo_contacts_title: null,
+            seo_contacts_description: null,
+            seo_news_title: null,
+            seo_news_description: null,
+            seo_map_title: null,
+            seo_map_description: null,
+            org_vk_url: null,
+            org_telegram_url: null,
+            org_max_url: null,
         };
     }
 }
