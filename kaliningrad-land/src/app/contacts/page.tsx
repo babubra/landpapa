@@ -18,6 +18,9 @@ export async function generateMetadata(): Promise<Metadata> {
         alternates: {
             canonical: "/contacts",
         },
+        openGraph: {
+            url: "/contacts",
+        },
     };
 }
 

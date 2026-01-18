@@ -125,7 +125,7 @@ export async function generateMetadata({
             title,
             description,
             type: "website",
-            url: `${SITE_URL}/listing/${slug}`,
+            url: `/listing/${slug}`,
             images: ogImages,
         },
         alternates: {

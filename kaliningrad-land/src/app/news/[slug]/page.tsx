@@ -28,7 +28,7 @@ export async function generateMetadata({ params }: NewsPageProps): Promise<Metad
             title: news.title,
             description: news.excerpt || news.title,
             type: "article",
-            url: `${SITE_URL}/news/${slug}`,
+            url: `/news/${slug}`,
             publishedTime: news.published_at,
         },
         alternates: {
