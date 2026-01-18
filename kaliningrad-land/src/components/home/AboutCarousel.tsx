@@ -3,48 +3,42 @@
 import Image from "next/image";
 import { CheckCircle } from "lucide-react";
 
-export function AboutCarousel() {
-    const slide = {
-        image: "/about_us_section_image2.jpg",
-        title: "Бесплатные геодезические услуги",
-        description: "При покупке участка наши профессиональные геодезисты бесплатно выполнят все необходимые работы.",
-        benefits: [
-            "Бесплатный вынос границ на местности",
-            "Топографическая съёмка участка",
-            "Информация о высотной ситуации",
-            "Определение расположения коммуникаций",
-        ],
-    };
+interface FeatureCardProps {
+    image: string;
+    title: string;
+    description: string;
+    benefits: string[];
+}
 
+function FeatureCard({ image, title, description, benefits }: FeatureCardProps) {
     return (
-        <div className="relative rounded-2xl overflow-hidden h-full min-h-[380px]">
+        <div className="relative rounded-2xl overflow-hidden min-h-[320px] md:min-h-[220px] flex-1">
             {/* Фоновое изображение */}
             <Image
-                src={slide.image}
-                alt={slide.title}
+                src={image}
+                alt={title}
                 fill
-                className="object-cover object-left"
-                priority
+                className="object-cover"
             />
 
-            {/* Градиент справа для читабельности */}
-            <div className="absolute inset-0 bg-gradient-to-l from-black/85 via-black/60 to-transparent" />
+            {/* Затемнение для читабельности */}
+            <div className="absolute inset-0 bg-gradient-to-l from-black/90 via-black/60 to-black/40" />
 
             {/* Контент */}
             <div className="relative z-10 h-full flex items-center justify-end">
-                <div className="w-full md:w-2/3 lg:w-3/5 p-6 md:p-8 text-white">
-                    <h2 className="mb-3 text-xl md:text-2xl text-white font-bold">
-                        {slide.title}
-                    </h2>
-                    <p className="text-white/80 mb-4 text-sm md:text-base">
-                        {slide.description}
+                <div className="w-full md:w-3/4 lg:w-3/5 p-6 md:p-8 text-white">
+                    <h3 className="mb-3 text-lg md:text-xl font-bold text-white text-right">
+                        {title}
+                    </h3>
+                    <p className="text-white/80 mb-4 text-sm md:text-base text-right">
+                        {description}
                     </p>
 
                     <ul className="space-y-2">
-                        {slide.benefits.map((benefit, index) => (
-                            <li key={index} className="flex items-start gap-2">
-                                <CheckCircle className="h-4 w-4 text-primary flex-shrink-0 mt-0.5" />
+                        {benefits.map((benefit, index) => (
+                            <li key={index} className="flex items-start justify-end gap-3 text-right">
                                 <span className="text-white/90 text-sm">{benefit}</span>
+                                <CheckCircle className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
                             </li>
                         ))}
                     </ul>
@@ -53,3 +47,39 @@ export function AboutCarousel() {
         </div>
     );
 }
+
+export function AboutCarousel() {
+    const features: FeatureCardProps[] = [
+        {
+            image: "/about_us_section_image2.jpg",
+            title: "Бесплатные геодезические услуги",
+            description: "При покупке участка наши профессиональные геодезисты бесплатно выполнят все необходимые работы.",
+            benefits: [
+                "Бесплатный вынос границ на местности",
+                "Топографическая съёмка участка",
+                "Информация о высотной ситуации",
+                "Определение расположения коммуникаций",
+            ],
+        },
+        {
+            image: "/about-carousel-house.webp",
+            title: "Скидка 50% на кадастровые работы",
+            description: "При покупке участка у нас вы получаете скидку 50% на все кадастровые работы на купленном участке.",
+            benefits: [
+                "Подготовка увеомлений о планируемом строительстве",
+                "Постановка на учет объектов недвижимости",
+                "Подготовка межевого плана",
+
+            ],
+        },
+    ];
+
+    return (
+        <div className="flex flex-col md:flex-row gap-4 h-full">
+            {features.map((feature, index) => (
+                <FeatureCard key={index} {...feature} />
+            ))}
+        </div>
+    );
+}
+

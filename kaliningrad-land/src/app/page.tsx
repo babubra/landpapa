@@ -66,23 +66,18 @@ export default async function Home() {
         </div>
       </div>
 
-      {/* SEO-текст о компании + Карусель услуг */}
+      {/* Карусель услуг */}
       <section className="pt-6">
-        <div className="grid gap-6 lg:grid-cols-4">
-          {/* SEO-текст */}
-          <div className="lg:col-span-2">
-            <AboutTextSection />
-          </div>
-
-          {/* Карусель услуг*/}
-          <div className="lg:col-span-2">
-            <AboutCarousel />
-          </div>
-        </div>
+        <AboutCarousel />
       </section>
 
       {/* Популярные участки */}
       <PopularPlotsSection />
+
+      {/* SEO-текст о компании */}
+      <section className="py-6">
+        <AboutTextSection />
+      </section>
 
       {/* Секция материнский капитал */}
       <MaternityCapitalSection />
