@@ -32,7 +32,7 @@ export async function generateMetadata({ params }: NewsPageProps): Promise<Metad
             publishedTime: news.published_at,
         },
         alternates: {
-            canonical: `${SITE_URL}/news/${slug}`,
+            canonical: `/news/${slug}`,
         }
     }
 }

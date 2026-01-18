@@ -14,7 +14,7 @@ export async function generateMetadata(): Promise<Metadata> {
         title,
         description,
         alternates: {
-            canonical: `${SITE_URL}/news`,
+            canonical: "/news",
         },
     };
 }

@@ -15,7 +15,7 @@ export async function generateMetadata(): Promise<Metadata> {
         title,
         description,
         alternates: {
-            canonical: `${SITE_URL}/catalog`,
+            canonical: "/catalog",
         },
     };
 }

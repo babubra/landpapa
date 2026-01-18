@@ -129,7 +129,7 @@ export async function generateMetadata({
             images: ogImages,
         },
         alternates: {
-            canonical: `${SITE_URL}/listing/${slug}`,
+            canonical: `/listing/${slug}`,
         },
     };
 }
