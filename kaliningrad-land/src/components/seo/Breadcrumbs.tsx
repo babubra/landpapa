@@ -10,6 +10,8 @@ export interface BreadcrumbItem {
 
 interface BreadcrumbsProps {
     items: BreadcrumbItem[];
+    /** Скрыть визуальную навигацию, оставив только JSON-LD разметку */
+    visuallyHidden?: boolean;
 }
 
 /**
@@ -21,9 +23,12 @@ interface BreadcrumbsProps {
  *   { name: "Каталог", href: "/catalog" },
  *   { name: "Название участка", href: "/listing/slug" }
  * ]} />
+ * 
+ * // Только JSON-LD разметка без визуальной навигации
+ * <Breadcrumbs items={[...]} visuallyHidden />
  * ```
  */
-export function Breadcrumbs({ items }: BreadcrumbsProps) {
+export function Breadcrumbs({ items, visuallyHidden = false }: BreadcrumbsProps) {
     // Добавляем главную страницу в начало
     const allItems: BreadcrumbItem[] = [
         { name: "Главная", href: "/" },
@@ -41,6 +46,11 @@ export function Breadcrumbs({ items }: BreadcrumbsProps) {
             "item": `${SITE_URL}${item.href}`,
         })),
     };
+
+    // Если visuallyHidden — возвращаем только JSON-LD разметку
+    if (visuallyHidden) {
+        return <SeoJsonLd data={jsonLd} />;
+    }
 
     return (
         <>

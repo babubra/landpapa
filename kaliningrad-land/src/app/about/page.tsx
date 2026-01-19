@@ -16,7 +16,11 @@ export async function generateMetadata(): Promise<Metadata> {
             canonical: "/about",
         },
         openGraph: {
+            type: "website",
             url: "/about",
+            title,
+            description,
+            images: settings.og_image ? [{ url: settings.og_image }] : undefined,
         },
     };
 }

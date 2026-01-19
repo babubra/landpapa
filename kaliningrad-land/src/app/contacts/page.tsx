@@ -19,7 +19,11 @@ export async function generateMetadata(): Promise<Metadata> {
             canonical: "/contacts",
         },
         openGraph: {
+            type: "website",
             url: "/contacts",
+            title,
+            description,
+            images: settings.og_image ? [{ url: settings.og_image }] : undefined,
         },
     };
 }
