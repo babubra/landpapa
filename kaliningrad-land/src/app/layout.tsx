@@ -7,6 +7,7 @@ import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { SiteNavigationSchema } from "@/components/seo/SiteNavigationSchema";
 import { YandexMetrika } from "@/components/analytics/YandexMetrika";
+import { GoogleAnalytics } from "@/components/analytics/GoogleAnalytics";
 import "./globals.css";
 
 const montserrat = Montserrat({
@@ -96,6 +97,9 @@ export default function RootLayout({
         <Suspense fallback={null}>
           <YandexMetrika />
         </Suspense>
+
+        {/* Google Analytics */}
+        <GoogleAnalytics />
         <SiteNavigationSchema />
         <ThemeProvider
           attribute="class"
