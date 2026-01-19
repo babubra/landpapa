@@ -1,13 +1,11 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import Script from "next/script";
 
-// ID счётчика Яндекс.Метрики
 const METRIKA_ID = 106326739;
 
-// Расширяем типы для глобального объекта window
 declare global {
     interface Window {
         ym: (id: number, action: string, ...args: unknown[]) => void;
@@ -17,30 +15,42 @@ declare global {
 export function YandexMetrika() {
     const pathname = usePathname();
     const searchParams = useSearchParams();
+    const isFirstHitSent = useRef(false);
 
-    // Отправляем hit при каждом изменении URL
+    // Отправка hit при изменении маршрута
     useEffect(() => {
-        if (typeof window !== "undefined" && window.ym) {
-            // Формируем полный URL с query параметрами
-            const url = pathname + (searchParams?.toString() ? `?${searchParams.toString()}` : "");
-
-            window.ym(METRIKA_ID, "hit", url, {
-                title: document.title,
-            });
+        // Ждём, пока Метрика полностью загрузится
+        if (typeof window === "undefined" || !window.ym) {
+            return;
         }
+
+        const url = pathname + (searchParams?.toString() ? `?${searchParams.toString()}` : "");
+
+        // Первый hit отправляем только один раз
+        if (!isFirstHitSent.current) {
+            isFirstHitSent.current = true;
+        }
+
+        window.ym(METRIKA_ID, "hit", url, {
+            title: document.title,
+        });
     }, [pathname, searchParams]);
 
     return (
         <>
-            {/* Основной скрипт Яндекс.Метрики */}
-            <Script id="yandex-metrika-init" strategy="afterInteractive">
+            <Script
+                id="yandex-metrika-init"
+                strategy="afterInteractive"
+            >
                 {`
           (function(m,e,t,r,i,k,a){
             m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
             m[i].l=1*new Date();
-            for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
+            for (var j = 0; j < document.scripts.length; j++) {
+              if (document.scripts[j].src === r) { return; }
+            }
             k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)
-          })(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=${METRIKA_ID}', 'ym');
+          })(window, document, 'script', 'https://mc.yandex.ru/metrika/tag.js', 'ym');
 
           ym(${METRIKA_ID}, 'init', {
             defer: true,
@@ -53,7 +63,6 @@ export function YandexMetrika() {
         `}
             </Script>
 
-            {/* Fallback для пользователей без JavaScript */}
             <noscript>
                 <div>
                     <img
