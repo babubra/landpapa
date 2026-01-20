@@ -38,7 +38,7 @@ class Settlement(Base):
     sort_order: Mapped[int] = mapped_column(Integer, default=0)
 
     # Связи
-    district: Mapped["District"] = relationship("District", back_populates="settlements")
+    district: Mapped["District"] = relationship("District", back_populates="settlements", lazy="joined")
 
     def __repr__(self) -> str:
         return f"<Settlement(id={self.id}, name='{self.name}')>"

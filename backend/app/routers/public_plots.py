@@ -1,15 +1,18 @@
 """
 Публичный API для работы с участками.
 Возвращает все активные участки для клиентской кластеризации.
+Асинхронная версия.
 """
 
 from fastapi import APIRouter, Depends, Query
-from sqlalchemy.orm import Session
-from sqlalchemy import func
+from sqlalchemy import select, func
+from sqlalchemy.ext.asyncio import AsyncSession
 from geoalchemy2.functions import ST_X, ST_Y
 
-from app.database import get_db
+from app.database import get_async_db
 from app.models.plot import Plot, PlotStatus
+from app.models.listing import Listing
+from app.models.location import Settlement
 from app.schemas.public_plot import PlotAllResponse, PlotPoint
 
 
@@ -26,54 +29,55 @@ async def get_all_plots(
     price_max: int | None = Query(None, description="Максимальная цена"),
     area_min: float | None = Query(None, description="Минимальная площадь (м²)"),
     area_max: float | None = Query(None, description="Максимальная площадь (м²)"),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_async_db),
 ):
     """
     Получить все активные участки для отображения на карте.
     Кластеризация выполняется на клиенте через Leaflet.markercluster.
     """
-    from app.models.listing import Listing
-    from app.models.location import Settlement
-    
-    query = db.query(
-        Plot.id,
-        ST_Y(Plot.centroid).label('lat'),
-        ST_X(Plot.centroid).label('lon'),
-        Plot.price_public.label('price'),
-        Listing.slug.label('listing_slug'),
-        Listing.title.label('title'),
-    ).join(
-        Listing, Plot.listing_id == Listing.id
-    ).filter(
-        Plot.status == PlotStatus.active,
-        Plot.centroid.isnot(None),
-        Listing.is_published == True
+    # Базовый запрос
+    query = (
+        select(
+            Plot.id,
+            ST_Y(Plot.centroid).label('lat'),
+            ST_X(Plot.centroid).label('lon'),
+            Plot.price_public.label('price'),
+            Listing.slug.label('listing_slug'),
+            Listing.title.label('title'),
+        )
+        .join(Listing, Plot.listing_id == Listing.id)
+        .where(
+            Plot.status == PlotStatus.active,
+            Plot.centroid.isnot(None),
+            Listing.is_published == True
+        )
     )
     
     # Фильтры по местоположению
     if district_id:
-        query = query.join(Settlement, Listing.settlement_id == Settlement.id).filter(
+        query = query.join(Settlement, Listing.settlement_id == Settlement.id).where(
             Settlement.district_id == district_id
         )
     
     if settlements:
         settlement_ids = [int(s.strip()) for s in settlements.split(",") if s.strip().isdigit()]
         if settlement_ids:
-            query = query.filter(Listing.settlement_id.in_(settlement_ids))
+            query = query.where(Listing.settlement_id.in_(settlement_ids))
     
     # Фильтры по характеристикам участков
     if land_use_id:
-        query = query.filter(Plot.land_use_id == land_use_id)
+        query = query.where(Plot.land_use_id == land_use_id)
     if price_min:
-        query = query.filter(Plot.price_public >= price_min)
+        query = query.where(Plot.price_public >= price_min)
     if price_max:
-        query = query.filter(Plot.price_public <= price_max)
+        query = query.where(Plot.price_public <= price_max)
     if area_min:
-        query = query.filter(Plot.area >= area_min)
+        query = query.where(Plot.area >= area_min)
     if area_max:
-        query = query.filter(Plot.area <= area_max)
+        query = query.where(Plot.area <= area_max)
     
-    plots = query.all()
+    result = await db.execute(query)
+    plots = result.all()
     
     return PlotAllResponse(
         plots=[
@@ -93,7 +97,7 @@ async def get_all_plots(
 
 @router.get("/count")
 async def get_active_plots_count(
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_async_db),
 ):
     """
     Получить общее количество активных участков.
@@ -101,13 +105,14 @@ async def get_active_plots_count(
     Учитываются только участки со статусом 'active',
     привязанные к опубликованным объявлениям.
     """
-    from app.models.listing import Listing
-    
-    count = db.query(func.count(Plot.id)).join(
-        Listing, Plot.listing_id == Listing.id
-    ).filter(
-        Plot.status == PlotStatus.active,
-        Listing.is_published == True
-    ).scalar()
+    result = await db.execute(
+        select(func.count(Plot.id))
+        .join(Listing, Plot.listing_id == Listing.id)
+        .where(
+            Plot.status == PlotStatus.active,
+            Listing.is_published == True
+        )
+    )
+    count = result.scalar()
     
     return {"count": count or 0}

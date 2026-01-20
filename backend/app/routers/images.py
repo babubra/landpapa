@@ -1,6 +1,12 @@
+"""
+API для управления изображениями.
+Асинхронная версия.
+"""
+
 from fastapi import APIRouter, UploadFile, File, Depends, HTTPException, status
-from sqlalchemy.orm import Session
-from app.database import get_db
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+from app.database import get_async_db
 from app.models.image import Image
 from app.models.admin_user import AdminUser
 from app.routers.auth import get_current_user
@@ -16,7 +22,7 @@ router = APIRouter()
 @router.post("/upload", response_model=ImageItem)
 async def upload_image(
     file: UploadFile = File(...),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_async_db),
     current_user: AdminUser = Depends(get_current_user)
 ):
     """
@@ -28,7 +34,6 @@ async def upload_image(
         raise HTTPException(400, "Invalid file type")
     
     # Save original
-    # Extract extension or default to .jpg
     ext = os.path.splitext(file.filename)[1]
     if not ext:
         ext = ".jpg"
@@ -62,15 +67,6 @@ async def upload_image(
             thumb = ImageOps.fit(img, (300, 300), PILImage.Resampling.LANCZOS)
             thumb.save(thumb_path)
             
-            # Overwrite original if we want to strip metadata or optimize? 
-            # For now keep original as is (just rotated), or resave it back to filepath?
-            # Let's resave parameters (width/height) are correct after transpose.
-            # But overwriting original might lose quality. Let's just trust source but use transposed dims.
-            # Actually, if we didn't save transposed image back, the file on disk is still rotated wrong by EXIF if viewed in non-exif-aware viewer.
-            # But browsers are usually smart. Let's keep original untouched on disk to preserve quality, 
-            # UNLESS we explicitly want to strip EXIF. User didn't ask to strip.
-            pass
-            
     except Exception as e:
         # Cleanup if failed
         if os.path.exists(filepath): os.remove(filepath)
@@ -85,12 +81,12 @@ async def upload_image(
         size=os.path.getsize(filepath),
         width=width,
         height=height,
-        entity_type=None, # Отложенная привязка ("сирота")
+        entity_type=None,
         entity_id=None
     )
     db.add(db_image)
-    db.commit()
-    db.refresh(db_image)
+    await db.commit()
+    await db.refresh(db_image)
     
     return db_image
 
@@ -98,11 +94,15 @@ async def upload_image(
 @router.delete("/{image_id}", status_code=204)
 async def delete_image(
     image_id: int,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_async_db),
     current_user: AdminUser = Depends(get_current_user)
 ):
     """Удаление изображения и файлов."""
-    image = db.query(Image).filter(Image.id == image_id).first()
+    result = await db.execute(
+        select(Image).where(Image.id == image_id)
+    )
+    image = result.scalar_one_or_none()
+    
     if not image:
         raise HTTPException(404, "Image not found")
         
@@ -122,5 +122,5 @@ async def delete_image(
     except Exception as e:
         print(f"Error deleting files: {e}")
         
-    db.delete(image)
-    db.commit()
+    await db.delete(image)
+    await db.commit()

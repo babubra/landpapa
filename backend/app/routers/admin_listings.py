@@ -1,19 +1,20 @@
 """
 Админский API для управления объявлениями.
+Асинхронная версия.
 """
 
 import math
+import os
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy.orm import Session
-from sqlalchemy import desc, or_
+from sqlalchemy import select, desc, or_, func, delete, update
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database import get_db
+from app.database import get_async_db
 from app.config import settings
 from app.models.listing import Listing
 from app.models.plot import Plot, PlotStatus
 from app.models.image import Image
 from app.models.admin_user import AdminUser
-import os
 from app.routers.auth import get_current_user
 from app.utils.title_generator import generate_listing_title
 from app.schemas.admin_listing import (
@@ -34,12 +35,15 @@ router = APIRouter()
 
 @router.get("/realtors", response_model=list[RealtorItem])
 async def get_realtors(
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_async_db),
     current_user: AdminUser = Depends(get_current_user),
 ):
     """Получить список активных риэлторов для формы."""
     from app.models.realtor import Realtor
-    realtors = db.query(Realtor).filter(Realtor.is_active == True).order_by(Realtor.name).all()
+    result = await db.execute(
+        select(Realtor).where(Realtor.is_active == True).order_by(Realtor.name)
+    )
+    realtors = result.scalars().all()
     return realtors
 
 
@@ -104,7 +108,7 @@ async def search_plots(
     q: str = Query(..., min_length=1, description="Поиск по кадастровому номеру"),
     listing_id: int | None = Query(None, description="ID текущего объявления (для редактирования)"),
     limit: int = Query(10, ge=1, le=50),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_async_db),
     current_user: AdminUser = Depends(get_current_user),
 ):
     """
@@ -113,20 +117,22 @@ async def search_plots(
     Возвращает участки без привязки к объявлению,
     или уже привязанные к указанному listing_id (при редактировании).
     """
-    query = db.query(Plot).filter(Plot.cadastral_number.ilike(f"%{q}%"))
+    query = select(Plot).where(Plot.cadastral_number.ilike(f"%{q}%"))
     
     # Показываем только свободные участки или уже привязанные к текущему объявлению
     if listing_id:
-        query = query.filter(
+        query = query.where(
             or_(
                 Plot.listing_id.is_(None),
                 Plot.listing_id == listing_id
             )
         )
     else:
-        query = query.filter(Plot.listing_id.is_(None))
+        query = query.where(Plot.listing_id.is_(None))
     
-    plots = query.limit(limit).all()
+    query = query.limit(limit)
+    result = await db.execute(query)
+    plots = result.scalars().all()
     return plots
 
 
@@ -142,47 +148,53 @@ async def get_listings(
     is_featured: bool | None = Query(None, description="Спецпредложение"),
     # Сортировка
     sort: str = Query("newest", description="newest | oldest | title_asc | title_desc"),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_async_db),
     current_user: AdminUser = Depends(get_current_user),
 ):
     """Получить список объявлений с фильтрацией."""
-    query = db.query(Listing)
+    query = select(Listing)
+    count_query = select(func.count(Listing.id))
     
     # Фильтрация по поиску
     if search:
-        query = query.filter(
-            or_(
-                Listing.title.ilike(f"%{search}%"),
-                Listing.slug.ilike(f"%{search}%")
-            )
+        search_filter = or_(
+            Listing.title.ilike(f"%{search}%"),
+            Listing.slug.ilike(f"%{search}%")
         )
+        query = query.where(search_filter)
+        count_query = count_query.where(search_filter)
     
     # Фильтрация по кадастровому номеру связанных участков
     if cadastral_search:
-        # Подзапрос для поиска listing_id по кадастровому номеру участков
         listing_ids_subquery = (
-            db.query(Plot.listing_id)
-            .filter(Plot.cadastral_number.ilike(f"%{cadastral_search}%"))
-            .filter(Plot.listing_id.isnot(None))
+            select(Plot.listing_id)
+            .where(Plot.cadastral_number.ilike(f"%{cadastral_search}%"))
+            .where(Plot.listing_id.isnot(None))
             .distinct()
             .subquery()
         )
-        query = query.filter(Listing.id.in_(listing_ids_subquery))
+        cadastral_filter = Listing.id.in_(select(listing_ids_subquery.c.listing_id))
+        query = query.where(cadastral_filter)
+        count_query = count_query.where(cadastral_filter)
     
     # Фильтрация по населённому пункту
     if settlement_id is not None:
-        query = query.filter(Listing.settlement_id == settlement_id)
+        query = query.where(Listing.settlement_id == settlement_id)
+        count_query = count_query.where(Listing.settlement_id == settlement_id)
     
     # Фильтрация по статусу публикации
     if is_published is not None:
-        query = query.filter(Listing.is_published == is_published)
+        query = query.where(Listing.is_published == is_published)
+        count_query = count_query.where(Listing.is_published == is_published)
     
     # Фильтрация по спецпредложению
     if is_featured is not None:
-        query = query.filter(Listing.is_featured == is_featured)
+        query = query.where(Listing.is_featured == is_featured)
+        count_query = count_query.where(Listing.is_featured == is_featured)
     
     # Подсчёт
-    total = query.count()
+    count_result = await db.execute(count_query)
+    total = count_result.scalar() or 0
     pages = math.ceil(total / size) if total > 0 else 1
     offset = (page - 1) * size
     
@@ -194,9 +206,10 @@ async def get_listings(
         "title_desc": Listing.title.desc(),
     }
     order_by = sort_mapping.get(sort, sort_mapping["newest"])
-    query = query.order_by(order_by)
+    query = query.order_by(order_by).offset(offset).limit(size)
     
-    listings = query.offset(offset).limit(size).all()
+    result = await db.execute(query)
+    listings = result.scalars().all()
     
     return ListingListResponse(
         items=[listing_to_list_item(l) for l in listings],
@@ -210,11 +223,15 @@ async def get_listings(
 @router.get("/{listing_id}", response_model=ListingAdminDetail)
 async def get_listing(
     listing_id: int,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_async_db),
     current_user: AdminUser = Depends(get_current_user),
 ):
     """Получить детальную информацию об объявлении."""
-    listing = db.query(Listing).filter(Listing.id == listing_id).first()
+    result = await db.execute(
+        select(Listing).where(Listing.id == listing_id)
+    )
+    listing = result.scalar_one_or_none()
+    
     if not listing:
         raise HTTPException(status_code=404, detail="Объявление не найдено")
     
@@ -224,22 +241,28 @@ async def get_listing(
 @router.post("/", response_model=ListingAdminDetail, status_code=status.HTTP_201_CREATED)
 async def create_listing(
     data: ListingCreate,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_async_db),
     current_user: AdminUser = Depends(get_current_user),
 ):
     """Создать новое объявление. Slug генерируется автоматически."""
     from app.slug_utils import generate_slug
+    from app.models.realtor import Realtor
+    from app.models.location import Settlement
     
     # Проверка существования риэлтора
-    from app.models.realtor import Realtor
-    realtor = db.query(Realtor).filter(Realtor.id == data.realtor_id).first()
+    result = await db.execute(
+        select(Realtor).where(Realtor.id == data.realtor_id)
+    )
+    realtor = result.scalar_one_or_none()
     if not realtor:
         raise HTTPException(status_code=400, detail="Риэлтор не найден")
     
     # Проверка существования населённого пункта
     if data.settlement_id:
-        from app.models.location import Settlement
-        settlement = db.query(Settlement).filter(Settlement.id == data.settlement_id).first()
+        result = await db.execute(
+            select(Settlement).where(Settlement.id == data.settlement_id)
+        )
+        settlement = result.scalar_one_or_none()
         if not settlement:
             raise HTTPException(status_code=400, detail="Населённый пункт не найден")
     
@@ -248,22 +271,26 @@ async def create_listing(
     listing = Listing(**listing_data)
     listing.slug = "temp"  # Временный slug
     db.add(listing)
-    db.flush()  # Получаем ID
+    await db.flush()  # Получаем ID
     
     # Генерируем slug из title + ID
     listing.slug = generate_slug(data.title, listing.id)
     
     # Привязываем участки
     if data.plot_ids:
-        plots = db.query(Plot).filter(Plot.id.in_(data.plot_ids)).all()
+        result = await db.execute(
+            select(Plot).where(Plot.id.in_(data.plot_ids))
+        )
+        plots = result.scalars().all()
         for plot in plots:
             plot.listing_id = listing.id
 
     # Привязываем изображения
     if data.image_ids:
-        # Находим изображения
-        images = db.query(Image).filter(Image.id.in_(data.image_ids)).all()
-        # Сортируем в соответствии с переданным списком
+        result = await db.execute(
+            select(Image).where(Image.id.in_(data.image_ids))
+        )
+        images = result.scalars().all()
         images_map = {img.id: img for img in images}
         for index, img_id in enumerate(data.image_ids):
             img = images_map.get(img_id)
@@ -272,14 +299,14 @@ async def create_listing(
                 img.entity_id = listing.id
                 img.sort_order = index
     
-    db.commit()
-    db.refresh(listing)
+    await db.commit()
+    await db.refresh(listing)
     
     # Перегенерируем название если включён авто-режим
     if listing.title_auto and listing.plots:
         listing.title = generate_listing_title(listing.plots, listing.settlement)
-        db.commit()
-        db.refresh(listing)
+        await db.commit()
+        await db.refresh(listing)
     
     return listing_to_detail(listing)
 
@@ -288,26 +315,36 @@ async def create_listing(
 async def update_listing(
     listing_id: int,
     data: ListingUpdate,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_async_db),
     current_user: AdminUser = Depends(get_current_user),
 ):
     """Обновить объявление. Slug остаётся неизменным (создаётся один раз при создании)."""
+    from app.models.realtor import Realtor
+    from app.models.location import Settlement
     
-    listing = db.query(Listing).filter(Listing.id == listing_id).first()
+    result = await db.execute(
+        select(Listing).where(Listing.id == listing_id)
+    )
+    listing = result.scalar_one_or_none()
+    
     if not listing:
         raise HTTPException(status_code=404, detail="Объявление не найдено")
     
     # Проверка существования риэлтора
     if data.realtor_id:
-        from app.models.realtor import Realtor
-        realtor = db.query(Realtor).filter(Realtor.id == data.realtor_id).first()
+        result = await db.execute(
+            select(Realtor).where(Realtor.id == data.realtor_id)
+        )
+        realtor = result.scalar_one_or_none()
         if not realtor:
             raise HTTPException(status_code=400, detail="Риэлтор не найден")
     
     # Проверка существования населённого пункта
     if data.settlement_id:
-        from app.models.location import Settlement
-        settlement = db.query(Settlement).filter(Settlement.id == data.settlement_id).first()
+        result = await db.execute(
+            select(Settlement).where(Settlement.id == data.settlement_id)
+        )
+        settlement = result.scalar_one_or_none()
         if not settlement:
             raise HTTPException(status_code=400, detail="Населённый пункт не найден")
     
@@ -316,50 +353,61 @@ async def update_listing(
     for key, value in update_data.items():
         setattr(listing, key, value)
     
-    # Примечание: slug не регенерируем — он создаётся один раз при создании объявления
-    
     # Обновляем привязку участков если передано
     if data.plot_ids is not None:
         # Отвязываем все текущие участки
-        current_plots = db.query(Plot).filter(Plot.listing_id == listing_id).all()
+        result = await db.execute(
+            select(Plot).where(Plot.listing_id == listing_id)
+        )
+        current_plots = result.scalars().all()
         for plot in current_plots:
             plot.listing_id = None
         
         # Привязываем новые
         if data.plot_ids:
-            new_plots = db.query(Plot).filter(Plot.id.in_(data.plot_ids)).all()
+            result = await db.execute(
+                select(Plot).where(Plot.id.in_(data.plot_ids))
+            )
+            new_plots = result.scalars().all()
             for plot in new_plots:
                 plot.listing_id = listing_id
 
     # Обновляем привязку изображений
     if data.image_ids is not None:
         # Отвязываем текущие
-        current_images = db.query(Image).filter(
-            Image.entity_type == 'listing',
-            Image.entity_id == listing_id
-        ).all()
+        result = await db.execute(
+            select(Image).where(
+                Image.entity_type == 'listing',
+                Image.entity_id == listing_id
+            )
+        )
+        current_images = result.scalars().all()
         for img in current_images:
             img.entity_type = None
             img.entity_id = None
         
         # Привязываем новые
         if data.image_ids:
-            images = db.query(Image).filter(Image.id.in_(data.image_ids)).all()
+            result = await db.execute(
+                select(Image).where(Image.id.in_(data.image_ids))
+            )
+            images = result.scalars().all()
             images_map = {img.id: img for img in images}
             for index, img_id in enumerate(data.image_ids):
                 img = images_map.get(img_id)
-                img.entity_type = 'listing'
-                img.entity_id = listing_id
-                img.sort_order = index
+                if img:
+                    img.entity_type = 'listing'
+                    img.entity_id = listing_id
+                    img.sort_order = index
     
-    db.commit()
-    db.refresh(listing)
+    await db.commit()
+    await db.refresh(listing)
 
     # Перегенерируем название если включён авто-режим
     if listing.title_auto and listing.plots:
         listing.title = generate_listing_title(listing.plots, listing.settlement)
-        db.commit()
-        db.refresh(listing)
+        await db.commit()
+        await db.refresh(listing)
     
     return listing_to_detail(listing)
 
@@ -367,24 +415,34 @@ async def update_listing(
 @router.delete("/{listing_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_listing(
     listing_id: int,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_async_db),
     current_user: AdminUser = Depends(get_current_user),
 ):
     """Удалить объявление."""
-    listing = db.query(Listing).filter(Listing.id == listing_id).first()
+    result = await db.execute(
+        select(Listing).where(Listing.id == listing_id)
+    )
+    listing = result.scalar_one_or_none()
+    
     if not listing:
         raise HTTPException(status_code=404, detail="Объявление не найдено")
     
     # Отвязываем участки перед удалением
-    plots = db.query(Plot).filter(Plot.listing_id == listing_id).all()
+    result = await db.execute(
+        select(Plot).where(Plot.listing_id == listing_id)
+    )
+    plots = result.scalars().all()
     for plot in plots:
         plot.listing_id = None
         
     # Удаляем изображения физически и из БД
-    images = db.query(Image).filter(
-        Image.entity_type == 'listing',
-        Image.entity_id == listing_id
-    ).all()
+    result = await db.execute(
+        select(Image).where(
+            Image.entity_type == 'listing',
+            Image.entity_id == listing_id
+        )
+    )
+    images = result.scalars().all()
     
     for img in images:
         try:
@@ -400,31 +458,32 @@ async def delete_listing(
                 if os.path.exists(thumb_path):
                     os.remove(thumb_path)
             
-            db.delete(img)
+            await db.delete(img)
         except Exception as e:
             print(f"Error deleting image {img.id}: {e}")
     
-    db.delete(listing)
-    db.commit()
+    await db.delete(listing)
+    await db.commit()
     return None
 
 
 @router.post("/bulk-delete", response_model=BulkDeleteResponse)
 async def bulk_delete_listings(
     data: BulkDeleteRequest,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_async_db),
     current_user: AdminUser = Depends(get_current_user),
 ):
     """Массовое удаление объявлений."""
     # Отвязываем участки
-    db.query(Plot).filter(Plot.listing_id.in_(data.ids)).update(
-        {"listing_id": None}, synchronize_session=False
+    await db.execute(
+        update(Plot).where(Plot.listing_id.in_(data.ids)).values(listing_id=None)
     )
     
     # Удаляем объявления
-    deleted = db.query(Listing).filter(Listing.id.in_(data.ids)).delete(
-        synchronize_session=False
+    result = await db.execute(
+        delete(Listing).where(Listing.id.in_(data.ids))
     )
-    db.commit()
+    deleted = result.rowcount
+    await db.commit()
     
     return BulkDeleteResponse(deleted_count=deleted)

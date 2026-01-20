@@ -1,13 +1,15 @@
 """
 Админский API для управления настройками системы.
+Асинхронная версия.
 """
 
 from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import BaseModel
 
-from app.database import get_db
+from app.database import get_async_db
 from app.models.setting import Setting
 from app.models.admin_user import AdminUser
 from app.routers.auth import get_current_user
@@ -43,22 +45,29 @@ class SettingsResponse(BaseModel):
 
 @router.get("/", response_model=SettingsResponse)
 async def get_settings(
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_async_db),
     current_user: AdminUser = Depends(get_current_user),
 ):
     """Получить все настройки."""
-    settings = db.query(Setting).order_by(Setting.key).all()
+    result = await db.execute(
+        select(Setting).order_by(Setting.key)
+    )
+    settings = result.scalars().all()
     return SettingsResponse(items=settings)
 
 
 @router.get("/{key}", response_model=SettingItem)
 async def get_setting(
     key: str,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_async_db),
     current_user: AdminUser = Depends(get_current_user),
 ):
     """Получить конкретную настройку."""
-    setting = db.query(Setting).filter(Setting.key == key).first()
+    result = await db.execute(
+        select(Setting).where(Setting.key == key)
+    )
+    setting = result.scalar_one_or_none()
+    
     if not setting:
         raise HTTPException(status_code=404, detail="Настройка не найдена")
     return setting
@@ -68,11 +77,15 @@ async def get_setting(
 async def update_setting(
     key: str,
     data: SettingUpdate,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_async_db),
     current_user: AdminUser = Depends(get_current_user),
 ):
     """Обновить настройку."""
-    setting = db.query(Setting).filter(Setting.key == key).first()
+    result = await db.execute(
+        select(Setting).where(Setting.key == key)
+    )
+    setting = result.scalar_one_or_none()
+    
     if not setting:
         # Если настройки нет - создаём новую (Upsert)
         setting = Setting(key=key, value=data.value)
@@ -81,8 +94,8 @@ async def update_setting(
         setting.value = data.value
         setting.updated_at = datetime.utcnow()
     
-    db.commit()
-    db.refresh(setting)
+    await db.commit()
+    await db.refresh(setting)
     
     # Сбрасываем кеш NSPD клиента при изменении его настроек
     if key.startswith("nspd_"):
@@ -130,7 +143,6 @@ async def check_proxy(
             if not proxy_url.startswith("http://") and not proxy_url.startswith("https://"):
                  proxy_url = f"http://{proxy_url}"
         
-        # В некоторых версиях httpx аргумент называется proxy (singular)
         async with httpx.AsyncClient(proxy=proxy_url, timeout=10.0, verify=False) as client:
             response = await client.get(data.test_url or "https://api.ipify.org?format=json")
             
@@ -138,10 +150,8 @@ async def check_proxy(
             
             result_ip = None
             try:
-                # Пытаемся извлечь IP если ответ в JSON
                 json_resp = response.json()
                 if isinstance(json_resp, dict):
-                    # Разные сервисы возвращают IP в разных полях
                     result_ip = json_resp.get("ip") or json_resp.get("origin")
             except Exception:
                 pass
@@ -171,7 +181,6 @@ def _invalidate_nspd_client():
     import app.nspd_client as nspd_module
     
     if nspd_module._nspd_client is not None:
-        # Закрываем старый клиент
         import asyncio
         try:
             asyncio.get_event_loop().create_task(nspd_module._nspd_client.close())

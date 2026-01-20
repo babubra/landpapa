@@ -66,7 +66,7 @@ class Plot(Base):
     )
     
     # Связи
-    listing: Mapped["Listing"] = relationship("Listing", back_populates="plots")
+    listing: Mapped["Listing"] = relationship("Listing", back_populates="plots", lazy="joined")
     land_use: Mapped["Reference"] = relationship(
         "Reference", foreign_keys=[land_use_id], lazy="joined"
     )

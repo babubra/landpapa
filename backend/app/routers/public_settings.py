@@ -1,13 +1,15 @@
 """
 Публичный API для получения настроек сайта.
 Без авторизации — для использования на публичном фронтенде.
+Асинхронная версия.
 """
 
 from fastapi import APIRouter, Depends
-from sqlalchemy.orm import Session
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import BaseModel
 
-from app.database import get_db
+from app.database import get_async_db
 from app.models.setting import Setting
 
 router = APIRouter()
@@ -98,15 +100,18 @@ class PublicSettingsResponse(BaseModel):
 
 
 @router.get("/public", response_model=PublicSettingsResponse)
-async def get_public_settings(db: Session = Depends(get_db)):
+async def get_public_settings(db: AsyncSession = Depends(get_async_db)):
     """
     Получить публичные настройки сайта.
     Эндпоинт не требует авторизации.
     """
-    settings = db.query(Setting).filter(Setting.key.in_(PUBLIC_SETTING_KEYS)).all()
+    result = await db.execute(
+        select(Setting).where(Setting.key.in_(PUBLIC_SETTING_KEYS))
+    )
+    settings_list = result.scalars().all()
     
-    result = {}
-    for setting in settings:
-        result[setting.key] = setting.value if setting.value else None
+    result_dict = {}
+    for setting in settings_list:
+        result_dict[setting.key] = setting.value if setting.value else None
     
-    return PublicSettingsResponse(**result)
+    return PublicSettingsResponse(**result_dict)

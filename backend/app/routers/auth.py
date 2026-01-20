@@ -1,14 +1,16 @@
 """
 API роутер для аутентификации.
+Асинхронная версия.
 """
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from pydantic import BaseModel
-from sqlalchemy.orm import Session
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database import get_db
+from app.database import get_async_db
 from app.models.admin_user import AdminUser
 from app.auth import verify_password, hash_password, create_access_token, decode_access_token
 from app.utils.email import send_email
@@ -49,7 +51,7 @@ class ResetPasswordRequest(BaseModel):
 
 async def get_current_user(
     token: str = Depends(oauth2_scheme),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_async_db),
 ) -> AdminUser:
     """Получить текущего пользователя из JWT токена."""
     credentials_exception = HTTPException(
@@ -66,7 +68,11 @@ async def get_current_user(
     if username is None:
         raise credentials_exception
     
-    user = db.query(AdminUser).filter(AdminUser.username == username).first()
+    result = await db.execute(
+        select(AdminUser).where(AdminUser.username == username)
+    )
+    user = result.scalar_one_or_none()
+    
     if user is None:
         raise credentials_exception
     
@@ -84,10 +90,13 @@ async def get_current_user(
 @router.post("/login", response_model=Token)
 async def login(
     form_data: OAuth2PasswordRequestForm = Depends(),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_async_db),
 ):
     """Авторизация и получение JWT токена."""
-    user = db.query(AdminUser).filter(AdminUser.username == form_data.username).first()
+    result = await db.execute(
+        select(AdminUser).where(AdminUser.username == form_data.username)
+    )
+    user = result.scalar_one_or_none()
     
     if not user or not verify_password(form_data.password, user.password_hash):
         raise HTTPException(
@@ -104,7 +113,7 @@ async def login(
     
     # Обновляем время последнего входа
     user.last_login = datetime.utcnow()
-    db.commit()
+    await db.commit()
     
     # Создаём токен
     access_token = create_access_token(data={"sub": user.username})
@@ -119,21 +128,27 @@ async def get_me(current_user: AdminUser = Depends(get_current_user)):
 
 
 @router.post("/forgot-password")
-async def forgot_password(request: ForgotPasswordRequest, db: Session = Depends(get_db)):
+async def forgot_password(
+    request: ForgotPasswordRequest, 
+    db: AsyncSession = Depends(get_async_db)
+):
     """Запрос на восстановление пароля."""
-    user = db.query(AdminUser).filter(AdminUser.email == request.email).first()
+    result = await db.execute(
+        select(AdminUser).where(AdminUser.email == request.email)
+    )
+    user = result.scalar_one_or_none()
+    
     if not user:
         # Не выдаем, что email не найден в целях безопасности
         return {"detail": "Если этот email зарегистрирован, вы получите письмо."}
 
     # Создаем токен на 15 минут
-    from datetime import timedelta
     reset_token = create_access_token(
         data={"sub": user.username, "type": "password_reset"}, 
         expires_delta=timedelta(minutes=15)
     )
 
-    # Формируем ссылку (нужно будет настроить BASE_URL в конфиге или использовать захардкоженный)
+    # Формируем ссылку
     site_url = settings.cors_origins[0] if settings.cors_origins else "http://localhost:3000"
     reset_link = f"{site_url}/reset-password?token={reset_token}"
 
@@ -156,19 +171,26 @@ async def forgot_password(request: ForgotPasswordRequest, db: Session = Depends(
 
 
 @router.post("/reset-password")
-async def reset_password(request: ResetPasswordRequest, db: Session = Depends(get_db)):
+async def reset_password(
+    request: ResetPasswordRequest, 
+    db: AsyncSession = Depends(get_async_db)
+):
     """Смена пароля по токену."""
     payload = decode_access_token(request.token)
     if not payload or payload.get("type") != "password_reset":
         raise HTTPException(status_code=400, detail="Неверный или просроченный токен")
 
     username = payload.get("sub")
-    user = db.query(AdminUser).filter(AdminUser.username == username).first()
+    result = await db.execute(
+        select(AdminUser).where(AdminUser.username == username)
+    )
+    user = result.scalar_one_or_none()
+    
     if not user:
         raise HTTPException(status_code=404, detail="Пользователь не найден")
 
     # Меняем пароль
     user.password_hash = hash_password(request.new_password)
-    db.commit()
+    await db.commit()
 
     return {"detail": "Пароль успешно изменен."}

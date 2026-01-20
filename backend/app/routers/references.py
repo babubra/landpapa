@@ -1,8 +1,14 @@
+"""
+Публичный API для справочников.
+Асинхронная версия.
+"""
+
 from fastapi import APIRouter, Depends, Query
-from sqlalchemy.orm import Session
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import BaseModel
 
-from app.database import get_db
+from app.database import get_async_db
 from app.models.reference import Reference
 
 router = APIRouter()
@@ -22,13 +28,13 @@ class ReferenceItem(BaseModel):
 @router.get("/", response_model=list[ReferenceItem])
 async def get_references(
     type: str = Query(..., description="Тип справочника: land_use, land_category"),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_async_db),
 ):
     """Получить элементы справочника по типу."""
-    refs = (
-        db.query(Reference)
-        .filter(Reference.type == type)
+    result = await db.execute(
+        select(Reference)
+        .where(Reference.type == type)
         .order_by(Reference.sort_order, Reference.name)
-        .all()
     )
+    refs = result.scalars().all()
     return refs

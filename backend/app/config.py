@@ -4,8 +4,14 @@ from pydantic import field_validator
 
 
 class Settings(BaseSettings):
-    # База данных
+    # База данных (синхронная)
     database_url: str = "postgresql://postgres:postgres@localhost:5432/kaliningrad_land"
+    
+    # База данных (асинхронная) - автоматически генерируется из database_url
+    @property
+    def async_database_url(self) -> str:
+        """Преобразует sync URL в async URL (postgresql → postgresql+asyncpg)."""
+        return self.database_url.replace("postgresql://", "postgresql+asyncpg://")
     
     # JWT
     secret_key: str = "your-super-secret-key-change-in-production"

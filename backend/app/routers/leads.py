@@ -1,10 +1,15 @@
+"""
+API для работы с заявками (лидами).
+Асинхронная версия.
+"""
+
 from fastapi import APIRouter, Depends, HTTPException, Request, Query
-from sqlalchemy.orm import Session
-from sqlalchemy import desc
+from sqlalchemy import select, desc, func
+from sqlalchemy.ext.asyncio import AsyncSession
 import httpx
 import asyncio
 
-from app.database import get_db
+from app.database import get_async_db
 from app.models.lead import Lead
 from app.models.setting import Setting
 from app.schemas.lead import LeadCreate, LeadAdmin, LeadListResponse, LeadUpdate
@@ -49,7 +54,7 @@ async def send_telegram_notification(lead_data: dict, bot_token: str, chat_id: s
 async def create_public_lead(
     request: Request,
     data: LeadCreate,
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_async_db)
 ):
     """
     Создание заявки с публичной части сайта.
@@ -77,14 +82,20 @@ async def create_public_lead(
     )
     
     db.add(new_lead)
-    db.commit()
-    db.refresh(new_lead)
+    await db.commit()
+    await db.refresh(new_lead)
 
     # 4. Уведомление в Telegram (асинхронно)
-    bot_token_setting = db.query(Setting).filter(Setting.key == "tg_bot_token").first()
-    chat_id_setting = db.query(Setting).filter(Setting.key == "tg_chat_id").first()
+    result = await db.execute(
+        select(Setting).where(Setting.key.in_(["tg_bot_token", "tg_chat_id"]))
+    )
+    settings_list = result.scalars().all()
+    settings_dict = {s.key: s.value for s in settings_list}
     
-    if bot_token_setting and bot_token_setting.value and chat_id_setting and chat_id_setting.value:
+    bot_token = settings_dict.get("tg_bot_token")
+    chat_id = settings_dict.get("tg_chat_id")
+    
+    if bot_token and chat_id:
         lead_dict = {
             "name": new_lead.name,
             "phone": new_lead.phone,
@@ -93,8 +104,8 @@ async def create_public_lead(
         }
         asyncio.create_task(send_telegram_notification(
             lead_dict, 
-            bot_token_setting.value, 
-            chat_id_setting.value
+            bot_token, 
+            chat_id
         ))
 
     return {"status": "success", "id": new_lead.id}
@@ -105,17 +116,26 @@ async def get_admin_leads(
     page: int = Query(1, ge=1),
     size: int = Query(20, ge=1, le=100),
     status: str | None = Query(None),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_async_db),
     current_user: AdminUser = Depends(get_current_user)
 ):
     """Получение списка заявок для админки."""
-    query = db.query(Lead)
+    # Базовый запрос
+    query = select(Lead)
+    count_query = select(func.count(Lead.id))
     
     if status:
-        query = query.filter(Lead.status == status)
-        
-    total = query.count()
-    items = query.order_by(desc(Lead.created_at)).offset((page - 1) * size).limit(size).all()
+        query = query.where(Lead.status == status)
+        count_query = count_query.where(Lead.status == status)
+    
+    # Подсчёт
+    count_result = await db.execute(count_query)
+    total = count_result.scalar() or 0
+    
+    # Получение данных
+    query = query.order_by(desc(Lead.created_at)).offset((page - 1) * size).limit(size)
+    result = await db.execute(query)
+    items = result.scalars().all()
     
     return {
         "items": items,
@@ -129,16 +149,20 @@ async def get_admin_leads(
 async def update_lead_status(
     lead_id: int,
     data: LeadUpdate,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_async_db),
     current_user: AdminUser = Depends(get_current_user)
 ):
     """Обновление статуса заявки."""
-    lead = db.query(Lead).filter(Lead.id == lead_id).first()
+    result = await db.execute(
+        select(Lead).where(Lead.id == lead_id)
+    )
+    lead = result.scalar_one_or_none()
+    
     if not lead:
         raise HTTPException(status_code=404, detail="Заявка не найдена")
         
     lead.status = data.status
-    db.commit()
-    db.refresh(lead)
+    await db.commit()
+    await db.refresh(lead)
     
     return lead

@@ -1,11 +1,14 @@
-"""Админские эндпоинты для справочников."""
+"""
+Админские эндпоинты для справочников.
+Асинхронная версия.
+"""
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy.orm import Session
-from sqlalchemy import func
+from sqlalchemy import select, func, update
+from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import BaseModel
 
-from app.database import get_db
+from app.database import get_async_db
 from app.routers.auth import get_current_user
 from app.models.reference import Reference
 from app.models.location import District, Settlement
@@ -86,23 +89,23 @@ class ReferenceUsage(BaseModel):
 @router.get("/", response_model=list[ReferenceItem])
 async def list_references(
     type: str = Query(..., description="Тип справочника: land_use, land_category"),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_async_db),
     current_user: AdminUser = Depends(get_current_user),
 ):
     """Получить элементы справочника по типу."""
-    refs = (
-        db.query(Reference)
-        .filter(Reference.type == type)
+    result = await db.execute(
+        select(Reference)
+        .where(Reference.type == type)
         .order_by(Reference.sort_order, Reference.name)
-        .all()
     )
+    refs = result.scalars().all()
     return refs
 
 
 @router.post("/", response_model=ReferenceItem)
 async def create_reference(
     data: ReferenceCreate,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_async_db),
     current_user: AdminUser = Depends(get_current_user),
 ):
     """Создать элемент справочника."""
@@ -114,8 +117,8 @@ async def create_reference(
         sort_order=data.sort_order,
     )
     db.add(ref)
-    db.commit()
-    db.refresh(ref)
+    await db.commit()
+    await db.refresh(ref)
     return ref
 
 
@@ -123,11 +126,15 @@ async def create_reference(
 async def update_reference(
     ref_id: int,
     data: ReferenceUpdate,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_async_db),
     current_user: AdminUser = Depends(get_current_user),
 ):
     """Обновить элемент справочника."""
-    ref = db.query(Reference).filter(Reference.id == ref_id).first()
+    result = await db.execute(
+        select(Reference).where(Reference.id == ref_id)
+    )
+    ref = result.scalar_one_or_none()
+    
     if not ref:
         raise HTTPException(status_code=404, detail="Элемент справочника не найден")
     
@@ -140,28 +147,38 @@ async def update_reference(
     if data.sort_order is not None:
         ref.sort_order = data.sort_order
     
-    db.commit()
-    db.refresh(ref)
+    await db.commit()
+    await db.refresh(ref)
     return ref
 
 
 @router.get("/{ref_id}/usage", response_model=ReferenceUsage)
 async def get_reference_usage(
     ref_id: int,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_async_db),
     current_user: AdminUser = Depends(get_current_user),
 ):
     """Получить информацию об использовании элемента справочника."""
-    ref = db.query(Reference).filter(Reference.id == ref_id).first()
+    result = await db.execute(
+        select(Reference).where(Reference.id == ref_id)
+    )
+    ref = result.scalar_one_or_none()
+    
     if not ref:
         raise HTTPException(status_code=404, detail="Элемент справочника не найден")
     
     # Считаем использование в участках
     plots_count = 0
     if ref.type == "land_use":
-        plots_count = db.query(Plot).filter(Plot.land_use_id == ref_id).count()
+        result = await db.execute(
+            select(func.count(Plot.id)).where(Plot.land_use_id == ref_id)
+        )
+        plots_count = result.scalar() or 0
     elif ref.type == "land_category":
-        plots_count = db.query(Plot).filter(Plot.land_category_id == ref_id).count()
+        result = await db.execute(
+            select(func.count(Plot.id)).where(Plot.land_category_id == ref_id)
+        )
+        plots_count = result.scalar() or 0
     
     return ReferenceUsage(plots_count=plots_count)
 
@@ -170,20 +187,30 @@ async def get_reference_usage(
 async def delete_reference(
     ref_id: int,
     force: bool = Query(False, description="Удалить принудительно (SET NULL для связей)"),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_async_db),
     current_user: AdminUser = Depends(get_current_user),
 ):
     """Удалить элемент справочника."""
-    ref = db.query(Reference).filter(Reference.id == ref_id).first()
+    result = await db.execute(
+        select(Reference).where(Reference.id == ref_id)
+    )
+    ref = result.scalar_one_or_none()
+    
     if not ref:
         raise HTTPException(status_code=404, detail="Элемент справочника не найден")
     
     # Проверяем использование
     plots_count = 0
     if ref.type == "land_use":
-        plots_count = db.query(Plot).filter(Plot.land_use_id == ref_id).count()
+        result = await db.execute(
+            select(func.count(Plot.id)).where(Plot.land_use_id == ref_id)
+        )
+        plots_count = result.scalar() or 0
     elif ref.type == "land_category":
-        plots_count = db.query(Plot).filter(Plot.land_category_id == ref_id).count()
+        result = await db.execute(
+            select(func.count(Plot.id)).where(Plot.land_category_id == ref_id)
+        )
+        plots_count = result.scalar() or 0
     
     if plots_count > 0 and not force:
         raise HTTPException(
@@ -194,12 +221,16 @@ async def delete_reference(
     # SET NULL для связанных участков
     if plots_count > 0:
         if ref.type == "land_use":
-            db.query(Plot).filter(Plot.land_use_id == ref_id).update({"land_use_id": None})
+            await db.execute(
+                update(Plot).where(Plot.land_use_id == ref_id).values(land_use_id=None)
+            )
         elif ref.type == "land_category":
-            db.query(Plot).filter(Plot.land_category_id == ref_id).update({"land_category_id": None})
+            await db.execute(
+                update(Plot).where(Plot.land_category_id == ref_id).values(land_category_id=None)
+            )
     
-    db.delete(ref)
-    db.commit()
+    await db.delete(ref)
+    await db.commit()
     return {"success": True, "affected_plots": plots_count}
 
 
@@ -207,32 +238,32 @@ async def delete_reference(
 
 @router.get("/districts", response_model=list[DistrictItem])
 async def list_districts(
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_async_db),
     current_user: AdminUser = Depends(get_current_user),
 ):
     """Получить список районов."""
-    districts = (
-        db.query(
+    result = await db.execute(
+        select(
             District,
             func.count(Settlement.id).label("settlements_count")
         )
         .outerjoin(Settlement, District.id == Settlement.district_id)
         .group_by(District.id)
         .order_by(District.sort_order, District.name)
-        .all()
     )
+    districts = result.all()
     
-    result = []
-    for district, count in districts:
-        result.append(DistrictItem(
+    return [
+        DistrictItem(
             id=district.id,
             name=district.name,
             slug=district.slug,
             fias_id=district.fias_id,
             sort_order=district.sort_order,
             settlements_count=count,
-        ))
-    return result
+        )
+        for district, count in districts
+    ]
 
 
 # === Населённые пункты (только чтение) ===
@@ -240,24 +271,24 @@ async def list_districts(
 @router.get("/settlements", response_model=list[SettlementItem])
 async def list_settlements(
     district_id: int | None = None,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_async_db),
     current_user: AdminUser = Depends(get_current_user),
 ):
     """Получить список населённых пунктов."""
     query = (
-        db.query(Settlement, District.name)
+        select(Settlement, District.name)
         .join(District, Settlement.district_id == District.id)
         .order_by(District.name, Settlement.name)
     )
     
     if district_id:
-        query = query.filter(Settlement.district_id == district_id)
+        query = query.where(Settlement.district_id == district_id)
     
-    settlements = query.all()
+    result = await db.execute(query)
+    settlements = result.all()
     
-    result = []
-    for settlement, district_name in settlements:
-        result.append(SettlementItem(
+    return [
+        SettlementItem(
             id=settlement.id,
             name=settlement.name,
             slug=settlement.slug,
@@ -266,5 +297,6 @@ async def list_settlements(
             district_name=district_name,
             fias_id=settlement.fias_id,
             sort_order=settlement.sort_order,
-        ))
-    return result
+        )
+        for settlement, district_name in settlements
+    ]

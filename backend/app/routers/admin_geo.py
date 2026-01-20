@@ -1,10 +1,15 @@
+"""
+API для геолокации и населённых пунктов.
+Асинхронная версия.
+"""
+
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import BaseModel
 import re
 
-from app.database import get_db
+from app.database import get_async_db
 from app.models.location import District, Settlement
 from app.models.admin_user import AdminUser
 from app.routers.auth import get_current_user
@@ -55,7 +60,7 @@ async def suggest_settlements(
 @router.post("/resolve", response_model=SettlementResolved)
 async def resolve_settlement(
     data: ResolveRequest,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_async_db),
     current_user: AdminUser = Depends(get_current_user),
 ):
     """
@@ -66,19 +71,26 @@ async def resolve_settlement(
     if data.district_name:
         # Try finding by FIAS ID first if available
         if data.district_fias_id:
-            district = db.query(District).filter(District.fias_id == data.district_fias_id).first()
+            result = await db.execute(
+                select(District).where(District.fias_id == data.district_fias_id)
+            )
+            district = result.scalar_one_or_none()
         
         # Fallback to Name Check
         if not district:
-            # Clean name (remove "район", "округ" etc for flexible matching if needed, 
-            # but usually DaData returns consistent names)
-            district = db.query(District).filter(District.name == data.district_name).first()
+            result = await db.execute(
+                select(District).where(District.name == data.district_name)
+            )
+            district = result.scalar_one_or_none()
         
         if not district:
             # Create District
             district_slug = slugify(data.district_name)
             # Ensure unique slug
-            if db.query(District).filter(District.slug == district_slug).first():
+            result = await db.execute(
+                select(District).where(District.slug == district_slug)
+            )
+            if result.scalar_one_or_none():
                 district_slug = f"{district_slug}-{data.district_fias_id}" if data.district_fias_id else f"{district_slug}-new"
 
             district = District(
@@ -88,46 +100,55 @@ async def resolve_settlement(
                 sort_order=0
             )
             db.add(district)
-            db.commit()
-            db.refresh(district)
+            await db.commit()
+            await db.refresh(district)
 
     if not district:
-         # Если район не пришел (например, Калининград), возможно это город областного значения
-         # В нашей модели Settlement привязан к District.
-         # Нужно либо создать "Городской округ Калининград" как District, либо иметь District "Областные города".
-         # Для простоты, если district_name пустое, попробуем найти/создать район по имени населенного пункта (напр. "Калининград")
-         # или используем "Калининградский городской округ" если регион указан.
-         # DaData обычно возвращает area (район) или city_district. Если пусто - значит это City.
-         
-         # Hack for Kaliningrad city which might not have a district in DaData response
-         if data.name == "Калининград" or not data.district_name:
-             dist_name = "Калининград"
-             district = db.query(District).filter(District.name == dist_name).first()
-             if not district:
-                 district = District(name=dist_name, slug="kaliningrad", sort_order=0)
-                 db.add(district)
-                 db.commit()
-                 db.refresh(district)
+        # Hack for Kaliningrad city which might not have a district in DaData response
+        if data.name == "Калининград" or not data.district_name:
+            dist_name = "Калининград"
+            result = await db.execute(
+                select(District).where(District.name == dist_name)
+            )
+            district = result.scalar_one_or_none()
+            if not district:
+                district = District(name=dist_name, slug="kaliningrad", sort_order=0)
+                db.add(district)
+                await db.commit()
+                await db.refresh(district)
 
     # 2. Find or Create Settlement
     settlement = None
     if data.settlement_fias_id:
-        settlement = db.query(Settlement).filter(Settlement.fias_id == data.settlement_fias_id).first()
+        result = await db.execute(
+            select(Settlement).where(Settlement.fias_id == data.settlement_fias_id)
+        )
+        settlement = result.scalar_one_or_none()
     
     if not settlement and district:
         # Try logic: Type + Name + District
-        settlement = db.query(Settlement).filter(
-            Settlement.name == data.name,
-            Settlement.district_id == district.id
-        ).first()
+        result = await db.execute(
+            select(Settlement).where(
+                Settlement.name == data.name,
+                Settlement.district_id == district.id
+            )
+        )
+        settlement = result.scalar_one_or_none()
 
     if not settlement and district:
         slug_base = slugify(data.name)
         slug = slug_base
         counter = 1
-        while db.query(Settlement).filter(Settlement.slug == slug).first():
+        
+        result = await db.execute(
+            select(Settlement).where(Settlement.slug == slug)
+        )
+        while result.scalar_one_or_none():
             slug = f"{slug_base}-{counter}"
             counter += 1
+            result = await db.execute(
+                select(Settlement).where(Settlement.slug == slug)
+            )
 
         settlement = Settlement(
             name=data.name,
@@ -137,8 +158,8 @@ async def resolve_settlement(
             district_id=district.id
         )
         db.add(settlement)
-        db.commit()
-        db.refresh(settlement)
+        await db.commit()
+        await db.refresh(settlement)
     
     if not settlement:
         raise HTTPException(status_code=400, detail="Could not resolve settlement")
