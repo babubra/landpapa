@@ -1,27 +1,28 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useRef } from "react";
 import { ListingCard, ListingData } from "@/components/catalog/ListingCard";
 import { CatalogFilters } from "@/components/catalog/CatalogFilters";
 import { Pagination } from "@/components/ui/pagination";
+import type { ListingsResponse } from "./page";
 
-interface ListingsResponse {
-    items: ListingData[];
-    total: number;
-    page: number;
-    size: number;
-    pages: number;
+interface CatalogContentProps {
+    initialData: ListingsResponse;
 }
 
-export function CatalogContent() {
+export function CatalogContent({ initialData }: CatalogContentProps) {
     const searchParams = useSearchParams();
 
-    const [listings, setListings] = useState<ListingData[]>([]);
-    const [total, setTotal] = useState(0);
-    const [currentPage, setCurrentPage] = useState(1);
-    const [totalPages, setTotalPages] = useState(1);
-    const [loading, setLoading] = useState(true);
+    // Инициализируем state данными с сервера
+    const [listings, setListings] = useState<ListingData[]>(initialData.items);
+    const [total, setTotal] = useState(initialData.total);
+    const [currentPage, setCurrentPage] = useState(initialData.page);
+    const [totalPages, setTotalPages] = useState(initialData.pages);
+    const [loading, setLoading] = useState(false); // Не true — данные уже есть!
+
+    // Флаг для пропуска первого рендера
+    const isFirstRender = useRef(true);
 
     const fetchListings = useCallback(async () => {
         setLoading(true);
@@ -57,6 +58,12 @@ export function CatalogContent() {
     }, [searchParams]);
 
     useEffect(() => {
+        // Пропускаем первый рендер — данные уже получены с сервера
+        if (isFirstRender.current) {
+            isFirstRender.current = false;
+            return;
+        }
+        // При изменении URL параметров — загружаем новые данные
         fetchListings();
     }, [fetchListings]);
 
