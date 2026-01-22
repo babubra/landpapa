@@ -97,13 +97,20 @@ async def update_setting(
     await db.commit()
     await db.refresh(setting)
     
-    # Сбрасываем кеш NSPD клиента при изменении его настроек
-    if key.startswith("nspd_"):
-        _invalidate_nspd_client()
+    
+    # Cache invalidation for NSPD is not needed because it's instantiated per-request
+    # checking DB settings every time.
+    # if key.startswith("nspd_"):
+    #     _invalidate_nspd_client()
+
     
     # Сбрасываем кеш DaData клиента при изменении его настроек
     if key.startswith("dadata_"):
-        _invalidate_dadata_client()
+        try:
+             _invalidate_dadata_client()
+        except ImportError:
+             pass # Fail silently if not implemented
+
     
     return setting
 
@@ -175,18 +182,10 @@ async def check_proxy(
         )
 
 
-def _invalidate_nspd_client():
-    """Сброс NSPD клиента для применения новых настроек."""
-    from app.nspd_client import _nspd_client
-    import app.nspd_client as nspd_module
-    
-    if nspd_module._nspd_client is not None:
-        import asyncio
-        try:
-            asyncio.get_event_loop().create_task(nspd_module._nspd_client.close())
-        except Exception:
-            pass
-        nspd_module._nspd_client = None
+# def _invalidate_nspd_client():
+#     """Сброс NSPD клиента для применения новых настроек."""
+#     # Not used anymore
+#     pass
 
 
 def _invalidate_dadata_client():

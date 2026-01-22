@@ -71,14 +71,29 @@ class NspdClient:
         self.base_url = "https://nspd.gov.ru"
         self._transformer = Transformer.from_crs(CRS_WEB_MERCATOR, CRS_WGS84, always_xy=True)
 
-        proxy_url = f"http://{proxy}" if proxy else None
+        proxy_url = None
+        if proxy:
+            if proxy.startswith("http://") or proxy.startswith("https://"):
+                proxy_url = proxy
+            else:
+                proxy_url = f"http://{proxy}"
         
         self.client = httpx.AsyncClient(
             base_url=self.base_url,
             headers={
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-                "Accept": "application/json, text/plain, */*",
-                "Referer": f"{self.base_url}/map",
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36",
+                "Accept": "*/*",
+                "Accept-Language": "ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7",
+                "Referer": "https://nspd.gov.ru/map?thematic=PKK&zoom=16&active_layers=36049",
+                "Origin": "https://nspd.gov.ru",
+                "Sec-Ch-Ua": '"Not(A:Brand";v="8", "Chromium";v="144", "Google Chrome";v="144"',
+                "Sec-Ch-Ua-Mobile": "?0",
+                "Sec-Ch-Ua-Platform": '"Windows"',
+                "Sec-Fetch-Dest": "empty",
+                "Sec-Fetch-Mode": "cors",
+                "Sec-Fetch-Site": "same-origin",
+                "DNT": "1",
+                "Priority": "u=1, i",
             },
             timeout=timeout,
             verify=False,
@@ -188,6 +203,9 @@ class NspdClient:
         except (httpx.TimeoutException, httpx.ConnectError, httpx.HTTPStatusError) as e:
             logger.error(f"NSPD: Network error: {type(e).__name__}")
             print(f"[NSPD DEBUG] Network error: {type(e).__name__} - {e}")
+            if isinstance(e, httpx.HTTPStatusError):
+                print(f"[NSPD DEBUG] Response Status: {e.response.status_code}")
+                # print(f"[NSPD DEBUG] Response Body: {e.response.text[:500]}") # Optional: might be HTML
             await self._handle_failure()
             return None
         except Exception as e:

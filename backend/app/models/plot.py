@@ -1,5 +1,5 @@
 from datetime import datetime
-from sqlalchemy import String, Text, Float, Integer, DateTime, ForeignKey, Enum
+from sqlalchemy import String, Text, Float, Integer, BigInteger, DateTime, ForeignKey, Enum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from geoalchemy2 import Geometry
 import enum
@@ -41,12 +41,12 @@ class Plot(Base):
     centroid = mapped_column(Geometry("POINT", srid=4326), nullable=True)  # Центр полигона
     
     # Цена (публичная)
-    price_public: Mapped[int | None] = mapped_column(Integer, nullable=True)  # Полная цена
-    price_per_sotka: Mapped[int | None] = mapped_column(Integer, nullable=True)  # За сотку
+    price_public: Mapped[int | None] = mapped_column(BigInteger, nullable=True)  # Полная цена
+    price_per_sotka: Mapped[int | None] = mapped_column(BigInteger, nullable=True)  # За сотку
     
     # Цена (приватная — для внутреннего использования)
-    price_private: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    price_per_sotka_private: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    price_private: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+    price_per_sotka_private: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
     
     # Статус
     status: Mapped[PlotStatus] = mapped_column(
