@@ -9,7 +9,7 @@ sys.path.append(os.getcwd())
 from app.database import AsyncSessionLocal
 
 async def main():
-    print("--- MIGRATING PRICES TO BIGINT ---")
+    print("--- REVERTING PRICES TO INTEGER ---")
     
     async with AsyncSessionLocal() as db:
         print("Connected to DB.")
@@ -23,9 +23,11 @@ async def main():
         ]
         
         for col in columns:
-            print(f"Altering column '{col}' to BIGINT...")
+            print(f"Altering column '{col}' to INTEGER...")
             try:
-                await db.execute(text(f"ALTER TABLE plots ALTER COLUMN {col} TYPE BIGINT;"))
+                # USING clause is generally needed when downcasting, but if data fits, it might work without.
+                # Adding USING just in case to be safe: using the column value cast to integer.
+                await db.execute(text(f"ALTER TABLE plots ALTER COLUMN {col} TYPE INTEGER USING {col}::integer;"))
                 print("OK.")
             except Exception as e:
                 print(f"FAILED: {e}")
