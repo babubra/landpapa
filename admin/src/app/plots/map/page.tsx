@@ -5,13 +5,13 @@ import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import { ArrowLeft, Lasso, X, Link2, Plus, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
-import Link from "next/link";
 
 import { useAuth } from "@/lib/auth";
-import { getPlotsForMap, bulkAssignPlots, PlotMapItem, PlotClusterItem, ViewportParams } from "@/lib/api";
+import { getPlotsForMap, bulkAssignPlots, PlotMapItem, PlotClusterItem, ViewportParams, getPlot, PlotListItem } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { AssignListingModal } from "@/components/plots/AssignListingModal";
 import { ListingFormModal } from "@/components/listings/listing-form-modal";
+import { PlotFormModal } from "@/components/plots/plot-form-modal";
 
 // Динамический импорт карты (без SSR)
 const AdminPlotsMap = dynamic(
@@ -32,6 +32,8 @@ export default function PlotsMapPage() {
     const [lassoMode, setLassoMode] = useState(false);
     const [assignModalOpen, setAssignModalOpen] = useState(false);
     const [createModalOpen, setCreateModalOpen] = useState(false);
+    const [editListingId, setEditListingId] = useState<number | null>(null);  // ID объявления для редактирования
+    const [editPlot, setEditPlot] = useState<PlotListItem | null>(null);  // Участок для редактирования
     const [focusedPlot, setFocusedPlot] = useState<PlotMapItem | null>(null);
 
     // Debounce для запросов
@@ -88,10 +90,11 @@ export default function PlotsMapPage() {
         }
     };
 
-    // Callback после создания объявления
+    // Callback после создания/редактирования объявления
     const handleListingCreated = () => {
         setSelectedIds(new Set());
         setCreateModalOpen(false);
+        setEditListingId(null);
         // Перезагружаем карту с текущего viewport
         if (currentViewportRef.current) {
             loadPlots(currentViewportRef.current);
@@ -109,6 +112,26 @@ export default function PlotsMapPage() {
         const plot = plots.find(p => p.id === plotId);
         if (plot) {
             setFocusedPlot(plot);
+        }
+    };
+
+    // Открыть редактирование участка
+    const handleEditPlot = async (plotId: number) => {
+        try {
+            const plotData = await getPlot(plotId);
+            setEditPlot(plotData);
+        } catch (error) {
+            toast.error("Ошибка загрузки участка");
+            console.error(error);
+        }
+    };
+
+    // Callback после редактирования участка
+    const handlePlotEditSuccess = () => {
+        setEditPlot(null);
+        // Перезагружаем карту
+        if (currentViewportRef.current) {
+            loadPlots(currentViewportRef.current);
         }
     };
 
@@ -222,20 +245,44 @@ export default function PlotsMapPage() {
                         <span>Кластер участков</span>
                     </div>
                 ) : (
-                    <>
-                        <div className="flex items-center gap-2 mb-1">
-                            <div className="w-4 h-4 rounded bg-green-500" />
-                            <span>Без привязки</span>
-                        </div>
-                        <div className="flex items-center gap-2 mb-1">
-                            <div className="w-4 h-4 rounded bg-blue-500" />
-                            <span>Привязан к объявлению</span>
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+                        <div className="col-span-2 text-xs font-semibold text-muted-foreground mb-1">Без привязки</div>
+                        <div className="flex items-center gap-2">
+                            <div className="w-3 h-3 rounded bg-green-500" />
+                            <span>В продаже</span>
                         </div>
                         <div className="flex items-center gap-2">
-                            <div className="w-4 h-4 rounded bg-amber-500" />
+                            <div className="w-3 h-3 rounded bg-red-300" />
+                            <span>Продан</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <div className="w-3 h-3 rounded bg-yellow-300" />
+                            <span>Резерв</span>
+                        </div>
+
+                        <div className="col-span-2 text-xs font-semibold text-muted-foreground mt-2 mb-1">С объявлением</div>
+                        <div className="flex items-center gap-2">
+                            <div className="w-3 h-3 rounded bg-blue-500" />
+                            <span>Опубликован</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <div className="w-3 h-3 rounded bg-gray-400" />
+                            <span>Черновик</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <div className="w-3 h-3 rounded bg-red-500" />
+                            <span>Продан</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <div className="w-3 h-3 rounded bg-yellow-500" />
+                            <span>Резерв</span>
+                        </div>
+
+                        <div className="col-span-2 mt-2 pt-2 border-t flex items-center gap-2">
+                            <div className="w-3 h-3 rounded bg-amber-500" />
                             <span>Выбран</span>
                         </div>
-                    </>
+                    </div>
                 )}
             </div>
 
@@ -298,17 +345,27 @@ export default function PlotsMapPage() {
                         </div>
                     )}
                     {focusedPlot.listing ? (
-                        <Link
-                            href={`/listings?edit=${focusedPlot.listing.id}`}
+                        <button
+                            onClick={() => setEditListingId(focusedPlot.listing!.id)}
                             className="flex items-center gap-2 text-sm text-blue-600 hover:underline"
                         >
                             <ExternalLink className="h-3.5 w-3.5" />
                             {focusedPlot.listing.title}
-                        </Link>
+                        </button>
                     ) : (
                         <div className="text-sm text-muted-foreground">
                             Не привязан к объявлению
                         </div>
+                    )}
+                    {/* Кнопка редактирования участка (если выделен один) */}
+                    {selectedIds.size === 1 && selectedIds.has(focusedPlot.id) && (
+                        <button
+                            onClick={() => handleEditPlot(focusedPlot.id)}
+                            className="flex items-center gap-2 text-sm text-gray-600 hover:underline mt-2"
+                        >
+                            <ExternalLink className="h-3.5 w-3.5" />
+                            Редактировать участок
+                        </button>
                     )}
                 </div>
             )}
@@ -327,6 +384,22 @@ export default function PlotsMapPage() {
                 onOpenChange={setCreateModalOpen}
                 initialPlotIds={Array.from(selectedIds)}
                 onSuccess={handleListingCreated}
+            />
+
+            {/* Модальное окно редактирования объявления */}
+            <ListingFormModal
+                open={editListingId !== null}
+                onOpenChange={(open) => !open && setEditListingId(null)}
+                listingId={editListingId}
+                onSuccess={handleListingCreated}
+            />
+
+            {/* Модальное окно редактирования участка */}
+            <PlotFormModal
+                open={editPlot !== null}
+                onOpenChange={(open) => !open && setEditPlot(null)}
+                plot={editPlot}
+                onSuccess={handlePlotEditSuccess}
             />
         </div>
     );

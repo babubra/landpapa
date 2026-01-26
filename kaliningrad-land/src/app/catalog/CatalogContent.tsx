@@ -81,7 +81,7 @@ export function CatalogContent({ initialData }: CatalogContentProps) {
         <div className="flex flex-col lg:flex-row gap-8">
             {/* Сайдбар с фильтрами */}
             <aside className="w-full lg:w-80 flex-shrink-0">
-                <CatalogFilters onFiltersChange={handleFiltersChange} total={total} />
+                <CatalogFilters onFiltersChange={handleFiltersChange} />
             </aside>
 
             {/* Основной контент */}

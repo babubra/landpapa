@@ -24,6 +24,7 @@ class ListingShort(BaseModel):
     id: int
     slug: str
     title: str
+    is_published: bool = True  # Статус публикации для цветовой индикации на карте
 
     class Config:
         from_attributes = True

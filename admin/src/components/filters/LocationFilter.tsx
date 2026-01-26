@@ -22,14 +22,14 @@ import { API_URL } from "@/lib/api";
 interface SettlementItem {
     id: number;
     name: string;
-    listings_count: number;
+    plots_count: number;
 }
 
 /** Район с вложенными населёнными пунктами */
 interface DistrictGroup {
     id: number;
     name: string;
-    listings_count: number;
+    plots_count: number;
     settlements: SettlementItem[];
 }
 
@@ -178,7 +178,7 @@ export function LocationFilter({
                                             )}
                                             <span className="font-medium flex-1">{district.name}</span>
                                             <span className="text-xs text-muted-foreground">
-                                                ({district.listings_count})
+                                                ({district.plots_count})
                                             </span>
                                         </div>
 
@@ -201,7 +201,7 @@ export function LocationFilter({
                                                         />
                                                         <span className="flex-1">{settlement.name}</span>
                                                         <span className="text-xs text-muted-foreground">
-                                                            ({settlement.listings_count})
+                                                            ({settlement.plots_count})
                                                         </span>
                                                     </div>
                                                 ))}

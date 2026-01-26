@@ -169,7 +169,7 @@ class SettlementGroupItem(BaseModel):
     """Населённый пункт в группе (без slug)."""
     id: int
     name: str
-    listings_count: int
+    plots_count: int  # количество активных участков
 
     class Config:
         from_attributes = True
@@ -179,7 +179,7 @@ class DistrictGroup(BaseModel):
     """Район с вложенными населёнными пунктами."""
     id: int
     name: str
-    listings_count: int  # сумма по всем населённым пунктам
+    plots_count: int  # сумма активных участков по всем населённым пунктам
     settlements: list[SettlementGroupItem]
 
     class Config:
@@ -193,27 +193,21 @@ async def get_settlements_grouped(db: AsyncSession = Depends(get_async_db)):
     
     Используется для фильтра местоположения с множественным выбором.
     Сортировка: города без районов (sort_order=0) первыми, затем по алфавиту.
-    Показываются только населённые пункты с активными объявлениями.
+    Показываются только населённые пункты с активными участками.
+    Возвращает количество активных участков (plots_count), а не объявлений.
     """
-    # Подзапрос: объявления с активными участками
-    active_listing_ids = (
-        select(Plot.listing_id)
-        .where(Plot.status == PlotStatus.active)
-        .distinct()
-        .subquery()
-    )
-
-    # Получаем населённые пункты с количеством объявлений
+    # Получаем населённые пункты с количеством активных участков
     query = (
         select(
             Settlement.id,
             Settlement.name,
             Settlement.district_id,
-            func.count(Listing.id).label("listings_count"),
+            func.count(Plot.id).label("plots_count"),
         )
         .join(Listing, Settlement.id == Listing.settlement_id)
+        .join(Plot, Listing.id == Plot.listing_id)
         .where(Listing.is_published == True)
-        .where(Listing.id.in_(select(active_listing_ids.c.listing_id)))
+        .where(Plot.status == PlotStatus.active)
         .group_by(Settlement.id, Settlement.name, Settlement.district_id)
         .order_by(Settlement.name)
     )
@@ -236,14 +230,14 @@ async def get_settlements_grouped(db: AsyncSession = Depends(get_async_db)):
                     "id": district.id,
                     "name": district.name,
                     "sort_order": district.sort_order,
-                    "listings_count": 0,
+                    "plots_count": 0,
                     "settlements": []
                 }
         
         if district_id_val in districts_map:
-            districts_map[district_id_val]["listings_count"] += s.listings_count
+            districts_map[district_id_val]["plots_count"] += s.plots_count
             districts_map[district_id_val]["settlements"].append(
-                SettlementGroupItem(id=s.id, name=s.name, listings_count=s.listings_count)
+                SettlementGroupItem(id=s.id, name=s.name, plots_count=s.plots_count)
             )
 
     # Сортировка: sort_order, затем по алфавиту
@@ -256,7 +250,7 @@ async def get_settlements_grouped(db: AsyncSession = Depends(get_async_db)):
         DistrictGroup(
             id=d["id"],
             name=d["name"],
-            listings_count=d["listings_count"],
+            plots_count=d["plots_count"],
             settlements=d["settlements"]
         )
         for d in sorted_districts

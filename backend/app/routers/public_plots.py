@@ -97,15 +97,22 @@ async def get_all_plots(
 
 @router.get("/count")
 async def get_active_plots_count(
+    # Опциональные фильтры
+    settlements: str | None = Query(None, description="Список ID населённых пунктов через запятую"),
+    land_use: int | None = Query(None, alias="land_use", description="ID разрешённого использования"),
+    price_min: int | None = Query(None, description="Минимальная цена"),
+    price_max: int | None = Query(None, description="Максимальная цена"),
+    area_min: float | None = Query(None, description="Минимальная площадь (м²)"),
+    area_max: float | None = Query(None, description="Максимальная площадь (м²)"),
     db: AsyncSession = Depends(get_async_db),
 ):
     """
-    Получить общее количество активных участков.
+    Получить количество активных участков с учётом фильтров.
     
     Учитываются только участки со статусом 'active',
     привязанные к опубликованным объявлениям.
     """
-    result = await db.execute(
+    query = (
         select(func.count(Plot.id))
         .join(Listing, Plot.listing_id == Listing.id)
         .where(
@@ -113,6 +120,27 @@ async def get_active_plots_count(
             Listing.is_published == True
         )
     )
+    
+    # Фильтр по населённым пунктам
+    if settlements:
+        settlement_ids = [int(s.strip()) for s in settlements.split(",") if s.strip().isdigit()]
+        if settlement_ids:
+            query = query.where(Listing.settlement_id.in_(settlement_ids))
+    
+    # Фильтры по характеристикам участков
+    if land_use:
+        query = query.where(Plot.land_use_id == land_use)
+    if price_min:
+        query = query.where(Plot.price_public >= price_min)
+    if price_max:
+        query = query.where(Plot.price_public <= price_max)
+    if area_min:
+        query = query.where(Plot.area >= area_min)
+    if area_max:
+        query = query.where(Plot.area <= area_max)
+    
+    result = await db.execute(query)
     count = result.scalar()
     
     return {"count": count or 0}
+

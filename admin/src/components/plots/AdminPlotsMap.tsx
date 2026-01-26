@@ -39,12 +39,48 @@ export function AdminPlotsMap({
     const isFirstLoadRef = useRef(true);
     const currentZoomRef = useRef<number>(10);
 
+    // Цветовая палитра для участков
+    const PLOT_COLORS = {
+        // Не привязан к объявлению
+        unassigned_active: "#22c55e",      // Зелёный — активный, не привязан
+        unassigned_sold: "#fca5a5",        // Светло-красный — продан, не привязан
+        unassigned_reserved: "#fde047",    // Светло-жёлтый — резерв, не привязан
+        // Привязан к объявлению
+        assigned_active_published: "#3b82f6",   // Синий — активный, опубликован
+        assigned_active_draft: "#9ca3af",       // Серый — активный, черновик
+        assigned_sold: "#ef4444",               // Красный — продан
+        assigned_reserved: "#eab308",           // Жёлтый (насыщенный) — резерв
+        // Выделенный
+        selected: "#f59e0b",               // Оранжевый (яркий) — выбран
+    };
+
     // Цвета полигонов
     const getPolygonColor = useCallback(
         (plot: PlotMapItem, isSelected: boolean) => {
-            if (isSelected) return "#f59e0b"; // Оранжевый - выделенный
-            if (plot.listing_id === null) return "#22c55e"; // Зелёный - не привязан
-            return "#3b82f6"; // Синий - привязан
+            if (isSelected) return PLOT_COLORS.selected;
+
+            const hasListing = plot.listing_id !== null;
+            const isPublished = plot.listing?.is_published ?? false;
+
+            // Не привязан к объявлению
+            if (!hasListing) {
+                switch (plot.status) {
+                    case "sold": return PLOT_COLORS.unassigned_sold;
+                    case "reserved": return PLOT_COLORS.unassigned_reserved;
+                    default: return PLOT_COLORS.unassigned_active;
+                }
+            }
+
+            // Привязан к объявлению
+            switch (plot.status) {
+                case "sold": return PLOT_COLORS.assigned_sold;
+                case "reserved": return PLOT_COLORS.assigned_reserved;
+                default:
+                    // Active: зависит от публикации
+                    return isPublished
+                        ? PLOT_COLORS.assigned_active_published
+                        : PLOT_COLORS.assigned_active_draft;
+            }
         },
         []
     );

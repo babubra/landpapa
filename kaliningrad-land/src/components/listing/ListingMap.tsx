@@ -37,7 +37,7 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 // Минимальный зум для показа подписей
-const MIN_ZOOM_FOR_LABELS = 15;
+const MIN_ZOOM_FOR_LABELS = 18;
 
 // Функция для вычисления границ карты (с уменьшенным отступом)
 function calculateBounds(plots: PlotForMap[]): LatLngBoundsExpression | null {

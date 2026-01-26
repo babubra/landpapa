@@ -201,6 +201,7 @@ async def get_plots_for_map(
                     id=plot.listing.id,
                     slug=plot.listing.slug,
                     title=plot.listing.title,
+                    is_published=plot.listing.is_published,
                 )
             
             items.append(PlotMapItem(

@@ -634,7 +634,7 @@ export interface PlotMapItem {
   comment: string | null;
   status: "active" | "sold" | "reserved";
   listing_id: number | null;
-  listing: { id: number; slug: string; title: string } | null;
+  listing: { id: number; slug: string; title: string; is_published: boolean } | null;
   polygon_coords: [number, number][];  // [[lat, lon], ...]
 }
 

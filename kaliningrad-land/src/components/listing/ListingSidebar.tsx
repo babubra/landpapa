@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Phone, MapPin, Info, ChevronRight, ChevronLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { pluralize } from "@/lib/utils";
 import { Card, CardContent } from "@/components/ui/card";
 import {
     Tooltip,
@@ -95,11 +96,42 @@ export function ListingSidebar({
                         {/* Информационная надпись */}
                         <div className="bg-primary/10 rounded-lg p-3">
                             <p className="text-sm font-medium text-primary">
-                                ⚡ Доступно {plotsCount} участка
+                                ⚡ Доступно {plotsCount} {pluralize(plotsCount, ['участок', 'участка', 'участков'])}
                             </p>
                             <p className="text-xs text-muted-foreground mt-1">
                                 Выберите участок на карте ниже
                             </p>
+                        </div>
+
+                        {/* Контакт — вверху для нескольких участков */}
+                        <div className="space-y-3 pt-4 border-t">
+                            <p className="text-lg font-semibold flex items-center gap-2">
+                                <Phone className="h-5 w-5" />
+                                {phone}
+                            </p>
+
+                            <Button size="lg" className="w-full" onClick={handleCall}>
+                                <Phone className="h-4 w-4 mr-2" />
+                                Позвонить
+                            </Button>
+
+                            <TooltipProvider>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Button size="lg" variant="outline" className="w-full">
+                                            <MapPin className="h-4 w-4 mr-2" />
+                                            Покажите мне участок
+                                            <Info className="h-4 w-4 ml-2 text-muted-foreground" />
+                                        </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="bottom" className="max-w-xs text-center">
+                                        <p>
+                                            Наш представитель покажет вам участок на местности и ответит
+                                            на все ваши вопросы
+                                        </p>
+                                    </TooltipContent>
+                                </Tooltip>
+                            </TooltipProvider>
                         </div>
 
                         {/* Список участков */}
@@ -213,36 +245,38 @@ export function ListingSidebar({
                     </div>
                 )}
 
-                {/* Контакт */}
-                <div className="space-y-3 pt-4 border-t">
-                    <p className="text-lg font-semibold flex items-center gap-2">
-                        <Phone className="h-5 w-5" />
-                        {phone}
-                    </p>
+                {/* Контакт — для одного участка внизу */}
+                {!hasMultiplePlots && (
+                    <div className="space-y-3 pt-4 border-t">
+                        <p className="text-lg font-semibold flex items-center gap-2">
+                            <Phone className="h-5 w-5" />
+                            {phone}
+                        </p>
 
-                    <Button size="lg" className="w-full" onClick={handleCall}>
-                        <Phone className="h-4 w-4 mr-2" />
-                        Позвонить
-                    </Button>
+                        <Button size="lg" className="w-full" onClick={handleCall}>
+                            <Phone className="h-4 w-4 mr-2" />
+                            Позвонить
+                        </Button>
 
-                    <TooltipProvider>
-                        <Tooltip>
-                            <TooltipTrigger asChild>
-                                <Button size="lg" variant="outline" className="w-full">
-                                    <MapPin className="h-4 w-4 mr-2" />
-                                    Покажите мне участок
-                                    <Info className="h-4 w-4 ml-2 text-muted-foreground" />
-                                </Button>
-                            </TooltipTrigger>
-                            <TooltipContent side="bottom" className="max-w-xs text-center">
-                                <p>
-                                    Наш представитель покажет вам участок на местности и ответит
-                                    на все ваши вопросы
-                                </p>
-                            </TooltipContent>
-                        </Tooltip>
-                    </TooltipProvider>
-                </div>
+                        <TooltipProvider>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Button size="lg" variant="outline" className="w-full">
+                                        <MapPin className="h-4 w-4 mr-2" />
+                                        Покажите мне участок
+                                        <Info className="h-4 w-4 ml-2 text-muted-foreground" />
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent side="bottom" className="max-w-xs text-center">
+                                    <p>
+                                        Наш представитель покажет вам участок на местности и ответит
+                                        на все ваши вопросы
+                                    </p>
+                                </TooltipContent>
+                            </Tooltip>
+                        </TooltipProvider>
+                    </div>
+                )}
             </CardContent>
         </Card>
     );
