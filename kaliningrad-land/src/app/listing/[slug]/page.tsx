@@ -97,9 +97,46 @@ export async function generateMetadata({
     // 2. Title
     let title = listing.meta_title;
     if (!title) {
-        // Автогенерация: Продажа участка {area} соток {district}, {settlement}, Калининградская область
-        const areaStr = listing.plots[0]?.area ? (listing.plots[0].area / 100).toFixed(2).replace(".00", "") : "?";
-        title = `Продажа участка ${areaStr} соток ${locationStr ? `${locationStr}, ` : ""}Калининградская область`;
+        // Автогенерация уникального title с кадастровыми номерами и ценой
+        const plotsCount = listing.plots?.length || 0;
+        const isMultiple = plotsCount > 1;
+
+        // Площадь: если несколько участков - "от X", иначе просто площадь
+        const firstArea = listing.plots[0]?.area ? (listing.plots[0].area / 100).toFixed(2).replace(".00", "") : null;
+        const areaStr = firstArea
+            ? (isMultiple ? `от ${firstArea}` : firstArea)
+            : null;
+
+        // Цена: если несколько участков - "от X", иначе просто цена
+        const priceValue = listing.price_min;
+        const formatPrice = (price: number) => {
+            return new Intl.NumberFormat("ru-RU").format(price) + " ₽";
+        };
+        const priceStr = priceValue
+            ? (isMultiple ? `от ${formatPrice(priceValue)}` : formatPrice(priceValue))
+            : null;
+
+        // Кадастровые номера: до 2-х с многоточием
+        const cadastralNumbers = listing.plots
+            .map(p => p.cadastral_number)
+            .filter((cn): cn is string => !!cn);
+        let cadastralStr: string | null = null;
+        if (cadastralNumbers.length === 1) {
+            cadastralStr = cadastralNumbers[0];
+        } else if (cadastralNumbers.length === 2) {
+            cadastralStr = cadastralNumbers.slice(0, 2).join(", ");
+        } else if (cadastralNumbers.length > 2) {
+            cadastralStr = cadastralNumbers.slice(0, 2).join(", ") + "...";
+        }
+
+        // Собираем title: Участок {площадь} соток | {цена} | {кадастр} | {локация}
+        const titleParts = ["Участок"];
+        if (areaStr) titleParts.push(`${areaStr} сот.`);
+        if (priceStr) titleParts.push(priceStr);
+        if (cadastralStr) titleParts.push(cadastralStr);
+        if (locationStr) titleParts.push(locationStr);
+
+        title = titleParts.join(" | ");
     }
 
     // 3. Description
