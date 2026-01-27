@@ -9,6 +9,8 @@ export interface PlotPoint {
     price: number | null;
     listing_slug: string;
     title: string;  // Название объявления для popup
+    settlement_slug?: string;
+    district_slug?: string;
 }
 
 export interface PlotAllResponse {

@@ -13,7 +13,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { LocationFilter } from "@/components/filters/LocationFilter";
+import { LocationFilter, SelectedLocation } from "@/components/filters/LocationFilter";
 import { Search, MapPin } from "lucide-react";
 import { pluralize } from "@/lib/utils";
 
@@ -32,6 +32,7 @@ export function SearchFilter() {
 
   // Значения фильтров
   const [settlementIds, setSettlementIds] = useState<number[]>([]);
+  const [selectedLocation, setSelectedLocation] = useState<SelectedLocation | null>(null);
   const [landUseId, setLandUseId] = useState("");
   const [areaMin, setAreaMin] = useState("");
   const [areaMax, setAreaMax] = useState("");
@@ -51,8 +52,29 @@ export function SearchFilter() {
       .catch(console.error);
   }, []);
 
+  // Умная навигация при выборе одного посёлка
+  const handleNavigate = (location: SelectedLocation) => {
+    setSelectedLocation(location);
+  };
+
   const handleSearch = () => {
     const params = new URLSearchParams();
+
+    // Умная навигация: при одном посёлке переходим на чистый URL
+    if (settlementIds.length === 1 && selectedLocation) {
+      if (landUseId) params.set("land_use", landUseId);
+      if (areaMin) params.set("area_min", (parseFloat(areaMin) * 100).toString());
+      if (areaMax) params.set("area_max", (parseFloat(areaMax) * 100).toString());
+      if (priceMin) params.set("price_min", priceMin);
+      if (priceMax) params.set("price_max", priceMax);
+
+      const cleanUrl = `/catalog/${selectedLocation.districtSlug}/${selectedLocation.settlementSlug}`;
+      const query = params.toString();
+      router.push(query ? `${cleanUrl}?${query}` : cleanUrl);
+      return;
+    }
+
+    // Множественный выбор или без выбора — query-параметры
     if (settlementIds.length > 0) params.set("settlements", settlementIds.join(","));
     if (landUseId) params.set("land_use", landUseId);
     if (areaMin) params.set("area_min", (parseFloat(areaMin) * 100).toString()); // сотки → м²
@@ -100,6 +122,7 @@ export function SearchFilter() {
           <LocationFilter
             value={settlementIds}
             onChange={setSettlementIds}
+            onNavigate={handleNavigate}
             placeholder="Все районы"
           />
         </div>

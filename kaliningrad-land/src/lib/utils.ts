@@ -21,3 +21,19 @@ export function pluralize(n: number, forms: [string, string, string]): string {
   if (n10 >= 2 && n10 <= 4) return forms[1];     // 2-4, 22-24 → участка
   return forms[2];                               // 0, 5-9, 10, 25-30 → участков
 }
+
+/**
+ * Компактное форматирование цены (млн/тыс).
+ */
+export function formatCompactPrice(price: number): string {
+  if (price >= 1_000_000) {
+    const val = price / 1_000_000;
+    // 1.15 млн, 5 млн (без лишних нулей)
+    return `${Number(val.toFixed(2))} млн ₽`;
+  }
+  if (price >= 1_000) {
+    const val = price / 1_000;
+    return `${Number(val.toFixed(0))} тыс. ₽`;
+  }
+  return `${price} ₽`;
+}

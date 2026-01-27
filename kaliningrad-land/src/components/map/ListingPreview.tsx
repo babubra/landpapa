@@ -41,6 +41,11 @@ export function ListingPreview({ listing, onClose }: ListingPreviewProps) {
             : listing.settlement.name
         : "Калининградская область";
 
+    // Формируем URL объявления для Desktop
+    const listingUrl = listing.settlement && listing.settlement.district
+        ? `/catalog/${listing.settlement.district.slug}/${listing.settlement.slug}/${listing.slug}`
+        : `/listing/${listing.slug}`;
+
     // Получаем URL изображения (поддержка обоих полей)
     const imgData = listing.image || listing.main_image;
     const imageUrl = imgData ? (imgData.thumbnail_url || imgData.url) : null;
@@ -120,9 +125,11 @@ export function ListingPreview({ listing, onClose }: ListingPreviewProps) {
                 {/* Кнопки */}
                 <div className="space-y-2">
                     <Button className="w-full" asChild>
-                        <Link href={`/listing/${listing.slug}`}>
-                            Подробнее
-                        </Link>
+                        <Button className="w-full" asChild>
+                            <Link href={listingUrl}>
+                                Подробнее
+                            </Link>
+                        </Button>
                     </Button>
                     <Button variant="outline" className="w-full" asChild>
                         <a href={`tel:${listing.realtor.phone}`}>

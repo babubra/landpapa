@@ -13,7 +13,7 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { LocationFilter } from "@/components/filters/LocationFilter";
+import { LocationFilter, SelectedLocation } from "@/components/filters/LocationFilter";
 import { pluralize } from "@/lib/utils";
 
 interface Reference {
@@ -22,12 +22,21 @@ interface Reference {
     name: string;
 }
 
+interface GeoContext {
+    districtId: number;
+    districtSlug: string;
+    districtName: string;
+    settlementId: number | null;
+    settlementSlug: string | null;
+}
+
 interface CatalogFiltersProps {
     onFiltersChange: (filters: Record<string, string>) => void;
     baseUrl?: string;  // По умолчанию /catalog
+    geoContext?: GeoContext;  // Гео-контекст из URL
 }
 
-export function CatalogFilters({ onFiltersChange, baseUrl = "/catalog" }: CatalogFiltersProps) {
+export function CatalogFilters({ onFiltersChange, baseUrl = "/catalog", geoContext }: CatalogFiltersProps) {
     const router = useRouter();
     const searchParams = useSearchParams();
 
@@ -35,15 +44,20 @@ export function CatalogFilters({ onFiltersChange, baseUrl = "/catalog" }: Catalo
     const [landUseOptions, setLandUseOptions] = useState<Reference[]>([]);
     const [plotsCount, setPlotsCount] = useState<number | null>(null);
 
-    // Парсинг settlements из URL
-    const parseSettlementsFromUrl = (): number[] => {
+    // Парсинг settlements из URL или geoContext
+    const getInitialSettlements = (): number[] => {
+        // Если есть geoContext с settlementId — используем его
+        if (geoContext?.settlementId) {
+            return [geoContext.settlementId];
+        }
+        // Иначе парсим из query-параметров
         const param = searchParams.get("settlements");
         if (!param) return [];
         return param.split(",").map(Number).filter(Boolean);
     };
 
     // Значения фильтров
-    const [settlementIds, setSettlementIds] = useState<number[]>(parseSettlementsFromUrl());
+    const [settlementIds, setSettlementIds] = useState<number[]>(getInitialSettlements());
     const [landUseId, setLandUseId] = useState(searchParams.get("land_use") || "");
     const [priceMin, setPriceMin] = useState(searchParams.get("price_min") || "");
     const [priceMax, setPriceMax] = useState(searchParams.get("price_max") || "");
@@ -87,7 +101,7 @@ export function CatalogFilters({ onFiltersChange, baseUrl = "/catalog" }: Catalo
 
     // Синхронизация состояния с URL (при навигации "назад")
     useEffect(() => {
-        setSettlementIds(parseSettlementsFromUrl());
+        setSettlementIds(getInitialSettlements());
         setLandUseId(searchParams.get("land_use") || "");
         setPriceMin(searchParams.get("price_min") || "");
         setPriceMax(searchParams.get("price_max") || "");
@@ -112,6 +126,7 @@ export function CatalogFilters({ onFiltersChange, baseUrl = "/catalog" }: Catalo
     }, [settlementIds, landUseId, priceMin, priceMax, areaMin, areaMax, sort, router, onFiltersChange, baseUrl]);
 
     // Применить фильтры с новым значением settlementIds (для LocationFilter)
+    // При множественном выборе редиректим на /catalog, сбрасывая гео-контекст
     const applyFiltersWithSettlements = useCallback((newSettlementIds: number[]) => {
         const params = new URLSearchParams();
         if (newSettlementIds.length > 0) params.set("settlements", newSettlementIds.join(","));
@@ -122,7 +137,9 @@ export function CatalogFilters({ onFiltersChange, baseUrl = "/catalog" }: Catalo
         if (areaMax) params.set("area_max", areaMax);
         if (sort && sort !== "newest") params.set("sort", sort);
 
-        router.push(`${baseUrl}?${params.toString()}`);
+        // При множественном выборе или смене посёлков — всегда переходим на /catalog
+        const targetUrl = newSettlementIds.length > 1 ? "/catalog" : baseUrl;
+        router.push(`${targetUrl}?${params.toString()}`);
         onFiltersChange(Object.fromEntries(params));
     }, [landUseId, priceMin, priceMax, areaMin, areaMax, sort, router, onFiltersChange, baseUrl]);
 
@@ -137,6 +154,12 @@ export function CatalogFilters({ onFiltersChange, baseUrl = "/catalog" }: Catalo
         router.push(baseUrl);
         onFiltersChange({});
     };
+
+    // Умная навигация: при выборе одного посёлка переходим на чистый URL
+    const handleNavigate = useCallback((location: SelectedLocation) => {
+        const cleanUrl = `/catalog/${location.districtSlug}/${location.settlementSlug}`;
+        router.push(cleanUrl);
+    }, [router]);
 
     return (
         <Card>
@@ -159,6 +182,12 @@ export function CatalogFilters({ onFiltersChange, baseUrl = "/catalog" }: Catalo
                         value={settlementIds}
                         onChange={setSettlementIds}
                         onApply={applyFiltersWithSettlements}
+                        onNavigate={handleNavigate}
+                        selectedDistrictName={
+                            geoContext && !geoContext.settlementId
+                                ? geoContext.districtName
+                                : undefined
+                        }
                         placeholder="Все районы"
                     />
                 </div>

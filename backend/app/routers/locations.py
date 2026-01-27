@@ -166,9 +166,10 @@ async def get_settlements(
 
 
 class SettlementGroupItem(BaseModel):
-    """Населённый пункт в группе (без slug)."""
+    """Населённый пункт в группе (с slug для навигации)."""
     id: int
     name: str
+    slug: str
     plots_count: int  # количество активных участков
 
     class Config:
@@ -179,6 +180,7 @@ class DistrictGroup(BaseModel):
     """Район с вложенными населёнными пунктами."""
     id: int
     name: str
+    slug: str
     plots_count: int  # сумма активных участков по всем населённым пунктам
     settlements: list[SettlementGroupItem]
 
@@ -201,6 +203,7 @@ async def get_settlements_grouped(db: AsyncSession = Depends(get_async_db)):
         select(
             Settlement.id,
             Settlement.name,
+            Settlement.slug,
             Settlement.district_id,
             func.count(Plot.id).label("plots_count"),
         )
@@ -208,7 +211,7 @@ async def get_settlements_grouped(db: AsyncSession = Depends(get_async_db)):
         .join(Plot, Listing.id == Plot.listing_id)
         .where(Listing.is_published == True)
         .where(Plot.status == PlotStatus.active)
-        .group_by(Settlement.id, Settlement.name, Settlement.district_id)
+        .group_by(Settlement.id, Settlement.name, Settlement.slug, Settlement.district_id)
         .order_by(Settlement.name)
     )
     
@@ -229,6 +232,7 @@ async def get_settlements_grouped(db: AsyncSession = Depends(get_async_db)):
                 districts_map[district_id_val] = {
                     "id": district.id,
                     "name": district.name,
+                    "slug": district.slug,
                     "sort_order": district.sort_order,
                     "plots_count": 0,
                     "settlements": []
@@ -237,7 +241,7 @@ async def get_settlements_grouped(db: AsyncSession = Depends(get_async_db)):
         if district_id_val in districts_map:
             districts_map[district_id_val]["plots_count"] += s.plots_count
             districts_map[district_id_val]["settlements"].append(
-                SettlementGroupItem(id=s.id, name=s.name, plots_count=s.plots_count)
+                SettlementGroupItem(id=s.id, name=s.name, slug=s.slug, plots_count=s.plots_count)
             )
 
     # Сортировка: sort_order, затем по алфавиту
@@ -250,8 +254,118 @@ async def get_settlements_grouped(db: AsyncSession = Depends(get_async_db)):
         DistrictGroup(
             id=d["id"],
             name=d["name"],
+            slug=d["slug"],
             plots_count=d["plots_count"],
             settlements=d["settlements"]
         )
         for d in sorted_districts
     ]
+
+
+# ==========================================
+# SEO URL endpoints: поиск по slug
+# ==========================================
+
+class GeoBySlugResponse(BaseModel):
+    """Ответ с гео-данными для SEO URL."""
+    type: str  # "district" или "settlement"
+    district_id: int
+    district_name: str
+    district_slug: str
+    settlement_id: int | None = None
+    settlement_name: str | None = None
+    settlement_slug: str | None = None
+    settlement_type: str | None = None  # "пос", "г", "с" и т.д.
+
+    class Config:
+        from_attributes = True
+
+
+@router.get("/geo/by-slug/{slug}", response_model=GeoBySlugResponse | None)
+async def get_geo_by_slug(
+    slug: str,
+    db: AsyncSession = Depends(get_async_db),
+):
+    """
+    Получить район или посёлок по одному slug.
+    Сначала ищет среди районов, затем среди посёлков.
+    Используется для URL: /catalog/{slug}/
+    """
+    # 1. Ищем среди районов
+    district_result = await db.execute(
+        select(District).where(District.slug == slug)
+    )
+    district = district_result.scalar_one_or_none()
+    
+    if district:
+        return GeoBySlugResponse(
+            type="district",
+            district_id=district.id,
+            district_name=district.name,
+            district_slug=district.slug,
+        )
+    
+    # 2. Ищем среди посёлков (с джойном на район)
+    settlement_result = await db.execute(
+        select(Settlement)
+        .options()  # район загружается через lazy="joined"
+        .where(Settlement.slug == slug)
+    )
+    settlement = settlement_result.scalar_one_or_none()
+    
+    if settlement and settlement.district:
+        return GeoBySlugResponse(
+            type="settlement",
+            district_id=settlement.district.id,
+            district_name=settlement.district.name,
+            district_slug=settlement.district.slug,
+            settlement_id=settlement.id,
+            settlement_name=settlement.name,
+            settlement_slug=settlement.slug,
+            settlement_type=settlement.type,
+        )
+    
+    return None
+
+
+@router.get("/geo/by-slug/{district_slug}/{settlement_slug}", response_model=GeoBySlugResponse | None)
+async def get_geo_by_district_and_settlement_slug(
+    district_slug: str,
+    settlement_slug: str,
+    db: AsyncSession = Depends(get_async_db),
+):
+    """
+    Получить посёлок по slug района и slug посёлка.
+    Используется для URL: /catalog/{district_slug}/{settlement_slug}/
+    """
+    # Ищем район
+    district_result = await db.execute(
+        select(District).where(District.slug == district_slug)
+    )
+    district = district_result.scalar_one_or_none()
+    
+    if not district:
+        return None
+    
+    # Ищем посёлок в этом районе
+    settlement_result = await db.execute(
+        select(Settlement).where(
+            Settlement.district_id == district.id,
+            Settlement.slug == settlement_slug
+        )
+    )
+    settlement = settlement_result.scalar_one_or_none()
+    
+    if not settlement:
+        return None
+    
+    return GeoBySlugResponse(
+        type="settlement",
+        district_id=district.id,
+        district_name=district.name,
+        district_slug=district.slug,
+        settlement_id=settlement.id,
+        settlement_name=settlement.name,
+        settlement_slug=settlement.slug,
+        settlement_type=settlement.type,
+    )

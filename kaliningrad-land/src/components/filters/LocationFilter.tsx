@@ -21,6 +21,7 @@ import { MapPin, ChevronDown, ChevronRight, X } from "lucide-react";
 interface SettlementItem {
     id: number;
     name: string;
+    slug: string;
     plots_count: number;
 }
 
@@ -28,8 +29,16 @@ interface SettlementItem {
 interface DistrictGroup {
     id: number;
     name: string;
+    slug: string;
     plots_count: number;
     settlements: SettlementItem[];
+}
+
+/** Информация о выбранном местоположении для навигации */
+export interface SelectedLocation {
+    settlementId: number;
+    settlementSlug: string;
+    districtSlug: string;
 }
 
 interface LocationFilterProps {
@@ -39,6 +48,10 @@ interface LocationFilterProps {
     onChange: (ids: number[]) => void;
     /** Callback для применения фильтров сразу (передаёт новые значения) */
     onApply?: (ids: number[]) => void;
+    /** Callback для умной навигации на чистый URL (при выборе одного посёлка) */
+    onNavigate?: (location: SelectedLocation) => void;
+    /** Имя выбранного района (для отображения когда выбран район без посёлка) */
+    selectedDistrictName?: string;
     /** Placeholder когда ничего не выбрано */
     placeholder?: string;
     /** Кнопка-триггер растягивается на всю ширину */
@@ -53,6 +66,8 @@ export function LocationFilter({
     value,
     onChange,
     onApply,
+    onNavigate,
+    selectedDistrictName,
     placeholder = "Все районы",
     fullWidth = true,
 }: LocationFilterProps) {
@@ -148,6 +163,24 @@ export function LocationFilter({
     const handleApply = () => {
         onChange(localSelection);
         setOpen(false);
+
+        // Умная навигация: если выбран один посёлок — переходим на чистый URL
+        if (localSelection.length === 1 && onNavigate) {
+            const selectedId = localSelection[0];
+            // Ищем посёлок и его район
+            for (const district of districts) {
+                const settlement = district.settlements.find(s => s.id === selectedId);
+                if (settlement) {
+                    onNavigate({
+                        settlementId: settlement.id,
+                        settlementSlug: settlement.slug,
+                        districtSlug: district.slug,
+                    });
+                    return; // Не вызываем onApply — навигация обрабатывается отдельно
+                }
+            }
+        }
+
         // Автоматически применяем фильтры если передан onApply (передаём новые значения)
         if (onApply) {
             onApply(localSelection);
@@ -167,9 +200,13 @@ export function LocationFilter({
 
     // Получить текст для триггера
     const getTriggerText = (): string => {
-        if (value.length === 0) return placeholder;
+        // Если выбраны посёлки — показываем их
         if (value.length === 1) return settlementNames[value[0]] || placeholder;
-        return `${settlementNames[value[0]]} +${value.length - 1}`;
+        if (value.length > 1) return `${settlementNames[value[0]]} +${value.length - 1}`;
+        // Если выбран район (без посёлка) — показываем его
+        if (selectedDistrictName) return selectedDistrictName;
+        // Иначе placeholder
+        return placeholder;
     };
 
     return (

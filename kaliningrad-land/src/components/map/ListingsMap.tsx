@@ -76,7 +76,10 @@ export function ListingsMap({
 
     // Переход на страницу участка
     const handleDetailsClick = (plot: PlotPoint) => {
-        router.push(`/listing/${plot.listing_slug}`);
+        const url = plot.district_slug && plot.settlement_slug
+            ? `/catalog/${plot.district_slug}/${plot.settlement_slug}/${plot.listing_slug}`
+            : `/listing/${plot.listing_slug}`;
+        router.push(url);
     };
 
     // Клик по маркеру — выделить все участки этого объявления

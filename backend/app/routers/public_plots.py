@@ -12,7 +12,7 @@ from geoalchemy2.functions import ST_X, ST_Y
 from app.database import get_async_db
 from app.models.plot import Plot, PlotStatus
 from app.models.listing import Listing
-from app.models.location import Settlement
+from app.models.location import Settlement, District
 from app.schemas.public_plot import PlotAllResponse, PlotPoint
 
 
@@ -44,8 +44,12 @@ async def get_all_plots(
             Plot.price_public.label('price'),
             Listing.slug.label('listing_slug'),
             Listing.title.label('title'),
+            Settlement.slug.label('settlement_slug'),
+            District.slug.label('district_slug'),
         )
         .join(Listing, Plot.listing_id == Listing.id)
+        .outerjoin(Settlement, Listing.settlement_id == Settlement.id)
+        .outerjoin(District, Settlement.district_id == District.id)
         .where(
             Plot.status == PlotStatus.active,
             Plot.centroid.isnot(None),
@@ -55,9 +59,8 @@ async def get_all_plots(
     
     # Фильтры по местоположению
     if district_id:
-        query = query.join(Settlement, Listing.settlement_id == Settlement.id).where(
-            Settlement.district_id == district_id
-        )
+        # У нас уже есть join, поэтому condition проще, но оставим как есть фильтрацию
+        query = query.where(Settlement.district_id == district_id)
     
     if settlements:
         settlement_ids = [int(s.strip()) for s in settlements.split(",") if s.strip().isdigit()]
@@ -88,6 +91,8 @@ async def get_all_plots(
                 price=p.price,
                 listing_slug=p.listing_slug,
                 title=p.title,
+                settlement_slug=p.settlement_slug,
+                district_slug=p.district_slug,
             )
             for p in plots
         ],

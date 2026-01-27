@@ -7,11 +7,20 @@ import { CatalogFilters } from "@/components/catalog/CatalogFilters";
 import { Pagination } from "@/components/ui/pagination";
 import type { ListingsResponse } from "./page";
 
-interface CatalogContentProps {
-    initialData: ListingsResponse;
+interface GeoContext {
+    districtId: number;
+    districtSlug: string;
+    settlementId: number | null;
+    settlementSlug: string | null;
 }
 
-export function CatalogContent({ initialData }: CatalogContentProps) {
+interface CatalogContentProps {
+    initialData: ListingsResponse;
+    baseUrl?: string;
+    geoContext?: GeoContext;
+}
+
+export function CatalogContent({ initialData, baseUrl = "/catalog", geoContext }: CatalogContentProps) {
     const searchParams = useSearchParams();
 
     // Инициализируем state данными с сервера
@@ -28,6 +37,15 @@ export function CatalogContent({ initialData }: CatalogContentProps) {
         setLoading(true);
 
         const params = new URLSearchParams();
+
+        // Добавляем гео-контекст из URL (если есть)
+        if (geoContext) {
+            if (geoContext.settlementId) {
+                params.set("settlement_id", geoContext.settlementId.toString());
+            } else {
+                params.set("district_id", geoContext.districtId.toString());
+            }
+        }
 
         // Копируем все параметры из URL
         searchParams.forEach((value, key) => {
@@ -55,7 +73,7 @@ export function CatalogContent({ initialData }: CatalogContentProps) {
         } finally {
             setLoading(false);
         }
-    }, [searchParams]);
+    }, [searchParams, geoContext]);
 
     useEffect(() => {
         // Пропускаем первый рендер — данные уже получены с сервера
@@ -81,7 +99,11 @@ export function CatalogContent({ initialData }: CatalogContentProps) {
         <div className="flex flex-col lg:flex-row gap-8">
             {/* Сайдбар с фильтрами */}
             <aside className="w-full lg:w-80 flex-shrink-0">
-                <CatalogFilters onFiltersChange={handleFiltersChange} />
+                <CatalogFilters
+                    onFiltersChange={handleFiltersChange}
+                    baseUrl={baseUrl}
+                    geoContext={geoContext}
+                />
             </aside>
 
             {/* Основной контент */}
@@ -119,7 +141,7 @@ export function CatalogContent({ initialData }: CatalogContentProps) {
                             <Pagination
                                 currentPage={currentPage}
                                 totalPages={totalPages}
-                                baseUrl="/catalog"
+                                baseUrl={baseUrl}
                                 searchParams={searchParamsObj}
                             />
                         </div>

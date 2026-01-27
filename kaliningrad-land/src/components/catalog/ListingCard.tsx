@@ -42,6 +42,11 @@ export function ListingCard({ listing, variant = "default" }: ListingCardProps) 
             : listing.settlement.name
         : "Калининградская область";
 
+    // Формируем URL объявления
+    const listingUrl = listing.settlement && listing.settlement.district
+        ? `/catalog/${listing.settlement.district.slug}/${listing.settlement.slug}/${listing.slug}`
+        : `/listing/${listing.slug}`;
+
     if (variant === "compact") {
         return (
             <Card className="overflow-hidden group hover:shadow-lg transition-shadow pt-0 gap-3">
@@ -94,7 +99,7 @@ export function ListingCard({ listing, variant = "default" }: ListingCardProps) 
                             </p>
                         </div>
                         <Button asChild size="sm">
-                            <Link href={`/listing/${listing.slug}`}>Подробнее</Link>
+                            <Link href={listingUrl}>Подробнее</Link>
                         </Button>
                     </div>
                 </CardContent>
@@ -159,7 +164,7 @@ export function ListingCard({ listing, variant = "default" }: ListingCardProps) 
                         </p>
                     </div>
                     <Button asChild size="sm">
-                        <Link href={`/listing/${listing.slug}`}>Подробнее</Link>
+                        <Link href={listingUrl}>Подробнее</Link>
                     </Button>
                 </div>
             </CardContent>

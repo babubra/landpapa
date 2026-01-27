@@ -18,10 +18,10 @@ import {
     SheetHeader,
     SheetTitle,
     SheetTrigger,
-    SheetClose,
 } from "@/components/ui/sheet";
-import { LocationFilter } from "@/components/filters/LocationFilter";
+import { LocationFilter, SelectedLocation } from "@/components/filters/LocationFilter";
 import { Filter, List, X } from "lucide-react";
+import { useMemo } from "react";
 
 interface Reference {
     id: number;
@@ -55,6 +55,7 @@ export function MapFilters({ onFiltersChange, total, isMobile = false }: MapFilt
 
     // Значения фильтров
     const [settlementIds, setSettlementIds] = useState<number[]>(parseSettlementsFromUrl());
+    const [selectedLocation, setSelectedLocation] = useState<SelectedLocation | null>(null);
     const [landUseId, setLandUseId] = useState(searchParams.get("land_use") || "");
     const [priceMin, setPriceMin] = useState(searchParams.get("price_min") || "");
     const [priceMax, setPriceMax] = useState(searchParams.get("price_max") || "");
@@ -138,8 +139,29 @@ export function MapFilters({ onFiltersChange, total, isMobile = false }: MapFilt
         areaMax,
     ].filter(Boolean).length;
 
-    // Ссылка на каталог с текущими фильтрами
-    const catalogUrl = `/catalog?${buildFilterParams().toString()}`;
+    // Сохранить slug при выборе посёлка
+    const handleNavigate = (location: SelectedLocation) => {
+        setSelectedLocation(location);
+    };
+
+    // Ссылка на каталог с умной навигацией
+    const catalogUrl = useMemo(() => {
+        // При одном посёлке — чистый URL
+        if (settlementIds.length === 1 && selectedLocation) {
+            const params = new URLSearchParams();
+            if (landUseId) params.set("land_use", landUseId);
+            if (priceMin) params.set("price_min", priceMin);
+            if (priceMax) params.set("price_max", priceMax);
+            if (areaMin) params.set("area_min", areaMin);
+            if (areaMax) params.set("area_max", areaMax);
+
+            const cleanUrl = `/catalog/${selectedLocation.districtSlug}/${selectedLocation.settlementSlug}`;
+            const query = params.toString();
+            return query ? `${cleanUrl}?${query}` : cleanUrl;
+        }
+        // Иначе query-параметры
+        return `/catalog?${buildFilterParams().toString()}`;
+    }, [settlementIds, selectedLocation, landUseId, priceMin, priceMax, areaMin, areaMax, buildFilterParams]);
 
     // Содержимое фильтров (переиспользуется в desktop и mobile)
     const FiltersContent = ({ inSheet = false }: { inSheet?: boolean }) => (
@@ -151,6 +173,7 @@ export function MapFilters({ onFiltersChange, total, isMobile = false }: MapFilt
                     value={settlementIds}
                     onChange={setSettlementIds}
                     onApply={applyFiltersWithSettlements}
+                    onNavigate={handleNavigate}
                     placeholder="Район"
                     fullWidth={true}
                 />

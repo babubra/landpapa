@@ -13,6 +13,8 @@ class PlotPoint(BaseModel):
     price: int | None = None
     listing_slug: str
     title: str  # Название объявления для popup
+    settlement_slug: str | None = None
+    district_slug: str | None = None
 
 
 class PlotAllResponse(BaseModel):

@@ -12,6 +12,7 @@ export interface Settlement {
     id: number;
     name: string;
     slug: string;
+    type?: string;
     district?: {
         id: number;
         name: string;

@@ -5,57 +5,11 @@ import { ListingSidebar } from "@/components/listing/ListingSidebar";
 import { ListingMapClient } from "@/components/listing/ListingMapClient";
 import { BackButton } from "@/components/ui/back-button";
 import { SSR_API_URL } from "@/lib/config";
+import { formatCompactPrice } from "@/lib/utils";
+import { ListingDetail } from "@/components/listing/ListingDetailView";
 
 interface ListingPageProps {
     params: Promise<{ slug: string }>;
-}
-
-interface Plot {
-    id: number;
-    cadastral_number: string | null;
-    area: number | null;
-    address: string | null;
-    price_public: number | null;
-    status: string;
-    land_use: { name: string } | null;
-    land_category: { name: string } | null;
-    // Геоданные
-    latitude: number | null;
-    longitude: number | null;
-    polygon: [number, number][] | null;
-}
-
-interface Realtor {
-    phone: string;
-}
-
-interface Settlement {
-    name: string;
-    district?: { name: string };
-}
-
-interface ImageType {
-    url: string;
-    thumbnail_url: string | null;
-}
-
-interface ListingDetail {
-    id: number;
-    slug: string;
-    title: string;
-    description: string | null;
-    price_min: number | null;
-    price_max: number | null;
-    total_area: number | null;
-    area_min: number | null;
-    area_max: number | null;
-    plots_count: number;
-    realtor: Realtor;
-    settlement?: Settlement | null;
-    plots: Plot[];
-    images: ImageType[];
-    meta_title: string | null;
-    meta_description: string | null;
 }
 
 async function getListing(slug: string): Promise<ListingDetail | null> {
@@ -97,46 +51,32 @@ export async function generateMetadata({
     // 2. Title
     let title = listing.meta_title;
     if (!title) {
-        // Автогенерация уникального title с кадастровыми номерами и ценой
+        // Новая формула (кратко): Участок {S} сот. в {Локация}, {Цена} | РКК земля
+
         const plotsCount = listing.plots?.length || 0;
         const isMultiple = plotsCount > 1;
 
-        // Площадь: если несколько участков - "от X", иначе просто площадь
+        // 1. Площадь
         const firstArea = listing.plots[0]?.area ? (listing.plots[0].area / 100).toFixed(2).replace(".00", "") : null;
-        const areaStr = firstArea
-            ? (isMultiple ? `от ${firstArea}` : firstArea)
-            : null;
+        let areaStr = firstArea ? `${firstArea} сот.` : "";
+        if (isMultiple && firstArea) areaStr = `от ${firstArea} сот.`;
 
-        // Цена: если несколько участков - "от X", иначе просто цена
-        const priceValue = listing.price_min;
-        const formatPrice = (price: number) => {
-            return new Intl.NumberFormat("ru-RU").format(price) + " ₽";
-        };
-        const priceStr = priceValue
-            ? (isMultiple ? `от ${formatPrice(priceValue)}` : formatPrice(priceValue))
-            : null;
-
-        // Кадастровые номера: до 2-х с многоточием
-        const cadastralNumbers = listing.plots
-            .map(p => p.cadastral_number)
-            .filter((cn): cn is string => !!cn);
-        let cadastralStr: string | null = null;
-        if (cadastralNumbers.length === 1) {
-            cadastralStr = cadastralNumbers[0];
-        } else if (cadastralNumbers.length === 2) {
-            cadastralStr = cadastralNumbers.slice(0, 2).join(", ");
-        } else if (cadastralNumbers.length > 2) {
-            cadastralStr = cadastralNumbers.slice(0, 2).join(", ") + "...";
+        // 2. Локация
+        let locationShort = "";
+        if (listing.settlement) {
+            const typePrefix = listing.settlement.type ? `${listing.settlement.type}. ` : "";
+            locationShort = `в ${typePrefix}${listing.settlement.name}`;
         }
 
-        // Собираем title: Участок {площадь} соток | {цена} | {кадастр} | {локация}
-        const titleParts = ["Участок"];
-        if (areaStr) titleParts.push(`${areaStr} сот.`);
-        if (priceStr) titleParts.push(priceStr);
-        if (cadastralStr) titleParts.push(cadastralStr);
-        if (locationStr) titleParts.push(locationStr);
+        // 3. Цена
+        const priceVal = listing.price_min ? formatCompactPrice(listing.price_min) : "";
+        const priceStr = (isMultiple && priceVal) ? `от ${priceVal}` : priceVal;
 
-        title = titleParts.join(" | ");
+        // Сборка
+        const typeStr = isMultiple ? "Участки" : "Участок";
+        const mainPart = `${typeStr} ${areaStr} ${locationShort}`.trim().replace(/\s+/g, " ");
+
+        title = `${mainPart}${priceStr ? `, ${priceStr}` : ""}`;
     }
 
     // 3. Description
@@ -155,6 +95,11 @@ export async function generateMetadata({
         ogImages.push(getImageUrl(rawUrl));
     }
 
+    // Формируем canonical URL
+    const canonicalUrl = listing.settlement && listing.settlement.district
+        ? `/catalog/${listing.settlement.district.slug}/${listing.settlement.slug}/${listing.slug}`
+        : `/listing/${slug}`;
+
     return {
         title,
         description,
@@ -162,11 +107,11 @@ export async function generateMetadata({
             title,
             description,
             type: "website",
-            url: `/listing/${slug}`,
+            url: canonicalUrl,
             images: ogImages,
         },
         alternates: {
-            canonical: `/listing/${slug}`,
+            canonical: canonicalUrl,
         },
     };
 }
@@ -209,9 +154,33 @@ export default async function ListingPage({ params }: ListingPageProps) {
     const landUse = listing.plots[0]?.land_use?.name;
 
     // Формируем заголовок для UI и ALT-тегов (с регионом)
-    const displayTitle = listing.title.toLowerCase().includes("калининград")
-        ? listing.title
-        : `${listing.title}, Калининградская область`;
+    // Формируем заголовок для UI и ALT-тегов (с регионом)
+    let displayTitle = listing.title;
+
+    // 1. Добавляем тип населенного пункта, если его нет в заголовке
+    if (listing.settlement?.name && listing.settlement?.type) {
+        const name = listing.settlement.name;
+        const typeShort = listing.settlement.type;
+        const typeFull = `${typeShort}. ${name}`;
+
+        const regexName = new RegExp(`\\b${name}\\b`, 'u');
+        const match = displayTitle.match(regexName);
+
+        if (match && match.index !== undefined) {
+            const before = displayTitle.substring(0, match.index).trim();
+            const prefixes = [typeShort + ".", "пос.", "г.", "д.", "с.", "ст."];
+            const hasPrefix = prefixes.some(p => before.endsWith(p));
+
+            if (!hasPrefix) {
+                displayTitle = displayTitle.slice(0, match.index) + typeFull + displayTitle.slice(match.index + name.length);
+            }
+        }
+    }
+
+    // 2. Добавляем регион
+    if (!displayTitle.toLowerCase().includes("калининград")) {
+        displayTitle = `${displayTitle}, Калининградская область`;
+    }
 
     return (
         <div className="min-h-screen bg-background">
