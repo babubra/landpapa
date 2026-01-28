@@ -111,14 +111,50 @@ function ZoomTracker({ onZoomChange }: { onZoomChange: (zoom: number) => void })
     return null;
 }
 
+import { useRef } from "react";
+import { useListingContext } from "@/context/ListingContext";
+
 export function ListingMap({ plots, className = "" }: ListingMapProps) {
     const [isMounted, setIsMounted] = useState(false);
     const [currentZoom, setCurrentZoom] = useState(16);
+    const { selectedPlotId, setSelectedPlotId } = useListingContext();
+    const mapRef = useRef<any>(null); // Ref to accessing map instance if needed, though we use useMap inside usually
+    const layerRefs = useRef<Record<number, any>>({}); // To store references to layers by ID
+    const isMapClickRef = useRef(false);
 
     // Leaflet требует window, поэтому рендерим только на клиенте
     useEffect(() => {
         setIsMounted(true);
     }, []);
+
+    // Эффект для программного зума и открытия попапа при выборе из сайдбара
+    useEffect(() => {
+        if (selectedPlotId && layerRefs.current[selectedPlotId]) {
+            const layer = layerRefs.current[selectedPlotId];
+
+            if (isMapClickRef.current) {
+                // Если клик был по карте — не перемещаем, только попап
+                layer.openPopup();
+                isMapClickRef.current = false;
+            } else {
+                // Если выбор из списка — летим к участку
+                // Если это полигон, берем его bounds
+                if (layer.getBounds) {
+                    const bounds = layer.getBounds();
+                    // Летим к границам с небольшим отступом
+                    layer._map.flyToBounds(bounds, { padding: [50, 50], duration: 1.5 });
+                }
+                // Если маркер, берем latlng
+                else if (layer.getLatLng) {
+                    const latlng = layer.getLatLng();
+                    layer._map.flyTo(latlng, 18, { duration: 1.5 });
+                }
+
+                // Открываем попап
+                layer.openPopup();
+            }
+        }
+    }, [selectedPlotId]);
 
     // Фильтруем участки с координатами
     const plotsWithCoords = plots.filter(
@@ -154,6 +190,7 @@ export function ListingMap({ plots, className = "" }: ListingMapProps) {
                 className="h-full w-full"
                 scrollWheelZoom={true}
                 attributionControl={false}
+                ref={mapRef}
             >
                 <ZoomTracker onZoomChange={setCurrentZoom} />
 
@@ -172,6 +209,7 @@ export function ListingMap({ plots, className = "" }: ListingMapProps) {
                 </LayersControl>
 
                 {plotsWithCoords.map((plot) => {
+                    const isSelected = plot.id === selectedPlotId;
                     // Цвет по статусу
                     const color = STATUS_COLORS[plot.status] || STATUS_COLORS.active;
                     const statusLabel = STATUS_LABELS[plot.status] || plot.status;
@@ -182,12 +220,21 @@ export function ListingMap({ plots, className = "" }: ListingMapProps) {
                         return (
                             <Polygon
                                 key={plot.id}
+                                ref={(el) => {
+                                    if (el) layerRefs.current[plot.id] = el;
+                                }}
                                 positions={plot.polygon as LatLngExpression[]}
                                 pathOptions={{
-                                    color: color,
+                                    color: color, // Цвет обводки не меняется
                                     fillColor: color,
-                                    fillOpacity: 0.35,
-                                    weight: 2,
+                                    fillOpacity: isSelected ? 0.75 : 0.35, // Заливка становится более плотной
+                                    weight: isSelected ? 3 : 2, // Обводка чуть толще
+                                }}
+                                eventHandlers={{
+                                    click: () => {
+                                        isMapClickRef.current = true;
+                                        setSelectedPlotId(plot.id);
+                                    },
                                 }}
                             >
                                 <Popup>
@@ -225,8 +272,17 @@ export function ListingMap({ plots, className = "" }: ListingMapProps) {
                         return (
                             <Marker
                                 key={plot.id}
+                                ref={(el) => {
+                                    if (el) layerRefs.current[plot.id] = el;
+                                }}
                                 position={[plot.latitude, plot.longitude]}
                                 icon={defaultIcon}
+                                eventHandlers={{
+                                    click: () => {
+                                        isMapClickRef.current = true;
+                                        setSelectedPlotId(plot.id);
+                                    },
+                                }}
                             >
                                 <Popup>
                                     <div className="text-sm space-y-1">

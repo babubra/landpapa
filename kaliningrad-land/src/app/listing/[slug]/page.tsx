@@ -171,6 +171,8 @@ export async function generateMetadata({
     };
 }
 
+import { ListingProvider } from "@/context/ListingContext";
+
 export default async function ListingPage({ params }: ListingPageProps) {
     const { slug } = await params;
     const [listing, settings] = await Promise.all([
@@ -216,66 +218,68 @@ export default async function ListingPage({ params }: ListingPageProps) {
     return (
         <div className="min-h-screen bg-background">
             <SeoJsonLd data={jsonLd} />
-            <div className="container mx-auto px-4 py-8 max-w-6xl">
-                {/* Хлебные крошки */}
-                <Breadcrumbs items={[
-                    { name: "Каталог", href: "/catalog" },
-                    { name: listing.title, href: `/listing/${slug}` }
-                ]} />
+            <ListingProvider>
+                <div className="container mx-auto px-4 py-8 max-w-6xl">
+                    {/* Хлебные крошки */}
+                    <Breadcrumbs items={[
+                        { name: "Каталог", href: "/catalog" },
+                        { name: listing.title, href: `/listing/${slug}` }
+                    ]} />
 
-                {/* Заголовок */}
-                <h1 className="text-3xl font-bold mb-8">{displayTitle}</h1>
+                    {/* Заголовок */}
+                    <h1 className="text-3xl font-bold mb-8">{displayTitle}</h1>
 
-                {/* Основной контент */}
-                <div className="grid lg:grid-cols-3 gap-8">
-                    {/* Левая колонка: галерея + описание */}
-                    <div className="lg:col-span-2 space-y-8">
-                        {/* Галерея */}
-                        <ListingGallery
-                            images={listing.images}
-                            title={displayTitle}
-                            placeholderImage={getImageUrl(settings.placeholder_image)}
-                        />
+                    {/* Основной контент */}
+                    <div className="grid lg:grid-cols-3 gap-8">
+                        {/* Левая колонка: галерея + описание */}
+                        <div className="lg:col-span-2 space-y-8">
+                            {/* Галерея */}
+                            <ListingGallery
+                                images={listing.images}
+                                title={displayTitle}
+                                placeholderImage={getImageUrl(settings.placeholder_image)}
+                            />
 
-                        {/* Описание */}
-                        {listing.description && (
+                            {/* Описание */}
+                            {listing.description && (
+                                <div>
+                                    <h2 className="text-xl font-semibold mb-4">Описание</h2>
+                                    <div
+                                        className="prose prose-sm max-w-none dark:prose-invert"
+                                        dangerouslySetInnerHTML={{ __html: listing.description }}
+                                    />
+                                </div>
+                            )}
+
+                            {/* Карта */}
                             <div>
-                                <h2 className="text-xl font-semibold mb-4">Описание</h2>
-                                <div
-                                    className="prose prose-sm max-w-none dark:prose-invert"
-                                    dangerouslySetInnerHTML={{ __html: listing.description }}
+                                <h2 className="text-xl font-semibold mb-4">Расположение на карте</h2>
+                                <ListingMapClient plots={listing.plots} />
+                            </div>
+                        </div>
+
+                        {/* Правая колонка: боковая панель */}
+                        <div>
+                            <div className="sticky top-24">
+                                <ListingSidebar
+                                    phone={listing.realtor.phone}
+                                    priceMin={listing.price_min}
+                                    priceMax={listing.price_max}
+                                    totalArea={listing.total_area}
+                                    areaMin={listing.area_min}
+                                    areaMax={listing.area_max}
+                                    plotsCount={listing.plots_count}
+                                    landUse={landUse}
+                                    landCategory={listing.plots[0]?.land_category?.name}
+                                    cadastralNumber={listing.plots[0]?.cadastral_number || undefined}
+                                    location={location}
+                                    plots={listing.plots}
                                 />
                             </div>
-                        )}
-
-                        {/* Карта */}
-                        <div>
-                            <h2 className="text-xl font-semibold mb-4">Расположение на карте</h2>
-                            <ListingMapClient plots={listing.plots} />
-                        </div>
-                    </div>
-
-                    {/* Правая колонка: боковая панель */}
-                    <div>
-                        <div className="sticky top-24">
-                            <ListingSidebar
-                                phone={listing.realtor.phone}
-                                priceMin={listing.price_min}
-                                priceMax={listing.price_max}
-                                totalArea={listing.total_area}
-                                areaMin={listing.area_min}
-                                areaMax={listing.area_max}
-                                plotsCount={listing.plots_count}
-                                landUse={landUse}
-                                landCategory={listing.plots[0]?.land_category?.name}
-                                cadastralNumber={listing.plots[0]?.cadastral_number || undefined}
-                                location={location}
-                                plots={listing.plots}
-                            />
                         </div>
                     </div>
                 </div>
-            </div>
+            </ListingProvider>
         </div>
     );
 }

@@ -11,6 +11,7 @@ import {
     TooltipProvider,
     TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { ShowListingModal } from "@/components/modals/ShowListingModal";
 
 interface Plot {
     id: number;
@@ -68,6 +69,8 @@ function scrollToMap() {
     });
 }
 
+import { useListingContext } from "@/context/ListingContext";
+
 export function ListingSidebar({
     phone,
     priceMin,
@@ -83,6 +86,8 @@ export function ListingSidebar({
     plots,
 }: ListingSidebarProps) {
     const [currentPage, setCurrentPage] = useState(1);
+    const [showDisplayModal, setShowDisplayModal] = useState(false);
+    const { setSelectedPlotId } = useListingContext();
 
     const handleCall = () => {
         window.location.href = `tel:${phone.replace(/\D/g, "")}`;
@@ -95,6 +100,11 @@ export function ListingSidebar({
     const totalPages = Math.ceil(allPlots.length / ITEMS_PER_PAGE);
     const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
     const paginatedPlots = allPlots.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+
+    const handlePlotClick = (plotId: number) => {
+        setSelectedPlotId(plotId);
+        scrollToMap();
+    };
 
     return (
         <Card>
@@ -127,7 +137,12 @@ export function ListingSidebar({
                             <TooltipProvider>
                                 <Tooltip>
                                     <TooltipTrigger asChild>
-                                        <Button size="lg" variant="outline" className="w-full">
+                                        <Button
+                                            size="lg"
+                                            variant="outline"
+                                            className="w-full"
+                                            onClick={() => setShowDisplayModal(true)}
+                                        >
                                             <MapPin className="h-4 w-4 mr-2" />
                                             Покажите мне участок
                                             <Info className="h-4 w-4 ml-2 text-muted-foreground" />
@@ -153,7 +168,7 @@ export function ListingSidebar({
                                 return (
                                     <button
                                         key={plot.id}
-                                        onClick={scrollToMap}
+                                        onClick={() => handlePlotClick(plot.id)}
                                         className={`w-full text-left p-3 rounded-lg border transition-colors group ${isAvailable ? "hover:bg-muted/50" : "opacity-80 bg-muted/20"
                                             }`}
                                     >
@@ -286,7 +301,12 @@ export function ListingSidebar({
                         <TooltipProvider>
                             <Tooltip>
                                 <TooltipTrigger asChild>
-                                    <Button size="lg" variant="outline" className="w-full">
+                                    <Button
+                                        size="lg"
+                                        variant="outline"
+                                        className="w-full"
+                                        onClick={() => setShowDisplayModal(true)}
+                                    >
                                         <MapPin className="h-4 w-4 mr-2" />
                                         Покажите мне участок
                                         <Info className="h-4 w-4 ml-2 text-muted-foreground" />
@@ -302,6 +322,12 @@ export function ListingSidebar({
                         </TooltipProvider>
                     </div>
                 )}
+
+                <ShowListingModal
+                    open={showDisplayModal}
+                    onOpenChange={setShowDisplayModal}
+                    lotInfo={cadastralNumber ? `КН ${cadastralNumber}` : undefined}
+                />
             </CardContent>
         </Card>
     );
