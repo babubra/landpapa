@@ -17,7 +17,16 @@ interface Plot {
     cadastral_number: string | null;
     area: number | null;
     price_public: number | null;
+    status: string;
 }
+
+const STATUS_LABELS: Record<string, string> = {
+    reserved: "Забронирован",
+};
+
+const STATUS_STYLES: Record<string, string> = {
+    reserved: "text-amber-600 bg-amber-50 border-amber-200",
+};
 
 interface ListingSidebarProps {
     phone: string;
@@ -28,10 +37,10 @@ interface ListingSidebarProps {
     areaMax: number | null;
     plotsCount: number;
     landUse?: string;
-    landCategory?: string;  // Категория земель
-    cadastralNumber?: string;  // Кадастровый номер
+    landCategory?: string;
+    cadastralNumber?: string;
     location?: string;
-    plots?: Plot[];  // Новый пропс для списка участков
+    plots?: Plot[];
 }
 
 const ITEMS_PER_PAGE = 10;
@@ -136,37 +145,53 @@ export function ListingSidebar({
 
                         {/* Список участков */}
                         <div className="space-y-2">
-                            {paginatedPlots.map((plot) => (
-                                <button
-                                    key={plot.id}
-                                    onClick={scrollToMap}
-                                    className="w-full text-left p-3 rounded-lg border hover:bg-muted/50 transition-colors group"
-                                >
-                                    <div className="flex items-center justify-between">
-                                        <div className="space-y-1">
-                                            {plot.cadastral_number && (
-                                                <p className="font-medium text-sm">
-                                                    📍 {plot.cadastral_number}
-                                                </p>
-                                            )}
-                                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                                {plot.area && (
-                                                    <span>{formatArea(plot.area)} сот.</span>
-                                                )}
-                                                {plot.area && plot.price_public && (
-                                                    <span>•</span>
-                                                )}
-                                                {plot.price_public && (
-                                                    <span className="font-semibold text-foreground">
-                                                        {formatPrice(plot.price_public)} ₽
-                                                    </span>
-                                                )}
+                            {paginatedPlots.map((plot) => {
+                                const isAvailable = plot.status === 'active';
+                                const statusLabel = STATUS_LABELS[plot.status];
+                                const statusStyle = STATUS_STYLES[plot.status];
+
+                                return (
+                                    <button
+                                        key={plot.id}
+                                        onClick={scrollToMap}
+                                        className={`w-full text-left p-3 rounded-lg border transition-colors group ${isAvailable ? "hover:bg-muted/50" : "opacity-80 bg-muted/20"
+                                            }`}
+                                    >
+                                        <div className="flex items-center justify-between gap-3">
+                                            <div className="space-y-1 min-w-0">
+                                                <div className="flex items-center gap-2">
+                                                    {plot.cadastral_number && (
+                                                        <p className="font-medium text-sm truncate">
+                                                            📍 {plot.cadastral_number}
+                                                        </p>
+                                                    )}
+                                                    {statusLabel && (
+                                                        <span className={`text-[10px] px-1.5 py-0.5 rounded border font-medium uppercase tracking-wide whitespace-nowrap ${statusStyle}`}>
+                                                            {statusLabel}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                                    {plot.area && (
+                                                        <span>{formatArea(plot.area)} сот.</span>
+                                                    )}
+                                                    {plot.area && plot.price_public && (
+                                                        <span>•</span>
+                                                    )}
+                                                    {plot.price_public && (
+                                                        <span className={`font-semibold ${isAvailable ? "text-foreground" : "text-muted-foreground line-through decoration-muted-foreground/50"}`}>
+                                                            {formatPrice(plot.price_public)} ₽
+                                                        </span>
+                                                    )}
+                                                </div>
                                             </div>
+                                            {isAvailable && (
+                                                <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors flex-shrink-0" />
+                                            )}
                                         </div>
-                                        <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
-                                    </div>
-                                </button>
-                            ))}
+                                    </button>
+                                );
+                            })}
                         </div>
 
                         {/* Управление страницами */}
