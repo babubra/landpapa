@@ -3,16 +3,10 @@ import { CatalogContent } from "./CatalogContent";
 import { Breadcrumbs } from "@/components/seo/Breadcrumbs";
 import { getSiteSettings } from "@/lib/server-config";
 import { SSR_API_URL } from "@/lib/config";
-import type { ListingData } from "@/types/listing";
+import type { ListingData, ListingsResponse } from "@/types/listing";
 
-// Типы для ответа API
-export interface ListingsResponse {
-    items: ListingData[];
-    total: number;
-    page: number;
-    size: number;
-    pages: number;
-}
+// Реэкспорт для обратной совместимости
+export type { ListingsResponse } from "@/types/listing";
 
 interface CatalogPageProps {
     searchParams: Promise<Record<string, string>>;

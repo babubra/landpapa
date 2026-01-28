@@ -5,13 +5,14 @@
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select, desc, func
+from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 import math
 
 from app.database import get_async_db
 from app.models.listing import Listing
 from app.models.plot import Plot, PlotStatus
-from app.models.location import Settlement
+from app.models.location import Settlement, District
 from app.schemas.listing import (
     ListingListItem,
     ListingDetail,
@@ -61,6 +62,7 @@ async def get_listings(
     # Основной запрос
     query = (
         select(Listing)
+        .options(selectinload(Listing.settlement).selectinload(Settlement.district))
         .where(Listing.is_published == True)
         .where(Listing.id.in_(select(active_listings_ids.c.listing_id)))
     )
@@ -123,6 +125,7 @@ async def get_popular_listings(
     # Сначала featured, затем по дате создания
     query = (
         select(Listing)
+        .options(selectinload(Listing.settlement).selectinload(Settlement.district))
         .where(Listing.is_published == True)
         .where(Listing.id.in_(select(active_listings_ids.c.listing_id)))
         .order_by(desc(Listing.is_featured), desc(Listing.created_at))
@@ -142,7 +145,9 @@ async def get_listing_by_slug(
 ):
     """Получить объявление по slug."""
     result = await db.execute(
-        select(Listing).where(Listing.slug == slug, Listing.is_published == True)
+        select(Listing)
+        .options(selectinload(Listing.settlement).selectinload(Settlement.district))
+        .where(Listing.slug == slug, Listing.is_published == True)
     )
     listing = result.scalar_one_or_none()
     

@@ -8,6 +8,7 @@ import type { ListingData } from "@/types/listing";
 
 import { getImageUrl } from "@/lib/config";
 import { usePlaceholderImage } from "@/contexts/SiteSettingsContext";
+import { buildListingUrl } from "@/lib/geoUrl";
 
 interface ListingPreviewProps {
     listing: ListingData;
@@ -44,6 +45,13 @@ export function ListingPreview({ listing, onClose }: ListingPreviewProps) {
     // Получаем URL изображения (поддержка обоих полей)
     const imgData = listing.image || listing.main_image;
     const imageUrl = imgData ? (imgData.thumbnail_url || imgData.url) : null;
+
+    // Строим гео-URL для листинга
+    const listingUrl = buildListingUrl({
+        slug: listing.slug,
+        districtSlug: listing.settlement?.district?.slug,
+        settlementSlug: listing.settlement?.slug,
+    });
 
     return (
         <div className="w-[350px] h-full flex flex-col bg-card border-r overflow-hidden">
@@ -120,7 +128,7 @@ export function ListingPreview({ listing, onClose }: ListingPreviewProps) {
                 {/* Кнопки */}
                 <div className="space-y-2">
                     <Button className="w-full" asChild>
-                        <Link href={`/listing/${listing.slug}`}>
+                        <Link href={listingUrl}>
                             Подробнее
                         </Link>
                     </Button>

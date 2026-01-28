@@ -12,6 +12,7 @@ export interface Settlement {
     id: number;
     name: string;
     slug: string;
+    type?: string | null; // "г", "пос", "с" и т.д.
     district?: {
         id: number;
         name: string;
@@ -30,6 +31,7 @@ export interface ListingData {
     id: number;
     slug: string;
     title: string;
+    description?: string | null;
     price_min: number | null;
     price_max: number | null;
     total_area: number | null;
@@ -43,4 +45,16 @@ export interface ListingData {
     image?: ImageData | null;
     main_image?: ImageData | null;
     coordinates?: number[][];
+    // Мета-данные
+    meta_title?: string | null;
+    meta_description?: string | null;
 }
+
+export interface ListingsResponse {
+    items: ListingData[];
+    total: number;
+    page: number;
+    size: number;
+    pages: number;
+}
+

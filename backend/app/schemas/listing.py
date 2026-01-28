@@ -44,6 +44,7 @@ class SettlementItem(BaseModel):
     id: int
     name: str
     slug: str
+    type: str | None = None  # "г", "пос", "с" и т.д.
     district: DistrictItem | None = None
     
     class Config:
@@ -111,6 +112,7 @@ class ListingDetail(BaseModel):
     area_max: float | None = None  # Максимальная площадь участка
     plots_count: int
     realtor: RealtorItem
+    settlement: SettlementItem | None = None  # Гео-информация для URL
     plots: list[PlotListItem] = Field(default=[], validation_alias="viewable_plots")
     images: list[ImageItem] = []
     meta_title: str | None

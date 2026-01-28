@@ -1,0 +1,147 @@
+"use client";
+
+import { ListingGallery } from "@/components/listing/ListingGallery";
+import { ListingSidebar } from "@/components/listing/ListingSidebar";
+import { ListingMapClient } from "@/components/listing/ListingMapClient";
+import { Breadcrumbs, BreadcrumbItem } from "@/components/seo/Breadcrumbs";
+import { usePlaceholderImage } from "@/contexts/SiteSettingsContext";
+
+interface Plot {
+    id: number;
+    cadastral_number: string | null;
+    area: number | null;
+    address: string | null;
+    price_public: number | null;
+    status: string;
+    land_use: { name: string } | null;
+    land_category: { name: string } | null;
+    latitude: number | null;
+    longitude: number | null;
+    polygon: [number, number][] | null;
+}
+
+interface ImageType {
+    url: string;
+    thumbnail_url: string | null;
+}
+
+interface Realtor {
+    phone: string;
+}
+
+interface Settlement {
+    name: string;
+    slug?: string;
+    type?: string | null;
+    district?: {
+        name: string;
+        slug?: string;
+    };
+}
+
+interface ListingDetail {
+    id: number;
+    slug: string;
+    title: string;
+    description: string | null;
+    price_min: number | null;
+    price_max: number | null;
+    total_area: number | null;
+    area_min: number | null;
+    area_max: number | null;
+    plots_count: number;
+    realtor: Realtor;
+    settlement?: Settlement | null;
+    plots: Plot[];
+    images: ImageType[];
+}
+
+interface ListingContentProps {
+    listing: ListingDetail;
+    breadcrumbs: BreadcrumbItem[];
+}
+
+/**
+ * Клиентский компонент для рендеринга содержимого страницы листинга.
+ * Переиспользуется в /listing/[slug] и /[...geo] роутах.
+ */
+export function ListingContent({ listing, breadcrumbs }: ListingContentProps) {
+    const placeholderImage = usePlaceholderImage();
+
+    // Формируем локацию
+    const location = listing.settlement
+        ? listing.settlement.district
+            ? `${listing.settlement.name}, ${listing.settlement.district.name}`
+            : listing.settlement.name
+        : undefined;
+
+    // Определяем основное назначение земли
+    const landUse = listing.plots[0]?.land_use?.name;
+
+    // Формируем заголовок для UI и ALT-тегов (с регионом)
+    const displayTitle = listing.title.toLowerCase().includes("калининград")
+        ? listing.title
+        : `${listing.title}, Калининградская область`;
+
+    return (
+        <div className="min-h-screen bg-background">
+            <div className="container mx-auto px-4 py-8 max-w-6xl">
+                {/* Хлебные крошки */}
+                <Breadcrumbs items={breadcrumbs} />
+
+                {/* Заголовок */}
+                <h1 className="text-3xl font-bold mb-8">{displayTitle}</h1>
+
+                {/* Основной контент */}
+                <div className="grid lg:grid-cols-3 gap-8">
+                    {/* Левая колонка: галерея + описание */}
+                    <div className="lg:col-span-2 space-y-8">
+                        {/* Галерея */}
+                        <ListingGallery
+                            images={listing.images}
+                            title={displayTitle}
+                            placeholderImage={placeholderImage}
+                        />
+
+                        {/* Описание */}
+                        {listing.description && (
+                            <div>
+                                <h2 className="text-xl font-semibold mb-4">Описание</h2>
+                                <div
+                                    className="prose prose-sm max-w-none dark:prose-invert"
+                                    dangerouslySetInnerHTML={{ __html: listing.description }}
+                                />
+                            </div>
+                        )}
+
+                        {/* Карта */}
+                        <div>
+                            <h2 className="text-xl font-semibold mb-4">Расположение на карте</h2>
+                            <ListingMapClient plots={listing.plots} />
+                        </div>
+                    </div>
+
+                    {/* Правая колонка: боковая панель */}
+                    <div>
+                        <div className="sticky top-24">
+                            <ListingSidebar
+                                phone={listing.realtor.phone}
+                                priceMin={listing.price_min}
+                                priceMax={listing.price_max}
+                                totalArea={listing.total_area}
+                                areaMin={listing.area_min}
+                                areaMax={listing.area_max}
+                                plotsCount={listing.plots_count}
+                                landUse={landUse}
+                                landCategory={listing.plots[0]?.land_category?.name}
+                                cadastralNumber={listing.plots[0]?.cadastral_number || undefined}
+                                location={location}
+                                plots={listing.plots}
+                            />
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}

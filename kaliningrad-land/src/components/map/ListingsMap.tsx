@@ -75,6 +75,8 @@ export function ListingsMap({
     }, []);
 
     // Переход на страницу участка
+    // TODO: Когда PlotPoint будет содержать district_slug и settlement_slug,
+    // использовать buildListingUrl для гео-URLs
     const handleDetailsClick = (plot: PlotPoint) => {
         router.push(`/listing/${plot.listing_slug}`);
     };

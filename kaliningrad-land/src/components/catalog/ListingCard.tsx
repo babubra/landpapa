@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import type { ListingData } from "@/types/listing";
 import { getImageUrl } from "@/lib/config";
 import { usePlaceholderImage } from "@/contexts/SiteSettingsContext";
+import { buildListingUrl } from "@/lib/geoUrl";
 
 function formatPrice(price: number): string {
     return new Intl.NumberFormat("ru-RU").format(price);
@@ -41,6 +42,13 @@ export function ListingCard({ listing, variant = "default" }: ListingCardProps) 
             ? `${listing.settlement.name}, ${listing.settlement.district.name}`
             : listing.settlement.name
         : "Калининградская область";
+
+    // Строим гео-URL для листинга
+    const listingUrl = buildListingUrl({
+        slug: listing.slug,
+        districtSlug: listing.settlement?.district?.slug,
+        settlementSlug: listing.settlement?.slug,
+    });
 
     if (variant === "compact") {
         return (
@@ -94,7 +102,7 @@ export function ListingCard({ listing, variant = "default" }: ListingCardProps) 
                             </p>
                         </div>
                         <Button asChild size="sm">
-                            <Link href={`/listing/${listing.slug}`}>Подробнее</Link>
+                            <Link href={listingUrl}>Подробнее</Link>
                         </Button>
                     </div>
                 </CardContent>
@@ -159,7 +167,7 @@ export function ListingCard({ listing, variant = "default" }: ListingCardProps) 
                         </p>
                     </div>
                     <Button asChild size="sm">
-                        <Link href={`/listing/${listing.slug}`}>Подробнее</Link>
+                        <Link href={listingUrl}>Подробнее</Link>
                     </Button>
                 </div>
             </CardContent>

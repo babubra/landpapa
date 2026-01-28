@@ -14,20 +14,24 @@ import {
     DialogTrigger,
 } from "@/components/ui/dialog";
 import { MapPin, ChevronDown, ChevronRight, X } from "lucide-react";
+import type { GeoLocation } from "@/lib/geoUrl";
 
-// Типы данных
+// Типы данных (экспорт для использования в других компонентах)
 
 /** Населённый пункт в группе */
-interface SettlementItem {
+export interface SettlementItem {
     id: number;
     name: string;
+    slug: string;
+    type?: string | null; // "г", "пос", "с"
     plots_count: number;
 }
 
 /** Район с вложенными населёнными пунктами */
-interface DistrictGroup {
+export interface DistrictGroup {
     id: number;
     name: string;
+    slug: string;
     plots_count: number;
     settlements: SettlementItem[];
 }
@@ -43,6 +47,8 @@ interface LocationFilterProps {
     placeholder?: string;
     /** Кнопка-триггер растягивается на всю ширину */
     fullWidth?: boolean;
+    /** Текущая гео-локация из URL (если есть, показывается вместо выбора) */
+    geoLocation?: GeoLocation;
 }
 
 /**
@@ -55,6 +61,7 @@ export function LocationFilter({
     onApply,
     placeholder = "Все районы",
     fullWidth = true,
+    geoLocation,
 }: LocationFilterProps) {
     const [open, setOpen] = useState(false);
     const [districts, setDistricts] = useState<DistrictGroup[]>([]);
@@ -167,10 +174,26 @@ export function LocationFilter({
 
     // Получить текст для триггера
     const getTriggerText = (): string => {
+        // Если есть гео-локация из URL — показываем её
+        if (geoLocation) {
+            if (geoLocation.settlementName && geoLocation.settlementType) {
+                return `${geoLocation.settlementType}. ${geoLocation.settlementName}`;
+            }
+            if (geoLocation.settlementName) {
+                return geoLocation.settlementName;
+            }
+            if (geoLocation.districtName) {
+                return geoLocation.districtName;
+            }
+        }
+        // Иначе — обычная логика
         if (value.length === 0) return placeholder;
         if (value.length === 1) return settlementNames[value[0]] || placeholder;
         return `${settlementNames[value[0]]} +${value.length - 1}`;
     };
+
+    // Определяем, заблокирован ли выбор (когда есть geoLocation)
+    const isGeoLocked = Boolean(geoLocation?.districtSlug);
 
     return (
         <Dialog open={open} onOpenChange={setOpen}>

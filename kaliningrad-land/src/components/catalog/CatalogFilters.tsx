@@ -15,6 +15,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { LocationFilter } from "@/components/filters/LocationFilter";
 import { pluralize } from "@/lib/utils";
+import type { GeoLocation } from "@/lib/geoUrl";
 
 interface Reference {
     id: number;
@@ -25,9 +26,10 @@ interface Reference {
 interface CatalogFiltersProps {
     onFiltersChange: (filters: Record<string, string>) => void;
     baseUrl?: string;  // По умолчанию /catalog
+    geoLocation?: GeoLocation;  // Текущая гео-локация из URL path
 }
 
-export function CatalogFilters({ onFiltersChange, baseUrl = "/catalog" }: CatalogFiltersProps) {
+export function CatalogFilters({ onFiltersChange, baseUrl = "/catalog", geoLocation }: CatalogFiltersProps) {
     const router = useRouter();
     const searchParams = useSearchParams();
 
@@ -160,6 +162,7 @@ export function CatalogFilters({ onFiltersChange, baseUrl = "/catalog" }: Catalo
                         onChange={setSettlementIds}
                         onApply={applyFiltersWithSettlements}
                         placeholder="Все районы"
+                        geoLocation={geoLocation}
                     />
                 </div>
 

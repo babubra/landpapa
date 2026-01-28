@@ -165,10 +165,70 @@ async def get_settlements(
     ]
 
 
+class ResolvedLocation(BaseModel):
+    """Результат резолва slug → id."""
+    district_id: int | None = None
+    district_name: str | None = None
+    district_slug: str | None = None
+    settlement_id: int | None = None
+    settlement_name: str | None = None
+    settlement_slug: str | None = None
+    settlement_type: str | None = None  # "г", "пос", "с"
+
+
+@router.get("/resolve", response_model=ResolvedLocation)
+async def resolve_location(
+    district_slug: str | None = Query(None, description="Slug района"),
+    settlement_slug: str | None = Query(None, description="Slug населённого пункта"),
+    db: AsyncSession = Depends(get_async_db),
+):
+    """
+    Резолв slug → id для гео-URL.
+    
+    Используется фронтендом для преобразования URL-параметров в ID для фильтрации.
+    """
+    result = ResolvedLocation()
+    
+    # Резолв района
+    if district_slug:
+        district_result = await db.execute(
+            select(District).where(District.slug == district_slug)
+        )
+        district = district_result.scalar_one_or_none()
+        if district:
+            result.district_id = district.id
+            result.district_name = district.name
+            result.district_slug = district.slug
+    
+    # Резолв населённого пункта
+    if settlement_slug:
+        query = select(Settlement).where(Settlement.slug == settlement_slug)
+        # Если указан район, ищем только в нём
+        if result.district_id:
+            query = query.where(Settlement.district_id == result.district_id)
+        
+        settlement_result = await db.execute(query)
+        settlement = settlement_result.scalar_one_or_none()
+        if settlement:
+            result.settlement_id = settlement.id
+            result.settlement_name = settlement.name
+            result.settlement_slug = settlement.slug
+            result.settlement_type = settlement.type
+            # Если район не был указан, заполняем из settlement
+            if not result.district_id and settlement.district:
+                result.district_id = settlement.district.id
+                result.district_name = settlement.district.name
+                result.district_slug = settlement.district.slug
+    
+    return result
+
+
 class SettlementGroupItem(BaseModel):
-    """Населённый пункт в группе (без slug)."""
+    """Населённый пункт в группе."""
     id: int
     name: str
+    slug: str
+    type: str | None = None  # "г", "пос", "с" и т.д.
     plots_count: int  # количество активных участков
 
     class Config:
@@ -179,6 +239,7 @@ class DistrictGroup(BaseModel):
     """Район с вложенными населёнными пунктами."""
     id: int
     name: str
+    slug: str
     plots_count: int  # сумма активных участков по всем населённым пунктам
     settlements: list[SettlementGroupItem]
 
@@ -201,6 +262,8 @@ async def get_settlements_grouped(db: AsyncSession = Depends(get_async_db)):
         select(
             Settlement.id,
             Settlement.name,
+            Settlement.slug,
+            Settlement.type,
             Settlement.district_id,
             func.count(Plot.id).label("plots_count"),
         )
@@ -208,7 +271,7 @@ async def get_settlements_grouped(db: AsyncSession = Depends(get_async_db)):
         .join(Plot, Listing.id == Plot.listing_id)
         .where(Listing.is_published == True)
         .where(Plot.status == PlotStatus.active)
-        .group_by(Settlement.id, Settlement.name, Settlement.district_id)
+        .group_by(Settlement.id, Settlement.name, Settlement.slug, Settlement.type, Settlement.district_id)
         .order_by(Settlement.name)
     )
     
@@ -229,6 +292,7 @@ async def get_settlements_grouped(db: AsyncSession = Depends(get_async_db)):
                 districts_map[district_id_val] = {
                     "id": district.id,
                     "name": district.name,
+                    "slug": district.slug,
                     "sort_order": district.sort_order,
                     "plots_count": 0,
                     "settlements": []
@@ -237,7 +301,7 @@ async def get_settlements_grouped(db: AsyncSession = Depends(get_async_db)):
         if district_id_val in districts_map:
             districts_map[district_id_val]["plots_count"] += s.plots_count
             districts_map[district_id_val]["settlements"].append(
-                SettlementGroupItem(id=s.id, name=s.name, plots_count=s.plots_count)
+                SettlementGroupItem(id=s.id, name=s.name, slug=s.slug, type=s.type, plots_count=s.plots_count)
             )
 
     # Сортировка: sort_order, затем по алфавиту
@@ -250,6 +314,7 @@ async def get_settlements_grouped(db: AsyncSession = Depends(get_async_db)):
         DistrictGroup(
             id=d["id"],
             name=d["name"],
+            slug=d["slug"],
             plots_count=d["plots_count"],
             settlements=d["settlements"]
         )

@@ -2,16 +2,18 @@
 
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState, useRef } from "react";
-import { ListingCard, ListingData } from "@/components/catalog/ListingCard";
+import { ListingCard } from "@/components/catalog/ListingCard";
 import { CatalogFilters } from "@/components/catalog/CatalogFilters";
 import { Pagination } from "@/components/ui/pagination";
-import type { ListingsResponse } from "./page";
+import type { ListingsResponse, ListingData } from "@/types/listing";
+import type { GeoLocation } from "@/lib/geoUrl";
 
 interface CatalogContentProps {
     initialData: ListingsResponse;
+    geoLocation?: GeoLocation;
 }
 
-export function CatalogContent({ initialData }: CatalogContentProps) {
+export function CatalogContent({ initialData, geoLocation }: CatalogContentProps) {
     const searchParams = useSearchParams();
 
     // Инициализируем state данными с сервера
@@ -77,11 +79,18 @@ export function CatalogContent({ initialData }: CatalogContentProps) {
         searchParamsObj[key] = value;
     });
 
+    // Вычисляем baseUrl для фильтров
+    const baseUrl = geoLocation?.settlementSlug && geoLocation?.districtSlug
+        ? `/${geoLocation.districtSlug}/${geoLocation.settlementSlug}`
+        : geoLocation?.districtSlug
+            ? `/${geoLocation.districtSlug}`
+            : "/catalog";
+
     return (
         <div className="flex flex-col lg:flex-row gap-8">
             {/* Сайдбар с фильтрами */}
             <aside className="w-full lg:w-80 flex-shrink-0">
-                <CatalogFilters onFiltersChange={handleFiltersChange} />
+                <CatalogFilters onFiltersChange={handleFiltersChange} baseUrl={baseUrl} geoLocation={geoLocation} />
             </aside>
 
             {/* Основной контент */}
@@ -119,7 +128,13 @@ export function CatalogContent({ initialData }: CatalogContentProps) {
                             <Pagination
                                 currentPage={currentPage}
                                 totalPages={totalPages}
-                                baseUrl="/catalog"
+                                baseUrl={
+                                    geoLocation?.settlementSlug && geoLocation?.districtSlug
+                                        ? `/${geoLocation.districtSlug}/${geoLocation.settlementSlug}`
+                                        : geoLocation?.districtSlug
+                                            ? `/${geoLocation.districtSlug}`
+                                            : "/catalog"
+                                }
                                 searchParams={searchParamsObj}
                             />
                         </div>
