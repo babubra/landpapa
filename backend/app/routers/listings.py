@@ -17,6 +17,7 @@ from app.schemas.listing import (
     ListingListItem,
     ListingDetail,
     ListingListResponse,
+    ListingSitemapItem,
 )
 
 router = APIRouter()
@@ -157,13 +158,34 @@ async def get_listing_by_slug(
     return listing
 
 
-@router.get("/slugs/all", response_model=list[str])
+@router.get("/slugs/all", response_model=list[ListingSitemapItem])
 async def get_all_slugs(
     db: AsyncSession = Depends(get_async_db),
 ):
     """Получить список всех слагов опубликованных объявлений (для sitemap)."""
-    result = await db.execute(
-        select(Listing.slug).where(Listing.is_published == True)
+    # Выбираем slug объявления, дату обновления, slug поселения и района
+    query = (
+        select(
+            Listing.slug, 
+            Listing.updated_at,
+            Settlement.slug.label("settlement_slug"),
+            District.slug.label("district_slug")
+        )
+        .join(Settlement, Listing.settlement_id == Settlement.id)
+        .join(District, Settlement.district_id == District.id)
+        .where(Listing.is_published == True)
     )
-    slugs = result.scalars().all()
-    return [s for s in slugs if s]
+    
+    result = await db.execute(query)
+    
+    # SQLAlchemy возвращает Row, которые можно распаковать в dict
+    items = []
+    for row in result.all():
+        items.append(ListingSitemapItem(
+            slug=row.slug,
+            updated_at=row.updated_at,
+            settlement_slug=row.settlement_slug,
+            district_slug=row.district_slug
+        ))
+        
+    return items

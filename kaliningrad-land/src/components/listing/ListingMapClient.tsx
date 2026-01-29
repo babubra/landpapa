@@ -98,7 +98,7 @@ export function ListingMapClient({ plots }: ListingMapClientProps) {
 
         let url = '';
         if (app === 'yandex') {
-            url = `yandexnavi://build_route_on_map?lat_to=${coords.lat}&lon_to=${coords.lng}`;
+            url = `yandexmaps://build_route_on_map?lat_to=${coords.lat}&lon_to=${coords.lng}`;
         } else if (app === '2gis') {
             // 2GIS format: lon, lat
             url = `dgis://2gis.ru/routeSearch/rsType/car/to/${coords.lng},${coords.lat}`;

@@ -15,6 +15,17 @@ class ReferenceItem(BaseModel):
         from_attributes = True
 
 
+class ListingSitemapItem(BaseModel):
+    """Данные для sitemap."""
+    slug: str
+    updated_at: datetime
+    settlement_slug: str | None = None
+    district_slug: str | None = None
+
+    class Config:
+        from_attributes = True
+
+
 # === Realtor ===
 
 class RealtorItem(BaseModel):

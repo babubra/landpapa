@@ -41,18 +41,25 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         }
     ]
 
+    interface ListingSitemapItem {
+        slug: string;
+        updated_at: string;
+        settlement_slug: string | null;
+        district_slug: string | null;
+    }
+
     try {
         const res = await fetch(`${SSR_API_URL}/api/listings/slugs/all`, {
             next: { revalidate: 3600 }
         });
 
         if (res.ok) {
-            const slugs: string[] = await res.json();
-            slugs.forEach((slug) => {
-                if (slug) {
+            const items: ListingSitemapItem[] = await res.json();
+            items.forEach((item) => {
+                if (item.slug && item.district_slug && item.settlement_slug) {
                     routes.push({
-                        url: `${SITE_URL}/listing/${slug}`,
-                        lastModified: new Date(),
+                        url: `${SITE_URL}/${item.district_slug}/${item.settlement_slug}/${item.slug}`,
+                        lastModified: new Date(item.updated_at),
                         changeFrequency: 'weekly',
                         priority: 0.6,
                     })
