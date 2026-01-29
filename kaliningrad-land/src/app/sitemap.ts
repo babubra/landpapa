@@ -67,7 +67,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
             })
         }
     } catch (error) {
-        console.error('Error generating listing sitemap:', error)
+        console.error(`Error generating listing sitemap from ${SSR_API_URL}/api/listings/slugs/all:`, error)
     }
 
     try {
