@@ -1,6 +1,8 @@
 import { MetadataRoute } from 'next'
 import { SSR_API_URL, SITE_URL } from '@/lib/config'
 
+export const dynamic = 'force-dynamic';
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     const routes: MetadataRoute.Sitemap = [
         {
