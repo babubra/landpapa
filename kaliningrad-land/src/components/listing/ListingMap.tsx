@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { MapContainer, TileLayer, Polygon, Marker, Popup, LayersControl, Tooltip, useMap } from "react-leaflet";
+import { useEffect, useState, useRef } from "react";
+import { MapContainer, TileLayer, Polygon, Marker, LayersControl, Tooltip, useMap } from "react-leaflet";
 import { LatLngBoundsExpression, LatLngExpression, Icon } from "leaflet";
 import "leaflet/dist/leaflet.css";
+import { useListingContext } from "@/context/ListingContext";
 
 // Типы
-interface PlotForMap {
+export interface PlotForMap {
     id: number;
     cadastral_number: string | null;
     area: number | null;
@@ -27,13 +28,6 @@ const STATUS_COLORS: Record<string, string> = {
     active: "#10b981",    // Зелёный — в продаже
     reserved: "#f59e0b",  // Оранжевый — забронирован
     sold: "#ef4444",      // Красный — продан
-};
-
-// Названия статусов для popup
-const STATUS_LABELS: Record<string, string> = {
-    active: "В продаже",
-    reserved: "Забронирован",
-    sold: "Продан",
 };
 
 // Минимальный зум для показа подписей
@@ -60,16 +54,6 @@ function calculateBounds(plots: PlotForMap[]): LatLngBoundsExpression | null {
     return [
         [Math.min(...lats) - 0.0003, Math.min(...lngs) - 0.0003],
         [Math.max(...lats) + 0.0003, Math.max(...lngs) + 0.0003],
-    ];
-}
-
-// Функция для получения центра полигона
-function getPolygonCenter(polygon: [number, number][]): [number, number] {
-    const lats = polygon.map(c => c[0]);
-    const lngs = polygon.map(c => c[1]);
-    return [
-        (Math.min(...lats) + Math.max(...lats)) / 2,
-        (Math.min(...lngs) + Math.max(...lngs)) / 2,
     ];
 }
 
@@ -111,30 +95,20 @@ function ZoomTracker({ onZoomChange }: { onZoomChange: (zoom: number) => void })
     return null;
 }
 
-import { useRef } from "react";
-import { useListingContext } from "@/context/ListingContext";
-
 export function ListingMap({ plots, className = "" }: ListingMapProps) {
-    const [isMounted, setIsMounted] = useState(false);
     const [currentZoom, setCurrentZoom] = useState(16);
     const { selectedPlotId, setSelectedPlotId } = useListingContext();
     const mapRef = useRef<any>(null); // Ref to accessing map instance if needed, though we use useMap inside usually
     const layerRefs = useRef<Record<number, any>>({}); // To store references to layers by ID
     const isMapClickRef = useRef(false);
 
-    // Leaflet требует window, поэтому рендерим только на клиенте
-    useEffect(() => {
-        setIsMounted(true);
-    }, []);
-
-    // Эффект для программного зума и открытия попапа при выборе из сайдбара
+    // Эффект для программного зума при выборе из сайдбара
     useEffect(() => {
         if (selectedPlotId && layerRefs.current[selectedPlotId]) {
             const layer = layerRefs.current[selectedPlotId];
 
             if (isMapClickRef.current) {
-                // Если клик был по карте — не перемещаем, только попап
-                layer.openPopup();
+                // Если клик был по карте — ничего не делаем, просто выделяем
                 isMapClickRef.current = false;
             } else {
                 // Если выбор из списка — летим к участку
@@ -149,9 +123,6 @@ export function ListingMap({ plots, className = "" }: ListingMapProps) {
                     const latlng = layer.getLatLng();
                     layer._map.flyTo(latlng, 18, { duration: 1.5 });
                 }
-
-                // Открываем попап
-                layer.openPopup();
             }
         }
     }, [selectedPlotId]);
@@ -160,14 +131,6 @@ export function ListingMap({ plots, className = "" }: ListingMapProps) {
     const plotsWithCoords = plots.filter(
         p => (p.polygon && p.polygon.length > 0) || (p.latitude && p.longitude)
     );
-
-    if (!isMounted) {
-        return (
-            <div className={`aspect-video rounded-lg bg-muted flex items-center justify-center ${className}`}>
-                <p className="text-muted-foreground">Загрузка карты...</p>
-            </div>
-        );
-    }
 
     if (plotsWithCoords.length === 0) {
         return (
@@ -184,6 +147,7 @@ export function ListingMap({ plots, className = "" }: ListingMapProps) {
     return (
         <div className={`aspect-video rounded-lg overflow-hidden ${className}`}>
             <MapContainer
+                key="listing-map-container"
                 bounds={bounds || undefined}
                 center={bounds ? undefined : defaultCenter}
                 zoom={bounds ? undefined : 10}
@@ -212,7 +176,6 @@ export function ListingMap({ plots, className = "" }: ListingMapProps) {
                     const isSelected = plot.id === selectedPlotId;
                     // Цвет по статусу
                     const color = STATUS_COLORS[plot.status] || STATUS_COLORS.active;
-                    const statusLabel = STATUS_LABELS[plot.status] || plot.status;
                     const shortCadastral = getShortCadastral(plot.cadastral_number);
 
                     // Если есть полигон
@@ -237,22 +200,6 @@ export function ListingMap({ plots, className = "" }: ListingMapProps) {
                                     },
                                 }}
                             >
-                                <Popup>
-                                    <div className="text-sm space-y-1">
-                                        {plot.cadastral_number && (
-                                            <p className="font-medium">{plot.cadastral_number}</p>
-                                        )}
-                                        {plot.area && (
-                                            <p>Площадь: {(plot.area / 100).toFixed(1)} сот.</p>
-                                        )}
-                                        {plot.price_public && (
-                                            <p className="font-bold text-primary">
-                                                {new Intl.NumberFormat("ru-RU").format(plot.price_public)} ₽
-                                            </p>
-                                        )}
-                                        <p style={{ color }}>● {statusLabel}</p>
-                                    </div>
-                                </Popup>
                                 {/* Подпись на полигоне (только при достаточном зуме) */}
                                 {showLabels && shortCadastral && (
                                     <Tooltip
@@ -284,22 +231,6 @@ export function ListingMap({ plots, className = "" }: ListingMapProps) {
                                     },
                                 }}
                             >
-                                <Popup>
-                                    <div className="text-sm space-y-1">
-                                        {plot.cadastral_number && (
-                                            <p className="font-medium">{plot.cadastral_number}</p>
-                                        )}
-                                        {plot.area && (
-                                            <p>Площадь: {(plot.area / 100).toFixed(1)} сот.</p>
-                                        )}
-                                        {plot.price_public && (
-                                            <p className="font-bold text-primary">
-                                                {new Intl.NumberFormat("ru-RU").format(plot.price_public)} ₽
-                                            </p>
-                                        )}
-                                        <p style={{ color }}>● {statusLabel}</p>
-                                    </div>
-                                </Popup>
                             </Marker>
                         );
                     }
@@ -310,3 +241,4 @@ export function ListingMap({ plots, className = "" }: ListingMapProps) {
         </div>
     );
 }
+

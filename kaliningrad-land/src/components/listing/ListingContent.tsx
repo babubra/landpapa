@@ -1,10 +1,11 @@
 "use client";
 
 import { ListingGallery } from "@/components/listing/ListingGallery";
-import { ListingSidebar } from "@/components/listing/ListingSidebar";
+import { ListingSidebar, ListingInfoBlock, ListingPlotsBlock } from "@/components/listing/ListingSidebar";
 import { ListingMapClient } from "@/components/listing/ListingMapClient";
 import { Breadcrumbs, BreadcrumbItem } from "@/components/seo/Breadcrumbs";
 import { usePlaceholderImage } from "@/contexts/SiteSettingsContext";
+import { ListingProvider } from "@/context/ListingContext";
 
 interface Plot {
     id: number;
@@ -61,8 +62,6 @@ interface ListingContentProps {
     breadcrumbs: BreadcrumbItem[];
 }
 
-import { ListingProvider } from "@/context/ListingContext";
-
 /**
  * Клиентский компонент для рендеринга содержимого страницы листинга.
  * Переиспользуется в /listing/[slug] и /[...geo] роутах.
@@ -106,6 +105,24 @@ export function ListingContent({ listing, breadcrumbs }: ListingContentProps) {
                                 placeholderImage={placeholderImage}
                             />
 
+                            {/* Sidebar Info для мобильных (над описанием) */}
+                            <div className="lg:hidden mb-8">
+                                <ListingInfoBlock
+                                    phone={listing.realtor.phone}
+                                    priceMin={listing.price_min}
+                                    priceMax={listing.price_max}
+                                    totalArea={listing.total_area}
+                                    areaMin={listing.area_min}
+                                    areaMax={listing.area_max}
+                                    plotsCount={listing.plots_count}
+                                    landUse={landUse}
+                                    landCategory={listing.plots[0]?.land_category?.name}
+                                    cadastralNumber={listing.plots[0]?.cadastral_number || undefined}
+                                    location={location}
+                                    plots={listing.plots}
+                                />
+                            </div>
+
                             {/* Описание */}
                             {listing.description && (
                                 <div>
@@ -117,15 +134,18 @@ export function ListingContent({ listing, breadcrumbs }: ListingContentProps) {
                                 </div>
                             )}
 
-                            {/* Карта */}
+                            {/* Карта и Список участков (мобильный) */}
                             <div>
-                                <h2 className="text-xl font-semibold mb-4">Расположение на карте</h2>
                                 <ListingMapClient plots={listing.plots} />
+
+                                <div className="lg:hidden mt-6">
+                                    <ListingPlotsBlock plots={listing.plots} />
+                                </div>
                             </div>
                         </div>
 
-                        {/* Правая колонка: боковая панель */}
-                        <div>
+                        {/* Правая колонка: боковая панель (только десктоп) */}
+                        <div className="hidden lg:block">
                             <div className="sticky top-24">
                                 <ListingSidebar
                                     phone={listing.realtor.phone}

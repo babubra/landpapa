@@ -253,7 +253,6 @@ export default async function ListingPage({ params }: ListingPageProps) {
 
                             {/* Карта */}
                             <div>
-                                <h2 className="text-xl font-semibold mb-4">Расположение на карте</h2>
                                 <ListingMapClient plots={listing.plots} />
                             </div>
                         </div>

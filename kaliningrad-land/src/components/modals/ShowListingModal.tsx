@@ -98,7 +98,7 @@ export function ShowListingModal({
                         className="object-cover"
                         priority
                     />
-                    <div className="absolute inset-0 bg-black/40 flex items-end p-6">
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent flex items-end p-6">
                         <div className="text-white">
                             <h3 className="font-bold text-xl mb-1">Показ участка на местности</h3>
                             <p className="text-sm text-white/90">
