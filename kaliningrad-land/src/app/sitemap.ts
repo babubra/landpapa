@@ -65,6 +65,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
                     })
                 }
             })
+        } else {
+            console.error(`Sitemap fetch failed: ${res.status} ${res.statusText} from ${SSR_API_URL}/api/listings/slugs/all`);
         }
     } catch (error) {
         console.error(`Error generating listing sitemap from ${SSR_API_URL}/api/listings/slugs/all:`, error)
