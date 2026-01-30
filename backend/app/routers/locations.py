@@ -11,7 +11,9 @@ from pydantic import BaseModel
 from app.database import get_async_db
 from app.models.location import District, Settlement
 from app.models.listing import Listing
+from app.models.listing import Listing
 from app.models.plot import Plot, PlotStatus
+from app.schemas.listing import SeoObject
 
 router = APIRouter()
 
@@ -174,6 +176,7 @@ class ResolvedLocation(BaseModel):
     settlement_name: str | None = None
     settlement_slug: str | None = None
     settlement_type: str | None = None  # "г", "пос", "с"
+    seo: SeoObject | None = None
 
 
 @router.get("/resolve", response_model=ResolvedLocation)
@@ -219,7 +222,43 @@ async def resolve_location(
                 result.district_id = settlement.district.id
                 result.district_name = settlement.district.name
                 result.district_slug = settlement.district.slug
+
+    # Генерация SEO для каталога
+    # Формат: Участки в {Локация} | РКК земля
+    location_text = ""
+    canonical_suffix = ""
     
+    if result.settlement_name:
+        # Если есть тип нас. пункта, можно добавить (пока просто имя)
+        # TODO: добавить префиксы (п., г.) если нужно
+        location_text = f"п. {result.settlement_name}" 
+        if result.settlement_type == "г":
+             location_text = f"г. {result.settlement_name}"
+             
+        if result.district_slug and result.settlement_slug:
+             canonical_suffix = f"/{result.district_slug}/{result.settlement_slug}"
+             
+    elif result.district_name:
+        location_text = f"{result.district_name} район"
+        if result.district_slug:
+             canonical_suffix = f"/{result.district_slug}"
+    else:
+        location_text = "Калининградской области"
+
+    title = f"Участки в {location_text}, Калининградская обл. | РКК земля"
+    description = f"Купить земельный участок в {location_text}, Калининградская область. Большой выбор, актуальные цены, фото."
+    
+    site_url = "https://rkkland.ru" # TODO: config
+    canonical_url = f"{site_url}{canonical_suffix}" if canonical_suffix else f"{site_url}/catalog"
+
+    result.seo = SeoObject(
+        title=title,
+        description=description,
+        h1=f"Участки в {location_text}",
+        canonical=canonical_url,
+        robots="index, follow"
+    )
+
     return result
 
 

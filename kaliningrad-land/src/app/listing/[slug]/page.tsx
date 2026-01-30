@@ -39,6 +39,15 @@ interface ImageType {
     thumbnail_url: string | null;
 }
 
+interface SeoObject {
+    title: string;
+    description: string | null;
+    h1: string;
+    canonical: string | null;
+    robots: string;
+    og_image: string | null;
+}
+
 interface ListingDetail {
     id: number;
     slug: string;
@@ -56,6 +65,7 @@ interface ListingDetail {
     images: ImageType[];
     meta_title: string | null;
     meta_description: string | null;
+    seo: SeoObject;
 }
 
 async function getListing(slug: string): Promise<ListingDetail | null> {
@@ -86,88 +96,27 @@ export async function generateMetadata({
         return { title: "Объявление не найдено" };
     }
 
-    // --- Auto-Generation Logic ---
-
-    // 1. Формируем локацию
-    const locationParts = [];
-    if (listing.settlement?.district?.name) locationParts.push(listing.settlement.district.name);
-    if (listing.settlement?.name) locationParts.push(listing.settlement.name);
-    const locationStr = locationParts.join(", ");
-
-    // 2. Title
-    let title = listing.meta_title;
-    if (!title) {
-        // Автогенерация уникального title с кадастровыми номерами и ценой
-        const plotsCount = listing.plots?.length || 0;
-        const isMultiple = plotsCount > 1;
-
-        // Площадь: если несколько участков - "от X", иначе просто площадь
-        const firstArea = listing.plots[0]?.area ? (listing.plots[0].area / 100).toFixed(2).replace(".00", "") : null;
-        const areaStr = firstArea
-            ? (isMultiple ? `от ${firstArea}` : firstArea)
-            : null;
-
-        // Цена: если несколько участков - "от X", иначе просто цена
-        const priceValue = listing.price_min;
-        const formatPrice = (price: number) => {
-            return new Intl.NumberFormat("ru-RU").format(price) + " ₽";
-        };
-        const priceStr = priceValue
-            ? (isMultiple ? `от ${formatPrice(priceValue)}` : formatPrice(priceValue))
-            : null;
-
-        // Кадастровые номера: до 2-х с многоточием
-        const cadastralNumbers = listing.plots
-            .map(p => p.cadastral_number)
-            .filter((cn): cn is string => !!cn);
-        let cadastralStr: string | null = null;
-        if (cadastralNumbers.length === 1) {
-            cadastralStr = cadastralNumbers[0];
-        } else if (cadastralNumbers.length === 2) {
-            cadastralStr = cadastralNumbers.slice(0, 2).join(", ");
-        } else if (cadastralNumbers.length > 2) {
-            cadastralStr = cadastralNumbers.slice(0, 2).join(", ") + "...";
-        }
-
-        // Собираем title: Участок {площадь} соток | {цена} | {кадастр} | {локация}
-        const titleParts = ["Участок"];
-        if (areaStr) titleParts.push(`${areaStr} сот.`);
-        if (priceStr) titleParts.push(priceStr);
-        if (cadastralStr) titleParts.push(cadastralStr);
-        if (locationStr) titleParts.push(locationStr);
-
-        title = titleParts.join(" | ");
-    }
-
-    // 3. Description
-    let description = listing.meta_description;
-    if (!description) {
-        // Автогенерация: Земельный участок: {title}. {location}, Калининградская область.
-        // Если title совпадал с автогенерацией, можно использовать listing.title
-        const baseTitle = listing.title;
-        description = `Земельный участок: ${baseTitle}. ${locationStr ? `${locationStr}, ` : ""}Калининградская область.`;
-    }
-
-    const ogImages = [];
-    if (listing.images && listing.images.length > 0) {
-        const img = listing.images[0];
-        const rawUrl = img.thumbnail_url || img.url;
-        ogImages.push(getImageUrl(rawUrl));
-    }
+    // --- SEO Logic (Backend) ---
+    // Используем готовый объект SEO от бэкенда
+    const { seo } = listing;
 
     return {
-        title,
-        description,
+        title: seo.title,
+        description: seo.description || undefined,
         openGraph: {
-            title,
-            description,
+            title: seo.title,
+            description: seo.description || undefined,
             type: "website",
-            url: `/listing/${slug}`,
-            images: ogImages,
+            url: seo.canonical || `/listing/${slug}`,
+            images: seo.og_image ? [getImageUrl(seo.og_image)] : [],
         },
         alternates: {
-            canonical: `/listing/${slug}`,
+            canonical: seo.canonical || `/listing/${slug}`,
         },
+        robots: {
+            index: seo.robots.includes("index"),
+            follow: seo.robots.includes("follow"),
+        }
     };
 }
 

@@ -15,7 +15,7 @@ import { Breadcrumbs } from "@/components/seo/Breadcrumbs";
 import { getSiteSettings } from "@/lib/server-config";
 import { SSR_API_URL, SITE_URL, getImageUrl } from "@/lib/config";
 import type { ListingsResponse } from "@/app/catalog/page";
-import type { ListingData } from "@/types/listing";
+import type { ListingData, SeoObject } from "@/types/listing";
 import { buildGeoBreadcrumbs, formatSettlementName, type GeoLocation } from "@/lib/geoUrl";
 import { ListingContent } from "@/components/listing/ListingContent";
 import { SeoJsonLd } from "@/components/seo/SeoJsonLd";
@@ -40,6 +40,7 @@ interface ResolvedLocation {
     settlement_name: string | null;
     settlement_slug: string | null;
     settlement_type: string | null;
+    seo?: SeoObject | null;
 }
 
 // === API функции ===
@@ -164,24 +165,56 @@ export async function generateMetadata({ params }: GeoPageProps): Promise<Metada
         );
 
         if (listing) {
-            const title = listing.meta_title || listing.title;
-            const description = listing.meta_description || listing.description?.substring(0, 160);
+            // Используем SEO из листинга
+            const { seo } = listing;
+            // Если у листинга нет SEO (старый кеш?), фоллбэк на старые поля
+            const title = seo?.title || listing.meta_title || listing.title;
+            const description = seo?.description || listing.meta_description || listing.description?.substring(0, 160);
+            const canonical = seo?.canonical || `/${geo.join("/")}`;
+            const robots = seo?.robots ? {
+                index: seo.robots.includes("index"),
+                follow: seo.robots.includes("follow"),
+            } : undefined;
 
             return {
                 title,
                 description,
-                alternates: { canonical: `/${geo.join("/")}` },
+                alternates: { canonical },
                 openGraph: {
                     type: "website",
-                    url: `/${geo.join("/")}`,
+                    url: canonical,
                     title,
                     description: description || undefined,
+                    images: seo?.og_image ? [{ url: seo.og_image }] : undefined,
                 },
+                robots,
             };
         }
     }
 
     // Это каталог
+    // Используем SEO из resolveLocation (если есть)
+    if (location.seo) {
+        const { seo } = location;
+        return {
+            title: seo.title,
+            description: seo.description || undefined,
+            alternates: { canonical: seo.canonical || undefined },
+            openGraph: {
+                type: "website",
+                url: seo.canonical || undefined,
+                title: seo.title,
+                description: seo.description || undefined,
+                images: settings.og_image ? [{ url: settings.og_image }] : undefined,
+            },
+            robots: {
+                index: seo.robots.includes("index"),
+                follow: seo.robots.includes("follow"),
+            }
+        };
+    }
+
+    // Fallback для каталога (если бэкенд не вернул seo)
     let title = settings.seo_catalog_title || "Каталог земельных участков";
     let description = settings.seo_catalog_description || "";
 
