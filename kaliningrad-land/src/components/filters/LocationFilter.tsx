@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/dialog";
 import { MapPin, ChevronDown, ChevronRight, X } from "lucide-react";
 import type { GeoLocation } from "@/lib/geoUrl";
+import type { SelectedLocation } from "@/lib/buildCatalogGeoUrl";
 
 // Типы данных (экспорт для использования в других компонентах)
 
@@ -41,6 +42,8 @@ interface LocationFilterProps {
     value: number[];
     /** Callback при изменении выбора */
     onChange: (ids: number[]) => void;
+    /** Callback для получения полной информации о выборе (с slug) */
+    onSelectionChange?: (locations: SelectedLocation[]) => void;
     /** Callback для применения фильтров сразу (передаёт новые значения) */
     onApply?: (ids: number[]) => void;
     /** Placeholder когда ничего не выбрано */
@@ -58,6 +61,7 @@ interface LocationFilterProps {
 export function LocationFilter({
     value,
     onChange,
+    onSelectionChange,
     onApply,
     placeholder = "Все районы",
     fullWidth = true,
@@ -151,9 +155,34 @@ export function LocationFilter({
         }
     }, [localSelection]);
 
+    // Собрать полную информацию о выборе (с slug)
+    const getSelectedLocations = useCallback((ids: number[]): SelectedLocation[] => {
+        const result: SelectedLocation[] = [];
+        for (const district of districts) {
+            for (const settlement of district.settlements) {
+                if (ids.includes(settlement.id)) {
+                    result.push({
+                        settlementId: settlement.id,
+                        settlementSlug: settlement.slug,
+                        districtId: district.id,
+                        districtSlug: district.slug,
+                    });
+                }
+            }
+        }
+        return result;
+    }, [districts]);
+
     // Применить выбор
     const handleApply = () => {
         onChange(localSelection);
+
+        // Передаём полную информацию о выборе (с slug)
+        if (onSelectionChange) {
+            const locations = getSelectedLocations(localSelection);
+            onSelectionChange(locations);
+        }
+
         setOpen(false);
         // Автоматически применяем фильтры если передан onApply (передаём новые значения)
         if (onApply) {

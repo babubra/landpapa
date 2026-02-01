@@ -16,6 +16,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { LocationFilter } from "@/components/filters/LocationFilter";
 import { Search, MapPin } from "lucide-react";
 import { pluralize } from "@/lib/utils";
+import { buildCatalogGeoUrl, type SelectedLocation } from "@/lib/buildCatalogGeoUrl";
 
 interface Reference {
   id: number;
@@ -38,6 +39,9 @@ export function SearchFilter() {
   const [priceMin, setPriceMin] = useState("");
   const [priceMax, setPriceMax] = useState("");
 
+  // Полная информация о выборе (с slug для SEO-URL)
+  const [selectedLocations, setSelectedLocations] = useState<SelectedLocation[]>([]);
+
   // Загрузка данных при монтировании
   useEffect(() => {
     fetch("/api/references/?type=land_use")
@@ -52,15 +56,14 @@ export function SearchFilter() {
   }, []);
 
   const handleSearch = () => {
-    const params = new URLSearchParams();
-    if (settlementIds.length > 0) params.set("settlements", settlementIds.join(","));
-    if (landUseId) params.set("land_use", landUseId);
-    if (areaMin) params.set("area_min", (parseFloat(areaMin) * 100).toString()); // сотки → м²
-    if (areaMax) params.set("area_max", (parseFloat(areaMax) * 100).toString());
-    if (priceMin) params.set("price_min", priceMin);
-    if (priceMax) params.set("price_max", priceMax);
-
-    router.push(`/catalog?${params.toString()}`);
+    const url = buildCatalogGeoUrl(selectedLocations, {
+      landUse: landUseId || undefined,
+      priceMin: priceMin || undefined,
+      priceMax: priceMax || undefined,
+      areaMin: areaMin ? (parseFloat(areaMin) * 100).toString() : undefined,
+      areaMax: areaMax ? (parseFloat(areaMax) * 100).toString() : undefined,
+    });
+    router.push(url);
   };
 
   const handleShowOnMap = () => {
@@ -100,6 +103,7 @@ export function SearchFilter() {
           <LocationFilter
             value={settlementIds}
             onChange={setSettlementIds}
+            onSelectionChange={setSelectedLocations}
             placeholder="Все районы"
           />
         </div>

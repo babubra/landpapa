@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/sheet";
 import { LocationFilter } from "@/components/filters/LocationFilter";
 import { Filter, List, X } from "lucide-react";
+import { buildCatalogGeoUrl, type SelectedLocation } from "@/lib/buildCatalogGeoUrl";
 
 interface Reference {
     id: number;
@@ -60,6 +61,9 @@ export function MapFilters({ onFiltersChange, total, isMobile = false }: MapFilt
     const [priceMax, setPriceMax] = useState(searchParams.get("price_max") || "");
     const [areaMin, setAreaMin] = useState(searchParams.get("area_min") || "");
     const [areaMax, setAreaMax] = useState(searchParams.get("area_max") || "");
+
+    // Полная информация о выборе (с slug для SEO-URL)
+    const [selectedLocations, setSelectedLocations] = useState<SelectedLocation[]>([]);
 
     // Состояние мобильного Sheet
     const [sheetOpen, setSheetOpen] = useState(false);
@@ -138,8 +142,14 @@ export function MapFilters({ onFiltersChange, total, isMobile = false }: MapFilt
         areaMax,
     ].filter(Boolean).length;
 
-    // Ссылка на каталог с текущими фильтрами
-    const catalogUrl = `/catalog?${buildFilterParams().toString()}`;
+    // Ссылка на каталог с текущими фильтрами (SEO-URL)
+    const catalogUrl = buildCatalogGeoUrl(selectedLocations, {
+        landUse: landUseId || undefined,
+        priceMin: priceMin || undefined,
+        priceMax: priceMax || undefined,
+        areaMin: areaMin || undefined,
+        areaMax: areaMax || undefined,
+    });
 
     // Содержимое фильтров (переиспользуется в desktop и mobile)
     const FiltersContent = ({ inSheet = false }: { inSheet?: boolean }) => (
@@ -150,6 +160,7 @@ export function MapFilters({ onFiltersChange, total, isMobile = false }: MapFilt
                 <LocationFilter
                     value={settlementIds}
                     onChange={setSettlementIds}
+                    onSelectionChange={setSelectedLocations}
                     onApply={applyFiltersWithSettlements}
                     placeholder="Район"
                     fullWidth={true}

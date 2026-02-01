@@ -71,10 +71,25 @@ async def get_listings(
     # Фильтры по локации
     # Приоритет: settlements (новый) > settlement_id (старый) > district_id
     if settlements:
-        # Парсим список ID из строки "7,8,9"
-        settlement_ids = [int(s.strip()) for s in settlements.split(",") if s.strip().isdigit()]
-        if settlement_ids:
-            query = query.where(Listing.settlement_id.in_(settlement_ids))
+        # Парсим смешанный список: числовые ID или slug
+        parts = [s.strip() for s in settlements.split(",") if s.strip()]
+        ids = []
+        slugs = []
+        for part in parts:
+            if part.isdigit():
+                ids.append(int(part))
+            else:
+                slugs.append(part)
+        
+        # Если есть slug'и — резолвим их в ID
+        if slugs:
+            slug_result = await db.execute(
+                select(Settlement.id).where(Settlement.slug.in_(slugs))
+            )
+            ids.extend([row[0] for row in slug_result.all()])
+        
+        if ids:
+            query = query.where(Listing.settlement_id.in_(ids))
     elif settlement_id:
         query = query.where(Listing.settlement_id == settlement_id)
     elif district_id:

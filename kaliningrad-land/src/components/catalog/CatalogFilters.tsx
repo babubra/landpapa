@@ -16,6 +16,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { LocationFilter } from "@/components/filters/LocationFilter";
 import { pluralize } from "@/lib/utils";
 import type { GeoLocation } from "@/lib/geoUrl";
+import { buildCatalogGeoUrl, type SelectedLocation } from "@/lib/buildCatalogGeoUrl";
 
 interface Reference {
     id: number;
@@ -52,6 +53,9 @@ export function CatalogFilters({ onFiltersChange, baseUrl = "/catalog", geoLocat
     const [areaMin, setAreaMin] = useState(searchParams.get("area_min") || "");
     const [areaMax, setAreaMax] = useState(searchParams.get("area_max") || "");
     const [sort, setSort] = useState(searchParams.get("sort") || "newest");
+
+    // Полная информация о выборе (с slug для SEO-URL)
+    const [selectedLocations, setSelectedLocations] = useState<SelectedLocation[]>([]);
 
     // Загрузка справочника назначения (один раз при монтировании)
     useEffect(() => {
@@ -100,43 +104,45 @@ export function CatalogFilters({ onFiltersChange, baseUrl = "/catalog", geoLocat
     }, [searchParams]);
 
     const applyFilters = useCallback(() => {
-        const params = new URLSearchParams();
-        if (settlementIds.length > 0) params.set("settlements", settlementIds.join(","));
-        if (landUseId) params.set("land_use", landUseId);
-        if (priceMin) params.set("price_min", priceMin);
-        if (priceMax) params.set("price_max", priceMax);
-        if (areaMin) params.set("area_min", areaMin);
-        if (areaMax) params.set("area_max", areaMax);
-        if (sort && sort !== "newest") params.set("sort", sort);
+        const url = buildCatalogGeoUrl(selectedLocations, {
+            landUse: landUseId || undefined,
+            priceMin: priceMin || undefined,
+            priceMax: priceMax || undefined,
+            areaMin: areaMin || undefined,
+            areaMax: areaMax || undefined,
+            sort: sort !== "newest" ? sort : undefined,
+        });
+        router.push(url);
+        // Извлекаем query params для callback
+        const queryStr = url.includes("?") ? url.split("?")[1] : "";
+        onFiltersChange(Object.fromEntries(new URLSearchParams(queryStr)));
+    }, [selectedLocations, landUseId, priceMin, priceMax, areaMin, areaMax, sort, router, onFiltersChange]);
 
-        router.push(`${baseUrl}?${params.toString()}`);
-        onFiltersChange(Object.fromEntries(params));
-    }, [settlementIds, landUseId, priceMin, priceMax, areaMin, areaMax, sort, router, onFiltersChange, baseUrl]);
-
-    // Применить фильтры с новым значением settlementIds (для LocationFilter)
-    const applyFiltersWithSettlements = useCallback((newSettlementIds: number[]) => {
-        const params = new URLSearchParams();
-        if (newSettlementIds.length > 0) params.set("settlements", newSettlementIds.join(","));
-        if (landUseId) params.set("land_use", landUseId);
-        if (priceMin) params.set("price_min", priceMin);
-        if (priceMax) params.set("price_max", priceMax);
-        if (areaMin) params.set("area_min", areaMin);
-        if (areaMax) params.set("area_max", areaMax);
-        if (sort && sort !== "newest") params.set("sort", sort);
-
-        router.push(`${baseUrl}?${params.toString()}`);
-        onFiltersChange(Object.fromEntries(params));
-    }, [landUseId, priceMin, priceMax, areaMin, areaMax, sort, router, onFiltersChange, baseUrl]);
+    // Применить фильтры с новым значением из LocationFilter
+    const handleLocationApply = useCallback((locations: SelectedLocation[]) => {
+        const url = buildCatalogGeoUrl(locations, {
+            landUse: landUseId || undefined,
+            priceMin: priceMin || undefined,
+            priceMax: priceMax || undefined,
+            areaMin: areaMin || undefined,
+            areaMax: areaMax || undefined,
+            sort: sort !== "newest" ? sort : undefined,
+        });
+        router.push(url);
+        const queryStr = url.includes("?") ? url.split("?")[1] : "";
+        onFiltersChange(Object.fromEntries(new URLSearchParams(queryStr)));
+    }, [landUseId, priceMin, priceMax, areaMin, areaMax, sort, router, onFiltersChange]);
 
     const resetFilters = () => {
         setSettlementIds([]);
+        setSelectedLocations([]);
         setLandUseId("");
         setPriceMin("");
         setPriceMax("");
         setAreaMin("");
         setAreaMax("");
         setSort("newest");
-        router.push(baseUrl);
+        router.push("/catalog");
         onFiltersChange({});
     };
 
@@ -160,7 +166,10 @@ export function CatalogFilters({ onFiltersChange, baseUrl = "/catalog", geoLocat
                     <LocationFilter
                         value={settlementIds}
                         onChange={setSettlementIds}
-                        onApply={applyFiltersWithSettlements}
+                        onSelectionChange={(locations) => {
+                            setSelectedLocations(locations);
+                            handleLocationApply(locations);
+                        }}
                         placeholder="Все районы"
                         geoLocation={geoLocation}
                     />
