@@ -31,7 +31,11 @@ interface Realtor {
 
 interface Settlement {
     name: string;
-    district?: { name: string };
+    slug: string;
+    district?: {
+        name: string;
+        slug: string;
+    };
 }
 
 interface ImageType {
@@ -97,8 +101,22 @@ export async function generateMetadata({
     }
 
     // --- SEO Logic (Backend) ---
-    // Используем готовый объект SEO от бэкенда
+    // Формируем "красивый" гео-путь для canonical
+    // Это предотвращает дубли с техническим роутом /listing/[slug]
     const { seo } = listing;
+    const districtSlug = listing.settlement?.district?.slug;
+    const settlementSlug = listing.settlement?.slug;
+
+    let canonical = listing.seo.canonical;
+    if (!canonical) {
+        if (districtSlug && settlementSlug) {
+            canonical = `/${districtSlug}/${settlementSlug}/${slug}`;
+        } else if (districtSlug) {
+            canonical = `/${districtSlug}/${slug}`;
+        } else {
+            canonical = `/listing/${slug}`;
+        }
+    }
 
     return {
         title: seo.title,
@@ -107,11 +125,11 @@ export async function generateMetadata({
             title: seo.title,
             description: seo.description || undefined,
             type: "website",
-            url: seo.canonical || `/listing/${slug}`,
+            url: canonical,
             images: seo.og_image ? [getImageUrl(seo.og_image)] : [],
         },
         alternates: {
-            canonical: seo.canonical || `/listing/${slug}`,
+            canonical: canonical,
         },
         robots: {
             index: seo.robots.includes("index"),

@@ -170,7 +170,22 @@ export async function generateMetadata({ params }: GeoPageProps): Promise<Metada
             // Если у листинга нет SEO (старый кеш?), фоллбэк на старые поля
             const title = seo?.title || listing.meta_title || listing.title;
             const description = seo?.description || listing.meta_description || listing.description?.substring(0, 160);
-            const canonical = seo?.canonical || `/${geo.join("/")}`;
+
+            // Формируем "правильный" гео-путь для canonical
+            const districtSlug = listing.settlement?.district?.slug;
+            const settlementSlug = listing.settlement?.slug;
+            const listingSlug = listing.slug;
+
+            let canonical = seo?.canonical;
+            if (!canonical) {
+                if (districtSlug && settlementSlug) {
+                    canonical = `/${districtSlug}/${settlementSlug}/${listingSlug}`;
+                } else if (districtSlug) {
+                    canonical = `/${districtSlug}/${listingSlug}`;
+                } else {
+                    canonical = `/${geo.join("/")}`;
+                }
+            }
             const robots = seo?.robots ? {
                 index: seo.robots.includes("index"),
                 follow: seo.robots.includes("follow"),
