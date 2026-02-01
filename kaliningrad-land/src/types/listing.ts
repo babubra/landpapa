@@ -8,6 +8,16 @@ export interface ImageData {
     thumbnail_url: string | null;
 }
 
+export interface SeoObject {
+    title: string;
+    description?: string | null;
+    h1: string;
+    canonical?: string | null;
+    robots: string;
+    og_image?: string | null;
+    auto_title?: string | null;
+}
+
 export interface Settlement {
     id: number;
     name: string;
@@ -48,6 +58,7 @@ export interface ListingData {
     // Мета-данные
     meta_title?: string | null;
     meta_description?: string | null;
+    seo?: SeoObject;
 }
 
 export interface ListingsResponse {

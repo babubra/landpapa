@@ -1,9 +1,21 @@
 from datetime import datetime
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, computed_field
+from app.utils.title_generator import generate_seo_title
 from app.schemas.image import ImageItem
 
 
 # === Reference ===
+
+class SeoObject(BaseModel):
+    title: str          # Итоговый Title (эффективный)
+    description: str | None = None    # Итоговый Description
+    h1: str             # Заголовок страницы (из базы)
+    canonical: str | None = None      # Канонический URL
+    robots: str = "index, follow"
+    og_image: str | None = None
+    
+    # Источники (для отладки)
+    auto_title: str | None = None
 
 class ReferenceItem(BaseModel):
     """Элемент справочника."""
@@ -130,6 +142,32 @@ class ListingDetail(BaseModel):
     meta_description: str | None
     created_at: datetime
     
+    @computed_field
+    @property
+    def seo(self) -> SeoObject:
+        # 1. Title
+        auto_title = generate_seo_title(self)
+        effective_title = self.meta_title if self.meta_title else auto_title
+        
+        # 2. Description
+        description = self.meta_description if self.meta_description else (self.description[:160] if self.description else None)
+        
+        # 3. Canonical
+        # Формируем абсолютный URL.
+        # Базовый URL лучше брать из конфига, пока хардкодим или берем из env
+        # Предполагаем, что slug уникален и достаточен
+        site_url = "https://rkkland.ru" # TODO: вынести в config
+        canonical_url = f"{site_url}/listing/{self.slug}"
+
+        return SeoObject(
+            title=effective_title,
+            description=description,
+            h1=self.title,
+            canonical=canonical_url,
+            robots="index, follow",
+            auto_title=auto_title
+        )
+
     class Config:
         from_attributes = True
 

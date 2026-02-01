@@ -116,3 +116,98 @@ def get_sotki_word(sotki: float) -> str:
         return "сотки"
     else:
         return "соток"
+
+
+def generate_seo_title(listing) -> str:
+    """
+    Генерирует SEO-заголовок по формату:
+    Участок {Площадь} — {Локация}, {Цена} | РКК земля
+    
+    Примеры:
+    - "Участок 10 сот. — п. Лунино, 399 000 ₽ | РКК земля"
+    - "Участок 6.5 сот. — г. Гурьевск, 1.2 млн ₽ | РКК земля"
+    """
+    # 1. Площадь (Area)
+    area_part = "?"
+    if listing.total_area and listing.total_area > 0:
+         area_sotki = listing.total_area / 100
+         # Используем сокращение "сот." для краткости в Title
+         if area_sotki == int(area_sotki):
+             area_part = f"{int(area_sotki)} сот."
+         else:
+             area_part = f"{area_sotki:.1f} сот.".replace(".0 сот.", " сот.")
+
+    # 2. Локация (Location)
+    location_part = ""
+    # Пытаемся взять из settlement (если подгружено)
+    if hasattr(listing, 'settlement') and listing.settlement:
+        settlement = listing.settlement
+        settlement_name = settlement.name or ""
+        
+        # Формируем префикс типа нас. пункта (г., п., снт.)
+        type_prefix = ""
+        # Тут можно добавить логику сокращений, если в базе полные названия
+        # Пока берем просто имя, если типа нет.
+        # Если type_short есть в модели Settlement, лучше использовать его.
+        
+        # Эвристика: если есть district и settlement, берем settlement
+        # Обрезаем слишком длинные названия
+        if len(settlement_name) > 30:
+             settlement_name = settlement_name[:27] + "..."
+             
+        # Проверяем наличие 'type_short' (если добавим в модель) или хардкодим префиксы
+        # Для простоты: п. {Name}
+        location_part = f"п. {settlement_name}"
+        if settlement.city: # Если это город
+             location_part = f"г. {settlement_name}"
+             
+    elif hasattr(listing, 'settlement_id') and listing.settlement_id:
+         # Fallback если объект settlement не подгружен, но есть ID (редкий кейс для листинга)
+         location_part = "Калининградская обл."
+    else:
+         location_part = "Калининградская обл."
+
+
+    # 3. Цена (Price)
+    price_part = ""
+    price = getattr(listing, 'price_public', None)
+    # Если в листинге нет цены, попробуем найти минимальную цену среди участков
+    if price is None or price == 0:
+        if hasattr(listing, 'plots') and listing.plots:
+             active_prices = [p.price_public for p in listing.plots if p.status == 'active' and p.price_public]
+             if active_prices:
+                 price = min(active_prices)
+                 
+    if price and price > 0:
+        price_text = format_price_compact(price)
+        price_part = f", {price_text}"
+        
+    # Сборка
+    # Участок {area_part} — {location_part}, Калининградская обл.{price_part} | РКК земля
+    seo_title = f"Участок {area_part} — {location_part}, Калининградская обл.{price_part} | РКК земля"
+    
+    return seo_title
+
+
+def format_price_compact(price: float) -> str:
+    """
+    Форматирует цену компактно:
+    - 399000 -> 399 000 ₽
+    - 1200000 -> 1.2 млн ₽
+    - 1150000 -> 1.15 млн ₽
+    - 10000000 -> 10 млн ₽
+    """
+    if price >= 1_000_000:
+        val = price / 1_000_000
+        # Округляем до 2 знаков, убираем лишние нули
+        val_str = f"{val:.2f}"
+        if val_str.endswith(".00"):
+            val_str = val_str[:-3]
+        elif val_str.endswith("0"):
+            val_str = val_str[:-1]
+        return f"{val_str} млн ₽"
+    elif price >= 1000:
+        # Разделитель тысяч
+        return f"{int(price):,} ₽".replace(",", " ")
+    else:
+        return f"{int(price)} ₽"
