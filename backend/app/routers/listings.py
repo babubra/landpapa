@@ -12,7 +12,7 @@ import math
 from app.database import get_async_db
 from app.models.listing import Listing
 from app.models.plot import Plot, PlotStatus
-from app.models.location import Settlement, District
+from app.models.location import Settlement, District, Location
 from app.schemas.listing import (
     ListingListItem,
     ListingDetail,
@@ -27,9 +27,11 @@ router = APIRouter()
 async def get_listings(
     page: int = Query(1, ge=1),
     size: int = Query(12, ge=1, le=100),
-    # Локация
-    district_id: int | None = Query(None, description="ID района"),
-    settlement_id: int | None = Query(None, description="ID населённого пункта (устаревший, используйте settlements)"),
+    # Локация (новая иерархия)
+    location_id: int | None = Query(None, description="ID локации (новая иерархия)"),
+    # Локация (старая)
+    district_id: int | None = Query(None, description="ID района (устаревший)"),
+    settlement_id: int | None = Query(None, description="ID населённого пункта (устаревший)"),
     settlements: str | None = Query(None, description="Список ID населённых пунктов через запятую"),
     # Характеристики
     land_use_id: int | None = Query(None, description="ID разрешённого использования"),
@@ -69,8 +71,23 @@ async def get_listings(
     )
     
     # Фильтры по локации
-    # Приоритет: settlements (новый) > settlement_id (старый) > district_id
-    if settlements:
+    # Приоритет: location_id (новая иерархия) > settlements > settlement_id > district_id
+    if location_id:
+        # Новая иерархия: ищем все дочерние локации рекурсивно
+        async def get_descendant_ids(loc_id: int) -> list[int]:
+            """Рекурсивно получить все ID локации и её потомков."""
+            ids = [loc_id]
+            children_result = await db.execute(
+                select(Location.id).where(Location.parent_id == loc_id)
+            )
+            children_ids = [row[0] for row in children_result.all()]
+            for child_id in children_ids:
+                ids.extend(await get_descendant_ids(child_id))
+            return ids
+        
+        all_location_ids = await get_descendant_ids(location_id)
+        query = query.where(Listing.location_id.in_(all_location_ids))
+    elif settlements:
         # Парсим список ID из строки "7,8,9"
         settlement_ids = [int(s.strip()) for s in settlements.split(",") if s.strip().isdigit()]
         if settlement_ids:

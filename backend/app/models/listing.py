@@ -28,7 +28,10 @@ class Listing(Base):
     is_featured: Mapped[bool] = mapped_column(Boolean, default=False)  # Специальное предложение
     title_auto: Mapped[bool] = mapped_column(Boolean, default=True)  # Автогенерация названия
 
-    # Локация
+    # Локация (НОВАЯ модель — иерархическая)
+    location_id: Mapped[int | None] = mapped_column(ForeignKey("locations.id"), nullable=True, index=True)
+    
+    # Локация (СТАРАЯ модель — для обратной совместимости, будет удалено после миграции)
     settlement_id: Mapped[int | None] = mapped_column(ForeignKey("settlements.id"), nullable=True)
     
     # SEO
@@ -43,7 +46,8 @@ class Listing(Base):
     
     # Связи
     realtor: Mapped["Realtor"] = relationship("Realtor", lazy="joined")
-    settlement: Mapped["Settlement"] = relationship("Settlement", lazy="joined")
+    location: Mapped["Location | None"] = relationship("Location", lazy="joined")
+    settlement: Mapped["Settlement | None"] = relationship("Settlement", lazy="joined")  # DEPRECATED
     plots: Mapped[list["Plot"]] = relationship("Plot", back_populates="listing", lazy="selectin")
     images: Mapped[list["Image"]] = relationship(
         "Image",
@@ -138,6 +142,6 @@ class Listing(Base):
 # Импорт для relationship
 from app.models.realtor import Realtor
 from app.models.plot import Plot
-from app.models.location import Settlement
+from app.models.location import Settlement, Location
 from app.models.image import Image
 

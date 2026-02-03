@@ -13,6 +13,7 @@ import app.models  # noqa
 from app.models.reference import Reference
 from app.models.admin_user import AdminUser
 from app.models.setting import Setting
+from app.models.location import Location, LocationType
 from app.auth import hash_password
 
 
@@ -33,6 +34,44 @@ LAND_CATEGORY_DATA = [
     {"code": "industrial", "name": "Земли промышленности"},
     {"code": "forest", "name": "Земли лесного фонда"},
 ]
+
+
+# === Данные локаций Калининградской области ===
+# Структура: Region -> Districts/Cities -> Settlements
+
+LOCATIONS_DATA = {
+    "region": {
+        "name": "Калининградская область",
+        "slug": "kaliningradskaja-oblast",
+    },
+    # Городские округа (города, которые сами являются муниципальными образованиями)
+    "urban_okrugs": [
+        {"name": "Калининград", "slug": "kaliningrad", "settlement_type": "г", "sort_order": 0},
+        {"name": "Пионерский", "slug": "pionerskij", "settlement_type": "г", "sort_order": 1},
+        {"name": "Светлогорск", "slug": "svetlogorsk", "settlement_type": "г", "sort_order": 2},
+        {"name": "Янтарный", "slug": "yantarnyj", "settlement_type": "пгт", "sort_order": 3},
+    ],
+    # Муниципальные районы
+    "districts": [
+        {"name": "Багратионовский район", "slug": "bagrationovskij-r-n", "sort_order": 10},
+        {"name": "Балтийский район", "slug": "baltijskij-r-n", "sort_order": 11},
+        {"name": "Гвардейский район", "slug": "gvardejskij-r-n", "sort_order": 12},
+        {"name": "Гурьевский район", "slug": "gurjevskij-r-n", "sort_order": 13},
+        {"name": "Гусевский район", "slug": "gusevskij-r-n", "sort_order": 14},
+        {"name": "Зеленоградский район", "slug": "zelenogradskij-r-n", "sort_order": 15},
+        {"name": "Краснознаменский район", "slug": "krasnoznamenskij-r-n", "sort_order": 16},
+        {"name": "Мамоновский район", "slug": "mamonovskij-r-n", "sort_order": 17},
+        {"name": "Неманский район", "slug": "nemanskij-r-n", "sort_order": 18},
+        {"name": "Нестеровский район", "slug": "nesterovskij-r-n", "sort_order": 19},
+        {"name": "Озёрский район", "slug": "ozerskij-r-n", "sort_order": 20},
+        {"name": "Полесский район", "slug": "polesskij-r-n", "sort_order": 21},
+        {"name": "Правдинский район", "slug": "pravdinskij-r-n", "sort_order": 22},
+        {"name": "Светловский район", "slug": "svetlovskij-r-n", "sort_order": 23},
+        {"name": "Славский район", "slug": "slavskij-r-n", "sort_order": 24},
+        {"name": "Советский район", "slug": "sovetskij-r-n", "sort_order": 25},
+        {"name": "Черняховский район", "slug": "chernjahovskij-r-n", "sort_order": 26},
+    ],
+}
 
 
 def seed_references(db: Session):
@@ -73,6 +112,57 @@ def seed_admin(db: Session):
     db.add(admin)
     db.commit()
     print("Создан админ: admin / Admin123")
+
+
+def seed_locations(db: Session):
+    """Создать начальную иерархию локаций Калининградской области."""
+    existing = db.query(Location).count()
+    if existing > 0:
+        print(f"Локации уже есть ({existing}). Пропускаем.")
+        return
+    
+    print("Создаём иерархию локаций...")
+    
+    # 1. Создаём регион
+    region_data = LOCATIONS_DATA["region"]
+    region = Location(
+        name=region_data["name"],
+        slug=region_data["slug"],
+        type=LocationType.REGION,
+        parent_id=None,
+        sort_order=0,
+    )
+    db.add(region)
+    db.flush()  # Получаем ID региона
+    
+    # 2. Создаём городские округа (parent = region)
+    for data in LOCATIONS_DATA["urban_okrugs"]:
+        city = Location(
+            name=data["name"],
+            slug=data["slug"],
+            type=LocationType.CITY,
+            settlement_type=data.get("settlement_type"),
+            parent_id=region.id,
+            sort_order=data.get("sort_order", 0),
+        )
+        db.add(city)
+    
+    # 3. Создаём муниципальные районы (parent = region)
+    for data in LOCATIONS_DATA["districts"]:
+        district = Location(
+            name=data["name"],
+            slug=data["slug"],
+            type=LocationType.DISTRICT,
+            parent_id=region.id,
+            sort_order=data.get("sort_order", 0),
+        )
+        db.add(district)
+    
+    db.commit()
+    
+    total_cities = len(LOCATIONS_DATA["urban_okrugs"])
+    total_districts = len(LOCATIONS_DATA["districts"])
+    print(f"Создано: 1 регион, {total_cities} городских округов, {total_districts} районов.")
 
 
 def seed_settings(db: Session):
@@ -292,6 +382,7 @@ def main():
     try:
         seed_references(db)
         seed_admin(db)
+        seed_locations(db)
         seed_settings(db)
     finally:
         db.close()

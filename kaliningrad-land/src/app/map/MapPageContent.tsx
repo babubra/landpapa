@@ -35,7 +35,8 @@ export function MapPageContent() {
 
         // Копируем фильтры из URL (исключаем lat, lon, zoom — это для карты)
         searchParams.forEach((value, key) => {
-            if (key === "district") params.set("district_id", value);
+            if (key === "location_id") params.set("location_id", value);
+            else if (key === "district") params.set("district_id", value);
             else if (key === "settlements") params.set("settlements", value);
             else if (key === "land_use") params.set("land_use_id", value);
             else if (key === "price_min") params.set("price_min", value);

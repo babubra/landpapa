@@ -112,25 +112,42 @@ export function getColumns({
             ),
         },
 
-        // Населённый пункт
+        // Населённый пункт (совместимость с новой и старой моделью)
         {
-            accessorKey: "settlement",
+            accessorKey: "location",
             header: "Населённый пункт",
             cell: ({ row }) => {
+                const location = row.original.location;
                 const settlement = row.original.settlement;
-                if (!settlement) {
-                    return <span className="text-muted-foreground">—</span>;
+
+                // Приоритет: новая модель location, потом старая settlement
+                if (location) {
+                    return (
+                        <div className="text-sm">
+                            {location.name}
+                            {location.parent && (
+                                <div className="text-xs text-muted-foreground">
+                                    {location.parent.name}
+                                </div>
+                            )}
+                        </div>
+                    );
                 }
-                return (
-                    <div className="text-sm">
-                        {settlement.name}
-                        {settlement.district && (
-                            <div className="text-xs text-muted-foreground">
-                                {settlement.district.name}
-                            </div>
-                        )}
-                    </div>
-                );
+
+                if (settlement) {
+                    return (
+                        <div className="text-sm">
+                            {settlement.name}
+                            {settlement.district && (
+                                <div className="text-xs text-muted-foreground">
+                                    {settlement.district.name}
+                                </div>
+                            )}
+                        </div>
+                    );
+                }
+
+                return <span className="text-muted-foreground">—</span>;
             },
         },
 

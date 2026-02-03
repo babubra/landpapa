@@ -9,7 +9,7 @@
  * - /listing/{slug} — листинг без географии (fallback)
  */
 
-// === Типы ===
+// === Типы (старые — для обратной совместимости) ===
 
 export interface GeoLocation {
     districtId?: number;
@@ -19,6 +19,42 @@ export interface GeoLocation {
     settlementSlug?: string;
     settlementName?: string;
     settlementType?: string; // "г", "пос", "с"
+}
+
+// === Типы (новые — иерархическая архитектура) ===
+
+export type LocationType = "region" | "district" | "city" | "settlement";
+
+/** Элемент иерархии локаций */
+export interface HierarchyLocation {
+    id: number;
+    name: string;
+    slug: string;
+    type: LocationType;
+    settlement_type?: string | null; // "г", "пос", "с"
+    listings_count: number;
+    children: HierarchyLocation[];
+}
+
+/** Выбранная локация в фильтре */
+export interface SelectedLocation {
+    id: number;
+    name: string;
+    slug: string;
+    type: LocationType;
+    parentId?: number;
+}
+
+/** Результат резолва цепочки слагов */
+export interface ResolvedLocationChain {
+    locations: {
+        id: number;
+        name: string;
+        slug: string;
+        type: LocationType;
+        settlement_type?: string | null;
+    }[];
+    leaf_id: number | null;
 }
 
 export interface FilterParams {
@@ -226,4 +262,158 @@ export function buildGeoBreadcrumbs(
 export function formatSettlementName(name: string, type?: string | null): string {
     if (!type) return name;
     return `${type}. ${name}`;
+}
+
+// === Утилиты для новой иерархии ===
+
+/**
+ * Строит URL на основе выбранных локаций из иерархии.
+ * 
+ * Логика:
+ * - Одна локация → /slug (район или город)
+ * - Две (parent + child) → /parent-slug/child-slug
+ * - Несколько несвязанных → /catalog?location_ids=1,2,3
+ */
+export function buildHierarchyUrl(
+    selectedLocations: SelectedLocation[],
+    filters: FilterParams,
+): string {
+    const params = new URLSearchParams();
+
+    // Добавляем не-гео фильтры
+    if (filters.landUse) params.set("land_use", filters.landUse);
+    if (filters.priceMin) params.set("price_min", filters.priceMin);
+    if (filters.priceMax) params.set("price_max", filters.priceMax);
+    if (filters.areaMin) params.set("area_min", filters.areaMin);
+    if (filters.areaMax) params.set("area_max", filters.areaMax);
+    if (filters.sort && filters.sort !== "newest") params.set("sort", filters.sort);
+    if (filters.page && filters.page > 1) params.set("page", filters.page.toString());
+
+    const queryString = params.toString();
+    const suffix = queryString ? `?${queryString}` : "";
+
+    if (selectedLocations.length === 0) {
+        return `/catalog${suffix}`;
+    }
+
+    // Одна локация — простой путь
+    if (selectedLocations.length === 1) {
+        return `/${selectedLocations[0].slug}${suffix}`;
+    }
+
+    // Две локации в иерархии (parent -> child)
+    if (selectedLocations.length === 2) {
+        const [first, second] = selectedLocations;
+        // Проверяем, является ли second дочерним элементом first
+        if (second.parentId === first.id) {
+            return `/${first.slug}/${second.slug}${suffix}`;
+        }
+        // Или наоборот
+        if (first.parentId === second.id) {
+            return `/${second.slug}/${first.slug}${suffix}`;
+        }
+    }
+
+    // Несколько несвязанных локаций — используем query params
+    const ids = selectedLocations.map(l => l.id).join(",");
+    params.set("location_ids", ids);
+    return `/catalog?${params.toString()}`;
+}
+
+/**
+ * Находит локацию по ID в дереве.
+ */
+export function findLocationById(
+    tree: HierarchyLocation[],
+    id: number,
+): HierarchyLocation | null {
+    for (const node of tree) {
+        if (node.id === id) return node;
+        if (node.children.length > 0) {
+            const found = findLocationById(node.children, id);
+            if (found) return found;
+        }
+    }
+    return null;
+}
+
+/**
+ * Находит локацию по slug в дереве.
+ */
+export function findLocationBySlug(
+    tree: HierarchyLocation[],
+    slug: string,
+): HierarchyLocation | null {
+    for (const node of tree) {
+        if (node.slug === slug) return node;
+        if (node.children.length > 0) {
+            const found = findLocationBySlug(node.children, slug);
+            if (found) return found;
+        }
+    }
+    return null;
+}
+
+/**
+ * Получает путь от корня до указанной локации.
+ */
+export function getLocationPath(
+    tree: HierarchyLocation[],
+    targetId: number,
+    path: HierarchyLocation[] = [],
+): HierarchyLocation[] | null {
+    for (const node of tree) {
+        const newPath = [...path, node];
+        if (node.id === targetId) return newPath;
+        if (node.children.length > 0) {
+            const found = getLocationPath(node.children, targetId, newPath);
+            if (found) return found;
+        }
+    }
+    return null;
+}
+
+/**
+ * Собирает все ID потомков локации (включая её саму).
+ */
+export function getAllDescendantIds(location: HierarchyLocation): number[] {
+    const ids = [location.id];
+    for (const child of location.children) {
+        ids.push(...getAllDescendantIds(child));
+    }
+    return ids;
+}
+
+/**
+ * Строит breadcrumbs для иерархии локаций.
+ */
+export function buildHierarchyBreadcrumbs(
+    locationPath: HierarchyLocation[],
+    listingTitle?: string,
+    listingSlug?: string,
+): BreadcrumbItem[] {
+    const items: BreadcrumbItem[] = [];
+    let currentPath = "";
+
+    // Пропускаем регион (первый элемент), показываем с района/города
+    const pathWithoutRegion = locationPath.filter(l => l.type !== "region");
+
+    for (const loc of pathWithoutRegion) {
+        currentPath += `/${loc.slug}`;
+        const typePrefix = loc.settlement_type ? `${loc.settlement_type}. ` : "";
+        items.push({
+            name: `${typePrefix}${loc.name}`,
+            href: currentPath,
+        });
+    }
+
+    // Листинг
+    if (listingTitle && listingSlug) {
+        items.push({
+            name: listingTitle,
+            href: `${currentPath}/${listingSlug}`,
+        });
+    }
+
+    return items;
 }

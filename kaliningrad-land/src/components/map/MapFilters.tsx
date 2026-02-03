@@ -20,7 +20,7 @@ import {
     SheetTrigger,
     SheetClose,
 } from "@/components/ui/sheet";
-import { LocationFilter } from "@/components/filters/LocationFilter";
+import { SmartLocationFilter, SmartSelectedLocation } from "@/components/filters/SmartLocationFilter";
 import { Filter, List, X } from "lucide-react";
 
 interface Reference {
@@ -46,15 +46,10 @@ export function MapFilters({ onFiltersChange, total, isMobile = false }: MapFilt
     // Данные для фильтров
     const [landUseOptions, setLandUseOptions] = useState<Reference[]>([]);
 
-    // Парсинг settlements из URL
-    const parseSettlementsFromUrl = (): number[] => {
-        const param = searchParams.get("settlements");
-        if (!param) return [];
-        return param.split(",").map(Number).filter(Boolean);
-    };
+    // Выбранная локация (одиночный выбор)
+    const [selectedLocation, setSelectedLocation] = useState<SmartSelectedLocation | null>(null);
 
     // Значения фильтров
-    const [settlementIds, setSettlementIds] = useState<number[]>(parseSettlementsFromUrl());
     const [landUseId, setLandUseId] = useState(searchParams.get("land_use") || "");
     const [priceMin, setPriceMin] = useState(searchParams.get("price_min") || "");
     const [priceMax, setPriceMax] = useState(searchParams.get("price_max") || "");
@@ -74,26 +69,27 @@ export function MapFilters({ onFiltersChange, total, isMobile = false }: MapFilt
 
     // Синхронизация состояния с URL (при навигации "назад")
     useEffect(() => {
-        setSettlementIds(parseSettlementsFromUrl());
         setLandUseId(searchParams.get("land_use") || "");
         setPriceMin(searchParams.get("price_min") || "");
         setPriceMax(searchParams.get("price_max") || "");
         setAreaMin(searchParams.get("area_min") || "");
         setAreaMax(searchParams.get("area_max") || "");
+        // Сброс локации при переходе на /map без параметров
+        // TODO: можно добавить парсинг location_id из URL если нужно
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [searchParams]);
 
     // Построить URL с текущими фильтрами
     const buildFilterParams = useCallback(() => {
         const params = new URLSearchParams();
-        if (settlementIds.length > 0) params.set("settlements", settlementIds.join(","));
+        if (selectedLocation) params.set("location_id", selectedLocation.id.toString());
         if (landUseId) params.set("land_use", landUseId);
         if (priceMin) params.set("price_min", priceMin);
         if (priceMax) params.set("price_max", priceMax);
         if (areaMin) params.set("area_min", areaMin);
         if (areaMax) params.set("area_max", areaMax);
         return params;
-    }, [settlementIds, landUseId, priceMin, priceMax, areaMin, areaMax]);
+    }, [selectedLocation, landUseId, priceMin, priceMax, areaMin, areaMax]);
 
     const applyFilters = useCallback(() => {
         const params = buildFilterParams();
@@ -102,10 +98,12 @@ export function MapFilters({ onFiltersChange, total, isMobile = false }: MapFilt
         setSheetOpen(false); // Закрыть мобильный Sheet
     }, [buildFilterParams, router, onFiltersChange]);
 
-    // Применить фильтры с новым значением settlementIds
-    const applyFiltersWithSettlements = useCallback((newSettlementIds: number[]) => {
+    // Обработчик выбора локации — применяет фильтры сразу
+    const handleLocationChange = useCallback((loc: SmartSelectedLocation | null) => {
+        setSelectedLocation(loc);
+
         const params = new URLSearchParams();
-        if (newSettlementIds.length > 0) params.set("settlements", newSettlementIds.join(","));
+        if (loc) params.set("location_id", loc.id.toString());
         if (landUseId) params.set("land_use", landUseId);
         if (priceMin) params.set("price_min", priceMin);
         if (priceMax) params.set("price_max", priceMax);
@@ -117,7 +115,7 @@ export function MapFilters({ onFiltersChange, total, isMobile = false }: MapFilt
     }, [landUseId, priceMin, priceMax, areaMin, areaMax, router, onFiltersChange]);
 
     const resetFilters = () => {
-        setSettlementIds([]);
+        setSelectedLocation(null);
         setLandUseId("");
         setPriceMin("");
         setPriceMax("");
@@ -130,7 +128,7 @@ export function MapFilters({ onFiltersChange, total, isMobile = false }: MapFilt
 
     // Подсчёт активных фильтров
     const activeFiltersCount = [
-        settlementIds.length > 0,
+        selectedLocation !== null,
         landUseId,
         priceMin,
         priceMax,
@@ -142,17 +140,15 @@ export function MapFilters({ onFiltersChange, total, isMobile = false }: MapFilt
     const catalogUrl = `/catalog?${buildFilterParams().toString()}`;
 
     // Содержимое фильтров (переиспользуется в desktop и mobile)
-    const FiltersContent = ({ inSheet = false }: { inSheet?: boolean }) => (
+    const renderFiltersContent = (inSheet = false) => (
         <div className={inSheet ? "space-y-4 px-4" : "flex items-center gap-2 flex-wrap"}>
             {/* Местоположение */}
-            <div className={inSheet ? "space-y-1" : "w-40"}>
+            <div className={inSheet ? "space-y-1" : "w-72"}>
                 {inSheet && <label className="text-sm font-medium">Местоположение</label>}
-                <LocationFilter
-                    value={settlementIds}
-                    onChange={setSettlementIds}
-                    onApply={applyFiltersWithSettlements}
-                    placeholder="Район"
-                    fullWidth={true}
+                <SmartLocationFilter
+                    value={selectedLocation}
+                    onChange={handleLocationChange}
+                    placeholder="Район или город"
                 />
             </div>
 
@@ -178,6 +174,7 @@ export function MapFilters({ onFiltersChange, total, isMobile = false }: MapFilt
                 {inSheet && <label className="text-sm font-medium">Цена, ₽</label>}
                 <div className="flex items-center gap-1">
                     <Input
+                        id="price-min-input"
                         type="number"
                         placeholder="Цена от"
                         value={priceMin}
@@ -186,6 +183,7 @@ export function MapFilters({ onFiltersChange, total, isMobile = false }: MapFilt
                     />
                     <span className="text-muted-foreground">—</span>
                     <Input
+                        id="price-max-input"
                         type="number"
                         placeholder="до"
                         value={priceMax}
@@ -200,6 +198,7 @@ export function MapFilters({ onFiltersChange, total, isMobile = false }: MapFilt
                 {inSheet && <label className="text-sm font-medium">Площадь, м²</label>}
                 <div className="flex items-center gap-1">
                     <Input
+                        id="area-min-input"
                         type="number"
                         placeholder="Площадь от"
                         value={areaMin}
@@ -208,6 +207,7 @@ export function MapFilters({ onFiltersChange, total, isMobile = false }: MapFilt
                     />
                     <span className="text-muted-foreground">—</span>
                     <Input
+                        id="area-max-input"
                         type="number"
                         placeholder="до"
                         value={areaMax}
@@ -253,7 +253,7 @@ export function MapFilters({ onFiltersChange, total, isMobile = false }: MapFilt
                             <SheetTitle>Фильтры</SheetTitle>
                         </SheetHeader>
                         <div className="py-2 pb-6">
-                            <FiltersContent inSheet={true} />
+                            {renderFiltersContent(true)}
                         </div>
                     </SheetContent>
                 </Sheet>
@@ -278,7 +278,7 @@ export function MapFilters({ onFiltersChange, total, isMobile = false }: MapFilt
     return (
         <div className="border-b bg-background relative z-50">
             <div className="container mx-auto px-4 py-2 flex items-center justify-between gap-4">
-                <FiltersContent />
+                {renderFiltersContent()}
 
                 {/* Счётчик и кнопка списком */}
                 <div className="flex items-center gap-3 flex-shrink-0">

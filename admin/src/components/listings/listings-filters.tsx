@@ -30,7 +30,7 @@ export function ListingsFilters({ filters, onFiltersChange }: ListingsFiltersPro
     const hasActiveFilters = !!(
         filters.search ||
         filters.cadastral_search ||
-        filters.settlement_id ||
+        filters.location_id ||
         filters.is_published !== undefined ||
         filters.is_featured !== undefined
     );
@@ -48,10 +48,10 @@ export function ListingsFilters({ filters, onFiltersChange }: ListingsFiltersPro
                 />
             </div>
 
-            {/* Населённый пункт - новый компонент с группировкой */}
+            {/* Населённый пункт - новый компонент с иерархией */}
             <LocationFilter
-                value={filters.settlement_id}
-                onChange={(id) => updateFilter("settlement_id", id)}
+                value={filters.location_id}
+                onChange={(id) => updateFilter("location_id", id)}
                 placeholder="Все населённые пункты"
             />
 

@@ -22,7 +22,8 @@ router = APIRouter()
 @router.get("/all", response_model=PlotAllResponse)
 async def get_all_plots(
     # Опциональные фильтры для карты
-    district_id: int | None = Query(None, description="ID района"),
+    location_id: int | None = Query(None, description="ID локации (новая иерархия)"),
+    district_id: int | None = Query(None, description="ID района (deprecated)"),
     settlements: str | None = Query(None, description="Список ID населённых пунктов через запятую"),
     land_use_id: int | None = Query(None, description="ID разрешённого использования"),
     price_min: int | None = Query(None, description="Минимальная цена"),
@@ -35,6 +36,20 @@ async def get_all_plots(
     Получить все активные участки для отображения на карте.
     Кластеризация выполняется на клиенте через Leaflet.markercluster.
     """
+    from app.models.location import Location
+    
+    # Вспомогательная функция для получения всех дочерних ID локации
+    async def get_descendant_ids(parent_id: int) -> list[int]:
+        """Получает все ID потомков (включая саму локацию)."""
+        ids = [parent_id]
+        result = await db.execute(
+            select(Location.id).where(Location.parent_id == parent_id)
+        )
+        child_ids = [row[0] for row in result.all()]
+        for child_id in child_ids:
+            ids.extend(await get_descendant_ids(child_id))
+        return ids
+    
     # Базовый запрос
     query = (
         select(
@@ -53,18 +68,19 @@ async def get_all_plots(
         )
     )
     
-    # Фильтры по местоположению
-    if district_id:
-        query = query.join(Settlement, Listing.settlement_id == Settlement.id).where(
-            Settlement.district_id == district_id
-        )
-    
-    if settlements:
+    # Приоритет: location_id > settlements > district_id
+    if location_id:
+        all_location_ids = await get_descendant_ids(location_id)
+        query = query.where(Listing.location_id.in_(all_location_ids))
+    elif settlements:
         settlement_ids = [int(s.strip()) for s in settlements.split(",") if s.strip().isdigit()]
         if settlement_ids:
             query = query.where(Listing.settlement_id.in_(settlement_ids))
-    
-    # Фильтры по характеристикам участков
+    elif district_id:
+        query = query.join(Settlement, Listing.settlement_id == Settlement.id).where(
+            Settlement.district_id == district_id
+        )
+
     if land_use_id:
         query = query.where(Plot.land_use_id == land_use_id)
     if price_min:

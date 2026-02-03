@@ -16,25 +16,21 @@ import {
 import { ChevronDown, ChevronRight, X } from "lucide-react";
 import { API_URL } from "@/lib/api";
 
-// Типы данных
+// Типы данных для новой модели Location
 
-/** Населённый пункт в группе */
-interface SettlementItem {
+/** Локация в иерархии */
+interface LocationHierarchyItem {
     id: number;
     name: string;
-    plots_count: number;
-}
-
-/** Район с вложенными населёнными пунктами */
-interface DistrictGroup {
-    id: number;
-    name: string;
-    plots_count: number;
-    settlements: SettlementItem[];
+    slug: string;
+    type: string;  // region, district, city, settlement
+    settlement_type: string | null;
+    listings_count: number;
+    children: LocationHierarchyItem[];
 }
 
 interface LocationFilterProps {
-    /** Выбранный ID населённого пункта (один) */
+    /** Выбранный ID локации (один) */
     value: number | undefined;
     /** Callback при изменении выбора */
     onChange: (id: number | undefined) => void;
@@ -44,7 +40,7 @@ interface LocationFilterProps {
 
 /**
  * Компонент для выбора местоположения с модальным окном.
- * Адаптирован для админки - выбор только одного населённого пункта.
+ * Использует новую модель Location с иерархией.
  */
 export function LocationFilter({
     value,
@@ -52,56 +48,61 @@ export function LocationFilter({
     placeholder = "Все населённые пункты",
 }: LocationFilterProps) {
     const [open, setOpen] = useState(false);
-    const [districts, setDistricts] = useState<DistrictGroup[]>([]);
+    const [locations, setLocations] = useState<LocationHierarchyItem[]>([]);
     const [loading, setLoading] = useState(false);
 
-    // Раскрытые районы
-    const [expandedDistricts, setExpandedDistricts] = useState<Set<number>>(new Set());
+    // Раскрытые локации (районы/города)
+    const [expandedLocations, setExpandedLocations] = useState<Set<number>>(new Set());
 
     // Маппинг ID → имя для отображения выбранных
-    const [settlementNames, setSettlementNames] = useState<Record<number, string>>({});
+    const [locationNames, setLocationNames] = useState<Record<number, string>>({});
 
     // Загрузка данных при открытии модального окна
     useEffect(() => {
-        if (open && districts.length === 0) {
+        if (open && locations.length === 0) {
             setLoading(true);
-            fetch(`${API_URL}/api/locations/settlements-grouped`)
+            fetch(`${API_URL}/api/locations/hierarchy`)
                 .then((res) => res.json())
-                .then((data: DistrictGroup[]) => {
-                    setDistricts(data);
-                    // Создаём маппинг имён
+                .then((data: LocationHierarchyItem[]) => {
+                    setLocations(data);
+                    // Создаём маппинг имён рекурсивно
                     const names: Record<number, string> = {};
-                    data.forEach((d) => {
-                        d.settlements.forEach((s) => {
-                            names[s.id] = s.name;
-                        });
+                    const processLocation = (loc: LocationHierarchyItem) => {
+                        names[loc.id] = loc.name;
+                        loc.children.forEach(processLocation);
+                    };
+                    data.forEach(processLocation);
+                    setLocationNames(names);
+                    // Раскрываем все локации верхнего уровня по умолчанию
+                    const topLevelIds = new Set<number>();
+                    data.forEach((loc) => {
+                        topLevelIds.add(loc.id);
+                        // Также раскрываем второй уровень (районы)
+                        loc.children.forEach((child) => topLevelIds.add(child.id));
                     });
-                    setSettlementNames(names);
-                    // Раскрываем все районы по умолчанию
-                    setExpandedDistricts(new Set(data.map((d) => d.id)));
+                    setExpandedLocations(topLevelIds);
                 })
                 .catch(console.error)
                 .finally(() => setLoading(false));
         }
-    }, [open, districts.length]);
+    }, [open, locations.length]);
 
-    // Переключение раскрытия района
-    const toggleDistrict = useCallback((districtId: number) => {
-        setExpandedDistricts((prev) => {
+    // Переключение раскрытия локации
+    const toggleLocation = useCallback((locationId: number) => {
+        setExpandedLocations((prev) => {
             const next = new Set(prev);
-            if (next.has(districtId)) {
-                next.delete(districtId);
+            if (next.has(locationId)) {
+                next.delete(locationId);
             } else {
-                next.add(districtId);
+                next.add(locationId);
             }
             return next;
         });
     }, []);
 
-    // Выбор населённого пункта
-    const selectSettlement = useCallback((settlementId: number) => {
-        onChange(settlementId);
-        // Не закрываем окно, позволяем пользователю подтвердить выбор
+    // Выбор локации
+    const selectLocation = useCallback((locationId: number) => {
+        onChange(locationId);
     }, [onChange]);
 
     // Сбросить выбор
@@ -113,7 +114,72 @@ export function LocationFilter({
     // Получить текст для триггера
     const getTriggerText = (): string => {
         if (!value) return placeholder;
-        return settlementNames[value] || placeholder;
+        return locationNames[value] || placeholder;
+    };
+
+    // Рекурсивный рендер локации
+    const renderLocation = (location: LocationHierarchyItem, level: number = 0) => {
+        const hasChildren = location.children.length > 0;
+        const isExpanded = expandedLocations.has(location.id);
+        const isSelected = value === location.id;
+        const isSelectable = location.type === "settlement" || location.type === "city";
+
+        return (
+            <div key={location.id}>
+                <div
+                    className={`flex items-center gap-2 py-1 cursor-pointer hover:bg-muted/30 rounded ${isSelected ? "bg-primary/10" : ""
+                        }`}
+                    style={{ paddingLeft: `${level * 16 + 8}px` }}
+                    onClick={() => {
+                        if (hasChildren) {
+                            toggleLocation(location.id);
+                        }
+                        if (isSelectable) {
+                            selectLocation(location.id);
+                        }
+                    }}
+                >
+                    {/* Иконка раскрытия */}
+                    {hasChildren ? (
+                        isExpanded ? (
+                            <ChevronDown className="h-4 w-4 shrink-0" />
+                        ) : (
+                            <ChevronRight className="h-4 w-4 shrink-0" />
+                        )
+                    ) : (
+                        <div className="w-4" />
+                    )}
+
+                    {/* Чекбокс только для населённых пунктов и городов */}
+                    {isSelectable && (
+                        <Checkbox
+                            checked={isSelected}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                selectLocation(location.id);
+                            }}
+                        />
+                    )}
+
+                    {/* Название */}
+                    <span className={`flex-1 ${location.type === "district" || location.type === "region" ? "font-medium" : ""}`}>
+                        {location.settlement_type ? `${location.settlement_type} ${location.name}` : location.name}
+                    </span>
+
+                    {/* Количество */}
+                    <span className="text-xs text-muted-foreground pr-2">
+                        ({location.listings_count})
+                    </span>
+                </div>
+
+                {/* Дети */}
+                {hasChildren && isExpanded && (
+                    <div>
+                        {location.children.map((child) => renderLocation(child, level + 1))}
+                    </div>
+                )}
+            </div>
+        );
     };
 
     return (
@@ -137,7 +203,7 @@ export function LocationFilter({
                 {value && (
                     <div className="flex flex-wrap gap-1 pb-2">
                         <Badge variant="secondary" className="pr-1">
-                            {settlementNames[value] || `#${value}`}
+                            {locationNames[value] || `#${value}`}
                             <button
                                 type="button"
                                 onClick={() => onChange(undefined)}
@@ -149,67 +215,19 @@ export function LocationFilter({
                     </div>
                 )}
 
-                {/* Список районов и населённых пунктов */}
+                {/* Список локаций */}
                 <ScrollArea className="h-[300px] pr-4">
                     {loading ? (
                         <div className="flex items-center justify-center h-full text-muted-foreground">
                             Загрузка...
                         </div>
-                    ) : districts.length === 0 ? (
+                    ) : locations.length === 0 ? (
                         <div className="flex items-center justify-center h-full text-muted-foreground">
                             Нет данных
                         </div>
                     ) : (
-                        <div className="space-y-2">
-                            {districts.map((district) => {
-                                const isExpanded = expandedDistricts.has(district.id);
-
-                                return (
-                                    <div key={district.id} className="border rounded-lg">
-                                        {/* Заголовок района */}
-                                        <div
-                                            className="flex items-center gap-2 p-2 cursor-pointer hover:bg-muted/50"
-                                            onClick={() => toggleDistrict(district.id)}
-                                        >
-                                            {isExpanded ? (
-                                                <ChevronDown className="h-4 w-4 shrink-0" />
-                                            ) : (
-                                                <ChevronRight className="h-4 w-4 shrink-0" />
-                                            )}
-                                            <span className="font-medium flex-1">{district.name}</span>
-                                            <span className="text-xs text-muted-foreground">
-                                                ({district.plots_count})
-                                            </span>
-                                        </div>
-
-                                        {/* Населённые пункты */}
-                                        {isExpanded && (
-                                            <div className="border-t px-2 py-1 space-y-1">
-                                                {district.settlements.map((settlement) => (
-                                                    <div
-                                                        key={settlement.id}
-                                                        className={`flex items-center gap-2 pl-6 py-1 cursor-pointer hover:bg-muted/30 rounded ${value === settlement.id ? "bg-primary/10" : ""
-                                                            }`}
-                                                        onClick={() => selectSettlement(settlement.id)}
-                                                    >
-                                                        <Checkbox
-                                                            checked={value === settlement.id}
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                selectSettlement(settlement.id);
-                                                            }}
-                                                        />
-                                                        <span className="flex-1">{settlement.name}</span>
-                                                        <span className="text-xs text-muted-foreground">
-                                                            ({settlement.plots_count})
-                                                        </span>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        )}
-                                    </div>
-                                );
-                            })}
+                        <div className="space-y-1">
+                            {locations.map((location) => renderLocation(location))}
                         </div>
                     )}
                 </ScrollArea>
@@ -226,3 +244,4 @@ export function LocationFilter({
         </Dialog>
     );
 }
+

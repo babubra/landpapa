@@ -306,6 +306,15 @@ export interface SettlementItem {
   district: DistrictItem | null;
 }
 
+// NEW: Иерархическая модель локаций
+export interface LocationItem {
+  id: number;
+  name: string;
+  slug: string;
+  type: string;  // "region" | "district" | "city" | "settlement"
+  parent: LocationItem | null;
+}
+
 export interface RealtorItem {
   id: number;
   name: string;
@@ -352,7 +361,9 @@ export interface ListingListItem {
   cadastral_numbers: string[];
   is_published: boolean;
   is_featured: boolean;
-  settlement: SettlementItem | null;
+  settlement: SettlementItem | null;  // deprecated
+  location: LocationItem | null;       // NEW: иерархическая локация
+  location_id: number | null;          // NEW
   realtor: RealtorItem;
   plots_count: number;
   total_area: number | null;
@@ -385,8 +396,10 @@ export interface ListingDetail {
   is_published: boolean;
   is_featured: boolean;
   title_auto: boolean;
-  settlement_id: number | null;
-  settlement: SettlementItem | null;
+  settlement_id: number | null;  // deprecated
+  settlement: SettlementItem | null;  // deprecated
+  location_id: number | null;    // NEW
+  location: { id: number; name: string; slug: string } | null;  // NEW
   realtor_id: number;
   realtor: RealtorItem;
   meta_title: string | null;
@@ -412,7 +425,8 @@ export interface ListingListResponse {
 export interface ListingFilters {
   search?: string;
   cadastral_search?: string;
-  settlement_id?: number;
+  settlement_id?: number;  // deprecated, kept for compatibility
+  location_id?: number;    // NEW: ID из таблицы locations
   is_published?: boolean;
   is_featured?: boolean;
   sort?: string;
@@ -424,7 +438,8 @@ export interface ListingCreate {
   title: string;
   description?: string | null;
   realtor_id: number;
-  settlement_id?: number | null;
+  settlement_id?: number | null;  // deprecated, use location_id
+  location_id?: number | null;    // NEW: иерархическая локация
   is_published?: boolean;
   is_featured?: boolean;
   title_auto?: boolean;
@@ -438,7 +453,8 @@ export interface ListingUpdate {
   title?: string;
   description?: string | null;
   realtor_id?: number;
-  settlement_id?: number | null;
+  settlement_id?: number | null;  // deprecated, use location_id
+  location_id?: number | null;    // NEW: иерархическая локация
   is_published?: boolean;
   is_featured?: boolean;
   title_auto?: boolean;
@@ -454,6 +470,7 @@ export async function getListings(filters: ListingFilters = {}): Promise<Listing
   if (filters.search) params.set("search", filters.search);
   if (filters.cadastral_search) params.set("cadastral_search", filters.cadastral_search);
   if (filters.settlement_id) params.set("settlement_id", String(filters.settlement_id));
+  if (filters.location_id) params.set("location_id", String(filters.location_id));
   if (filters.is_published !== undefined) params.set("is_published", String(filters.is_published));
   if (filters.is_featured !== undefined) params.set("is_featured", String(filters.is_featured));
   if (filters.sort) params.set("sort", filters.sort);
@@ -603,6 +620,36 @@ export async function resolveSettlement(data: ResolveData): Promise<SettlementRe
   });
   if (!response.ok) {
     throw new Error("Ошибка сохранения населенного пункта");
+  }
+  return response.json();
+}
+
+// === Новый API для Location (иерархия) ===
+
+export interface ResolveLocationData {
+  name: string;
+  settlement_type?: string | null;
+  settlement_fias_id?: string | null;
+  district_name?: string | null;
+  district_fias_id?: string | null;
+  city_name?: string | null;
+  city_fias_id?: string | null;
+}
+
+export interface LocationResolved {
+  location_id: number;
+  name: string;
+  full_name: string;
+  path: string[];
+}
+
+export async function resolveLocation(data: ResolveLocationData): Promise<LocationResolved> {
+  const response = await fetchWithAuth("/api/admin/geo/resolve-v2", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+  if (!response.ok) {
+    throw new Error("Ошибка сохранения локации");
   }
   return response.json();
 }

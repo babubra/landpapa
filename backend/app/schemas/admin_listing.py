@@ -54,6 +54,18 @@ class SettlementItem(BaseModel):
         from_attributes = True
 
 
+class LocationItem(BaseModel):
+    """Локация (иерархическая модель)."""
+    id: int
+    name: str
+    slug: str
+    type: str  # region, district, city, settlement
+    parent: "LocationItem | None" = None
+    
+    class Config:
+        from_attributes = True
+
+
 # === Plot Schemas ===
 
 class PlotShortItem(BaseModel):
@@ -81,7 +93,9 @@ class ListingAdminListItem(BaseModel):
     cadastral_numbers: list[str] = []  # Кадастровые номера привязанных участков
     is_published: bool
     is_featured: bool
-    settlement: SettlementItem | None = None
+    settlement: SettlementItem | None = None  # deprecated
+    location: LocationItem | None = None       # NEW: иерархическая локация
+    location_id: int | None = None             # NEW
     realtor: RealtorItem
     plots_count: int
     total_area: float | None = None
@@ -105,8 +119,10 @@ class ListingAdminDetail(BaseModel):
     is_published: bool
     is_featured: bool
     title_auto: bool = True
-    settlement_id: int | None = None
-    settlement: SettlementItem | None = None
+    settlement_id: int | None = None  # deprecated
+    settlement: SettlementItem | None = None  # deprecated
+    location_id: int | None = None    # NEW
+    location: DistrictItem | None = None  # NEW (reuse DistrictItem for basic info)
     realtor_id: int
     realtor: RealtorItem
     meta_title: str | None = None
@@ -129,7 +145,8 @@ class ListingCreate(BaseModel):
     title: str = Field(..., min_length=1, max_length=500)
     description: str | None = None
     realtor_id: int
-    settlement_id: int | None = None
+    settlement_id: int | None = None  # deprecated, use location_id
+    location_id: int | None = None    # NEW: иерархическая локация
     is_published: bool = False
     is_featured: bool = False
     title_auto: bool = True
@@ -144,7 +161,8 @@ class ListingUpdate(BaseModel):
     title: str | None = Field(None, min_length=1, max_length=500)
     description: str | None = None
     realtor_id: int | None = None
-    settlement_id: int | None = None
+    settlement_id: int | None = None  # deprecated, use location_id
+    location_id: int | None = None    # NEW: иерархическая локация
     is_published: bool | None = None
     is_featured: bool | None = None
     title_auto: bool | None = None

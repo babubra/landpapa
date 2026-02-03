@@ -42,6 +42,18 @@ interface ResolvedLocation {
     settlement_type: string | null;
 }
 
+// Новая структура для иерархических локаций
+interface ResolvedLocationNew {
+    locations: {
+        id: number;
+        name: string;
+        slug: string;
+        type: string;
+        settlement_type: string | null;
+    }[];
+    leaf_id: number | null;
+}
+
 // === API функции ===
 
 async function resolveLocation(
@@ -66,6 +78,24 @@ async function resolveLocation(
     }
 }
 
+/** Новый API для иерархических локаций */
+async function resolveLocationNew(
+    slugs: string[]
+): Promise<ResolvedLocationNew | null> {
+    try {
+        const res = await fetch(
+            `${SSR_API_URL}/api/locations/resolve-new?slugs=${slugs.join(",")}`,
+            { next: { revalidate: 3600 } }
+        );
+
+        if (!res.ok) return null;
+        return res.json();
+    } catch (error) {
+        console.error("Error resolving location (new):", error);
+        return null;
+    }
+}
+
 async function getListings(
     params: Record<string, string> = {}
 ): Promise<ListingsResponse> {
@@ -77,6 +107,7 @@ async function getListings(
             if (key === "district_id") searchParams.set("district_id", value);
             else if (key === "settlement_id") searchParams.set("settlement_id", value);
             else if (key === "settlements") searchParams.set("settlements", value);
+            else if (key === "location_id") searchParams.set("location_id", value); // Новый параметр
             else if (key === "land_use") searchParams.set("land_use_id", value);
             else searchParams.set(key, value);
         }

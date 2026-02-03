@@ -30,7 +30,7 @@ import {
 import { Loader2 } from "lucide-react";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { PlotSearchInput } from "@/components/listings/plot-search-input";
-import { SettlementSelect } from "@/components/locations/settlement-select";
+import { LocationSelect } from "@/components/locations/location-select";
 import {
     ListingDetail,
     ListingCreate,
@@ -39,10 +39,9 @@ import {
     getListing,
     getRealtors,
     getPlot,
-    SettlementItem,
     RealtorItem,
     PlotShortItem,
-    SettlementResolved,
+    LocationResolved,
     Image as ImageType,
 } from "@/lib/api";
 import { ImageUpload } from "@/components/image-upload";
@@ -69,8 +68,8 @@ export function ListingFormModal({
     const [description, setDescription] = useState("");
     const [realtorId, setRealtorId] = useState<string>("");
 
-    // Выбранный населенный пункт (объект)
-    const [selectedSettlement, setSelectedSettlement] = useState<SettlementItem | null>(null);
+    // Выбранная локация (новая иерархия)
+    const [selectedLocation, setSelectedLocation] = useState<LocationResolved | null>(null);
 
     const [isPublished, setIsPublished] = useState(false);
     const [isFeatured, setIsFeatured] = useState(false);
@@ -105,8 +104,15 @@ export function ListingFormModal({
                         setDescription(listing.description || "");
                         setRealtorId(String(listing.realtor_id));
 
-                        // Устанавливаем выбранный НП
-                        setSelectedSettlement(listing.settlement);
+                        // Устанавливаем выбранную локацию
+                        if (listing.location_id) {
+                            setSelectedLocation({
+                                location_id: listing.location_id,
+                                name: listing.location?.name || '',
+                                full_name: listing.location?.name || '',
+                                path: [],
+                            });
+                        }
 
                         setIsPublished(listing.is_published);
                         setIsFeatured(listing.is_featured);
@@ -145,7 +151,7 @@ export function ListingFormModal({
         setTitle("");
         setDescription("");
         setRealtorId("");
-        setSelectedSettlement(null);
+        setSelectedLocation(null);
         setIsPublished(false);
         setIsFeatured(false);
         setTitleAuto(true);
@@ -178,7 +184,7 @@ export function ListingFormModal({
                 title: finalTitle,
                 description: description || null,
                 realtor_id: parseInt(realtorId),
-                settlement_id: selectedSettlement ? selectedSettlement.id : null,
+                location_id: selectedLocation?.location_id || null,
                 is_published: isPublished,
                 is_featured: isFeatured,
                 title_auto: titleAuto,
@@ -292,10 +298,10 @@ export function ListingFormModal({
                                     </div>
 
                                     <div className="space-y-2">
-                                        <Label>Населённый пункт</Label>
-                                        <SettlementSelect
-                                            value={selectedSettlement}
-                                            onSelect={(settlement) => setSelectedSettlement(settlement as any)}
+                                        <Label>Локация</Label>
+                                        <LocationSelect
+                                            value={selectedLocation}
+                                            onSelect={setSelectedLocation}
                                         />
                                     </div>
                                 </div>

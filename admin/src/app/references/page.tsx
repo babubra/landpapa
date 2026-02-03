@@ -45,16 +45,25 @@ export default function ReferencesPage() {
             editable: true,
         },
         {
-            title: "Населённые пункты",
-            description: "Города, посёлки и деревни",
-            href: "/references/settlements",
+            title: "🆕 Локации (иерархия)",
+            description: "Регионы → Районы/Города → Населённые пункты",
+            href: "/references/locations",
             editable: false,
+            isNew: true,
         },
         {
-            title: "Районы",
-            description: "Районы Калининградской области",
+            title: "Населённые пункты (устаревший)",
+            description: "Города, посёлки и деревни — используйте Локации",
+            href: "/references/settlements",
+            editable: false,
+            deprecated: true,
+        },
+        {
+            title: "Районы (устаревший)",
+            description: "Районы области — используйте Локации",
             href: "/references/districts",
             editable: false,
+            deprecated: true,
         },
     ];
 
@@ -78,16 +87,28 @@ export default function ReferencesPage() {
                         <div className="space-y-2">
                             {references.map((ref) => (
                                 <Link key={ref.href} href={ref.href}>
-                                    <div className="flex items-center justify-between p-4 rounded-lg border hover:bg-muted/50 transition-colors cursor-pointer">
+                                    <div className={`flex items-center justify-between p-4 rounded-lg border hover:bg-muted/50 transition-colors cursor-pointer ${ref.deprecated ? 'opacity-50' : ''}`}>
                                         <div>
                                             <h3 className="font-medium">{ref.title}</h3>
                                             <p className="text-sm text-muted-foreground">{ref.description}</p>
                                         </div>
-                                        {!ref.editable && (
-                                            <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded">
-                                                только чтение
-                                            </span>
-                                        )}
+                                        <div className="flex gap-2">
+                                            {ref.isNew && (
+                                                <span className="text-xs text-green-600 bg-green-100 px-2 py-1 rounded">
+                                                    рекомендовано
+                                                </span>
+                                            )}
+                                            {ref.deprecated && (
+                                                <span className="text-xs text-orange-600 bg-orange-100 px-2 py-1 rounded">
+                                                    устаревший
+                                                </span>
+                                            )}
+                                            {!ref.editable && !ref.deprecated && !ref.isNew && (
+                                                <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded">
+                                                    только чтение
+                                                </span>
+                                            )}
+                                        </div>
                                     </div>
                                 </Link>
                             ))}

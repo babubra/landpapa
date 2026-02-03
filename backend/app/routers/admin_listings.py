@@ -7,6 +7,7 @@ import math
 import os
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select, desc, or_, func, delete, update
+from sqlalchemy.orm import joinedload
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_async_db
@@ -47,6 +48,38 @@ async def get_realtors(
     return realtors
 
 
+def location_to_dict(location) -> dict | None:
+    """Преобразование Location в словарь для сериализации.
+    
+    Parent загружается через joinedload в запросе.
+    """
+    if not location:
+        return None
+    
+    # Проверяем загружен ли parent (через inspect)
+    from sqlalchemy import inspect
+    state = inspect(location)
+    parent_loaded = 'parent' not in state.unloaded
+    
+    parent_dict = None
+    if parent_loaded and location.parent:
+        parent_dict = {
+            "id": location.parent.id,
+            "name": location.parent.name,
+            "slug": location.parent.slug,
+            "type": location.parent.type.value if hasattr(location.parent.type, 'value') else str(location.parent.type),
+            "parent": None
+        }
+    
+    return {
+        "id": location.id,
+        "name": location.name,
+        "slug": location.slug,
+        "type": location.type.value if hasattr(location.type, 'value') else str(location.type),
+        "parent": parent_dict
+    }
+
+
 def listing_to_list_item(listing: Listing) -> dict:
     """Преобразование Listing в ListingAdminListItem."""
     # Собираем кадастровые номера всех привязанных участков
@@ -63,7 +96,9 @@ def listing_to_list_item(listing: Listing) -> dict:
         "cadastral_numbers": cadastral_numbers,
         "is_published": listing.is_published,
         "is_featured": listing.is_featured,
-        "settlement": listing.settlement,
+        "settlement": listing.settlement,  # deprecated
+        "location": location_to_dict(listing.location),  # NEW: явное преобразование
+        "location_id": listing.location_id, # NEW
         "realtor": listing.realtor,
         "plots_count": listing.plots_count,
         "total_area": listing.total_area,
@@ -88,6 +123,8 @@ def listing_to_detail(listing: Listing) -> dict:
         "title_auto": listing.title_auto,
         "settlement_id": listing.settlement_id,
         "settlement": listing.settlement,
+        "location_id": listing.location_id,
+        "location": listing.location,
         "realtor_id": listing.realtor_id,
         "realtor": listing.realtor,
         "meta_title": listing.meta_title,
@@ -143,7 +180,8 @@ async def get_listings(
     # Фильтры
     search: str | None = Query(None, description="Поиск по названию/slug"),
     cadastral_search: str | None = Query(None, description="Поиск по кадастровому номеру участка"),
-    settlement_id: int | None = Query(None, description="ID населённого пункта"),
+    settlement_id: int | None = Query(None, description="ID населённого пункта (deprecated, для совместимости)"),
+    location_id: int | None = Query(None, description="ID локации из новой таблицы locations"),
     is_published: bool | None = Query(None, description="Статус публикации"),
     is_featured: bool | None = Query(None, description="Спецпредложение"),
     # Сортировка
@@ -152,7 +190,11 @@ async def get_listings(
     current_user: AdminUser = Depends(get_current_user),
 ):
     """Получить список объявлений с фильтрацией."""
-    query = select(Listing)
+    from app.models.location import Location
+    
+    query = select(Listing).options(
+        joinedload(Listing.location).joinedload(Location.parent)
+    )
     count_query = select(func.count(Listing.id))
     
     # Фильтрация по поиску
@@ -177,10 +219,19 @@ async def get_listings(
         query = query.where(cadastral_filter)
         count_query = count_query.where(cadastral_filter)
     
-    # Фильтрация по населённому пункту
-    if settlement_id is not None:
-        query = query.where(Listing.settlement_id == settlement_id)
-        count_query = count_query.where(Listing.settlement_id == settlement_id)
+    # Фильтрация по локации (новая модель - приоритет)
+    if location_id is not None:
+        location_filter = Listing.location_id == location_id
+        query = query.where(location_filter)
+        count_query = count_query.where(location_filter)
+    # Совместимость со старой моделью (deprecated)
+    elif settlement_id is not None:
+        old_location_filter = or_(
+            Listing.settlement_id == settlement_id,
+            Listing.location_id == settlement_id  # fallback
+        )
+        query = query.where(old_location_filter)
+        count_query = count_query.where(old_location_filter)
     
     # Фильтрация по статусу публикации
     if is_published is not None:
@@ -247,7 +298,7 @@ async def create_listing(
     """Создать новое объявление. Slug генерируется автоматически."""
     from app.slug_utils import generate_slug
     from app.models.realtor import Realtor
-    from app.models.location import Settlement
+    from app.models.location import Settlement, Location
     
     # Проверка существования риэлтора
     result = await db.execute(
@@ -257,7 +308,16 @@ async def create_listing(
     if not realtor:
         raise HTTPException(status_code=400, detail="Риэлтор не найден")
     
-    # Проверка существования населённого пункта
+    # Проверка существования локации (новая иерархия)
+    if data.location_id:
+        result = await db.execute(
+            select(Location).where(Location.id == data.location_id)
+        )
+        location = result.scalar_one_or_none()
+        if not location:
+            raise HTTPException(status_code=400, detail="Локация не найдена")
+    
+    # Проверка существования населённого пункта (deprecated)
     if data.settlement_id:
         result = await db.execute(
             select(Settlement).where(Settlement.id == data.settlement_id)
@@ -320,7 +380,7 @@ async def update_listing(
 ):
     """Обновить объявление. Slug остаётся неизменным (создаётся один раз при создании)."""
     from app.models.realtor import Realtor
-    from app.models.location import Settlement
+    from app.models.location import Settlement, Location
     
     result = await db.execute(
         select(Listing).where(Listing.id == listing_id)
@@ -339,7 +399,16 @@ async def update_listing(
         if not realtor:
             raise HTTPException(status_code=400, detail="Риэлтор не найден")
     
-    # Проверка существования населённого пункта
+    # Проверка существования локации (новая иерархия)
+    if data.location_id:
+        result = await db.execute(
+            select(Location).where(Location.id == data.location_id)
+        )
+        location = result.scalar_one_or_none()
+        if not location:
+            raise HTTPException(status_code=400, detail="Локация не найдена")
+    
+    # Проверка существования населённого пункта (deprecated)
     if data.settlement_id:
         result = await db.execute(
             select(Settlement).where(Settlement.id == data.settlement_id)

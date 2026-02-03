@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import BaseModel
 
 from app.database import get_async_db
-from app.models.location import District, Settlement
+from app.models.location import District, Settlement, Location, LocationType
 from app.models.listing import Listing
 from app.models.plot import Plot, PlotStatus
 
@@ -320,3 +320,250 @@ async def get_settlements_grouped(db: AsyncSession = Depends(get_async_db)):
         )
         for d in sorted_districts
     ]
+
+
+# === НОВАЯ АРХИТЕКТУРА ЛОКАЦИЙ ===
+
+class LocationPublicItem(BaseModel):
+    """Публичная локация с количеством объявлений."""
+    id: int
+    name: str
+    slug: str
+    type: LocationType
+    settlement_type: str | None = None
+    sort_order: int = 0
+    listings_count: int = 0
+    children: list["LocationPublicItem"] = []
+
+    class Config:
+        from_attributes = True
+
+
+@router.get("/hierarchy", response_model=list[LocationPublicItem])
+async def get_locations_hierarchy(
+    db: AsyncSession = Depends(get_async_db),
+):
+    """
+    Получить иерархию локаций с количеством объявлений.
+    
+    Используется для нового LocationFilter с поддержкой
+    Region -> District/City -> Settlement.
+    """
+    # Получаем все локации (сортировка DESC - больше значение = выше)
+    result = await db.execute(
+        select(Location).order_by(Location.sort_order.desc(), Location.name)
+    )
+    all_locations = result.scalars().all()
+    
+    # Получаем количество объявлений для каждой локации через location_id
+    counts_result = await db.execute(
+        select(Listing.location_id, func.count(Listing.id))
+        .join(Plot, Listing.id == Plot.listing_id)
+        .where(Listing.is_published == True)
+        .where(Plot.status == PlotStatus.active)
+        .group_by(Listing.location_id)
+    )
+    listings_count_map = dict(counts_result.all())
+    
+    # Строим дерево с агрегацией counts
+    def build_tree(parent_id: int | None) -> list[LocationPublicItem]:
+        children_locs = [loc for loc in all_locations if loc.parent_id == parent_id]
+        items = []
+        
+        for loc in children_locs:
+            child_tree = build_tree(loc.id)
+            
+            # Собственное количество + сумма детей
+            own_count = listings_count_map.get(loc.id, 0)
+            children_count = sum(c.listings_count for c in child_tree)
+            
+            items.append(LocationPublicItem(
+                id=loc.id,
+                name=loc.name,
+                slug=loc.slug,
+                type=loc.type,
+                settlement_type=loc.settlement_type,
+                sort_order=loc.sort_order or 0,
+                listings_count=own_count + children_count,
+                children=child_tree,
+            ))
+        
+        return items
+    
+    return build_tree(None)
+
+
+@router.get("/resolve-new", response_model=dict)
+async def resolve_location_new(
+    slugs: str = Query(..., description="Слаги через запятую (region/district/settlement)"),
+    db: AsyncSession = Depends(get_async_db),
+):
+    """
+    Резолв цепочки слагов в иерархию локаций.
+    
+    Пример: slugs=kaliningradskaja-oblast,zelenogradskij-r-n,svetlogorsk
+    """
+    slug_list = [s.strip() for s in slugs.split(",") if s.strip()]
+    
+    result = {
+        "locations": [],  # Список найденных локаций по порядку
+        "leaf_id": None,  # ID самой вложенной локации
+    }
+    
+    current_parent_id = None
+    
+    for slug in slug_list:
+        query = select(Location).where(Location.slug == slug)
+        if current_parent_id is not None:
+            query = query.where(Location.parent_id == current_parent_id)
+        
+        loc_result = await db.execute(query)
+        location = loc_result.scalar_one_or_none()
+        
+        if location:
+            result["locations"].append({
+                "id": location.id,
+                "name": location.name,
+                "slug": location.slug,
+                "type": location.type.value,
+                "settlement_type": location.settlement_type,
+            })
+            result["leaf_id"] = location.id
+            current_parent_id = location.id
+        else:
+            break  # Прекращаем при первом не найденном слаге
+    
+    return result
+
+
+# === ПОИСК ЛОКАЦИЙ ===
+
+class LocationSearchItem(BaseModel):
+    """Результат поиска локации."""
+    id: int
+    name: str
+    slug: str
+    type: str  # region, district, city, settlement
+    settlement_type: str | None = None
+    parent_name: str | None = None
+    parent_slug: str | None = None
+    listings_count: int = 0
+    sort_order: int = 0
+
+    class Config:
+        from_attributes = True
+
+
+class LocationSearchResponse(BaseModel):
+    """Ответ поиска локаций."""
+    results: list[LocationSearchItem]
+    query: str
+    total: int
+
+
+@router.get("/search", response_model=LocationSearchResponse)
+async def search_locations(
+    q: str = Query(..., min_length=1, description="Поисковый запрос"),
+    limit: int = Query(15, ge=1, le=50, description="Максимум результатов"),
+    min_listings: int = Query(0, ge=0, description="Минимум объявлений для показа (0 = все)"),
+    db: AsyncSession = Depends(get_async_db),
+):
+    """
+    Поиск локаций по названию.
+    
+    Результаты сортируются по релевантности:
+    1. Точное совпадение начала названия
+    2. Тип локации (city > district > settlement)
+    3. sort_order из БД
+    4. Количество объявлений (больше = выше)
+    """
+    from sqlalchemy.orm import joinedload
+    from sqlalchemy import case, or_
+    
+    search_term = q.strip().lower()
+    
+    # Базовый запрос — ищем по названию (ilike)
+    query = (
+        select(Location)
+        .options(joinedload(Location.parent))
+        .where(
+            or_(
+                Location.name.ilike(f"%{search_term}%"),
+                Location.slug.ilike(f"%{search_term}%")
+            )
+        )
+        # Исключаем регион из результатов поиска
+        .where(Location.type != LocationType.REGION)
+    )
+    
+    result = await db.execute(query)
+    locations = result.unique().scalars().all()
+    
+    # Подсчёт объявлений для каждой локации
+    counts_result = await db.execute(
+        select(Listing.location_id, func.count(Listing.id))
+        .join(Plot, Listing.id == Plot.listing_id)
+        .where(Listing.is_published == True)
+        .where(Plot.status == PlotStatus.active)
+        .group_by(Listing.location_id)
+    )
+    listings_count_map = dict(counts_result.all())
+    
+    # Приоритет типов
+    type_priority = {
+        "city": 0,
+        "district": 1,
+        "settlement": 2,
+        "region": 3,
+    }
+    
+    # Сортировка результатов
+    def get_sort_key(loc: Location):
+        name_lower = loc.name.lower()
+        
+        # 1. Точное совпадение начала (меньше = лучше)
+        starts_with_score = 0 if name_lower.startswith(search_term) else 1
+        
+        # 2. Приоритет типа
+        type_score = type_priority.get(loc.type.value, 10)
+        
+        # 3. sort_order из БД (меньше = выше)
+        sort_order_score = loc.sort_order
+        
+        # 4. Количество объявлений (больше = выше, поэтому отрицательное)
+        listings_score = -listings_count_map.get(loc.id, 0)
+        
+        return (starts_with_score, type_score, sort_order_score, listings_score)
+    
+    # Фильтруем локации по минимальному количеству объявлений
+    if min_listings > 0:
+        locations = [loc for loc in locations if listings_count_map.get(loc.id, 0) >= min_listings]
+    
+    sorted_locations = sorted(locations, key=get_sort_key)[:limit]
+    
+    # Формируем ответ
+    items = []
+    for loc in sorted_locations:
+        parent_name = None
+        parent_slug = None
+        if loc.parent:
+            parent_name = loc.parent.name
+            parent_slug = loc.parent.slug
+        
+        items.append(LocationSearchItem(
+            id=loc.id,
+            name=loc.name,
+            slug=loc.slug,
+            type=loc.type.value,
+            settlement_type=loc.settlement_type,
+            parent_name=parent_name,
+            parent_slug=parent_slug,
+            listings_count=listings_count_map.get(loc.id, 0),
+            sort_order=loc.sort_order,
+        ))
+    
+    return LocationSearchResponse(
+        results=items,
+        query=q,
+        total=len(items),
+    )
