@@ -114,6 +114,7 @@ async def get_all_plots(
 @router.get("/count")
 async def get_active_plots_count(
     # Опциональные фильтры
+    location_id: int | None = Query(None, description="ID локации (новая иерархия)"),
     settlements: str | None = Query(None, description="Список ID населённых пунктов через запятую"),
     land_use: int | None = Query(None, alias="land_use", description="ID разрешённого использования"),
     price_min: int | None = Query(None, description="Минимальная цена"),
@@ -128,6 +129,20 @@ async def get_active_plots_count(
     Учитываются только участки со статусом 'active',
     привязанные к опубликованным объявлениям.
     """
+    from app.models.location import Location
+    
+    # Вспомогательная функция для получения всех дочерних ID локации
+    async def get_descendant_ids(parent_id: int) -> list[int]:
+        """Получает все ID потомков (включая саму локацию)."""
+        ids = [parent_id]
+        result = await db.execute(
+            select(Location.id).where(Location.parent_id == parent_id)
+        )
+        child_ids = [row[0] for row in result.all()]
+        for child_id in child_ids:
+            ids.extend(await get_descendant_ids(child_id))
+        return ids
+    
     query = (
         select(func.count(Plot.id))
         .join(Listing, Plot.listing_id == Listing.id)
@@ -137,8 +152,11 @@ async def get_active_plots_count(
         )
     )
     
-    # Фильтр по населённым пунктам
-    if settlements:
+    # Приоритет: location_id > settlements
+    if location_id:
+        all_location_ids = await get_descendant_ids(location_id)
+        query = query.where(Listing.location_id.in_(all_location_ids))
+    elif settlements:
         settlement_ids = [int(s.strip()) for s in settlements.split(",") if s.strip().isdigit()]
         if settlement_ids:
             query = query.where(Listing.settlement_id.in_(settlement_ids))

@@ -12,6 +12,10 @@
 // === Типы (старые — для обратной совместимости) ===
 
 export interface GeoLocation {
+    // Новая унифицированная иерархия
+    locationId?: number;  // ID из таблицы locations (city, district или settlement)
+
+    // Старые поля для обратной совместимости
     districtId?: number;
     districtSlug?: string;
     districtName?: string;

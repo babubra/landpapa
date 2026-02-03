@@ -13,7 +13,7 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { LocationFilter } from "@/components/filters/LocationFilter";
+import { SmartLocationFilter, SmartSelectedLocation } from "@/components/filters/SmartLocationFilter";
 import { pluralize } from "@/lib/utils";
 import type { GeoLocation } from "@/lib/geoUrl";
 
@@ -37,15 +37,10 @@ export function CatalogFilters({ onFiltersChange, baseUrl = "/catalog", geoLocat
     const [landUseOptions, setLandUseOptions] = useState<Reference[]>([]);
     const [plotsCount, setPlotsCount] = useState<number | null>(null);
 
-    // Парсинг settlements из URL
-    const parseSettlementsFromUrl = (): number[] => {
-        const param = searchParams.get("settlements");
-        if (!param) return [];
-        return param.split(",").map(Number).filter(Boolean);
-    };
+    // Выбранная локация (новый SmartLocationFilter)
+    const [selectedLocation, setSelectedLocation] = useState<SmartSelectedLocation | null>(null);
 
     // Значения фильтров
-    const [settlementIds, setSettlementIds] = useState<number[]>(parseSettlementsFromUrl());
     const [landUseId, setLandUseId] = useState(searchParams.get("land_use") || "");
     const [priceMin, setPriceMin] = useState(searchParams.get("price_min") || "");
     const [priceMax, setPriceMax] = useState(searchParams.get("price_max") || "");
@@ -61,17 +56,90 @@ export function CatalogFilters({ onFiltersChange, baseUrl = "/catalog", geoLocat
             .catch(console.error);
     }, []);
 
-    // Загрузка количества участков с учётом текущих фильтров из URL
+    // Автозаполнение локации из geoLocation (при переходе по гео-URL)
+    useEffect(() => {
+        if (geoLocation?.locationId) {
+            // Используем locationId для получения полных данных локации
+            fetch(`/api/locations/${geoLocation.locationId}`)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.id) {
+                        setSelectedLocation({
+                            id: data.id,
+                            name: data.name,
+                            slug: data.slug,
+                            type: data.type,
+                            settlement_type: data.settlement_type,
+                            parent_slug: data.parent_slug,
+                        });
+                    }
+                })
+                .catch(console.error);
+        } else if (geoLocation?.districtSlug) {
+            // Fallback: резолв через слаги
+            const slugs = geoLocation.settlementSlug
+                ? `${geoLocation.districtSlug},${geoLocation.settlementSlug}`
+                : geoLocation.districtSlug;
+            fetch(`/api/locations/resolve-v2?slugs=${slugs}`)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.location) {
+                        setSelectedLocation(data.location);
+                    }
+                })
+                .catch(console.error);
+        } else {
+            setSelectedLocation(null);
+        }
+    }, [geoLocation]);
+
+    // Обратная совместимость: редирект старых URL с ?settlements= на новый формат
+    useEffect(() => {
+        const settlementsParam = searchParams.get("settlements");
+        if (settlementsParam && !geoLocation?.districtSlug) {
+            // Берём первый settlement ID и получаем его локацию для редиректа
+            const firstId = settlementsParam.split(",")[0];
+            if (firstId) {
+                fetch(`/api/locations/${firstId}`)
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.slug) {
+                            // Формируем гео-URL
+                            const geoUrl = data.parent_slug
+                                ? `/${data.parent_slug}/${data.slug}`
+                                : `/${data.slug}`;
+                            // Сохраняем остальные параметры
+                            const params = new URLSearchParams();
+                            searchParams.forEach((value, key) => {
+                                if (key !== "settlements") {
+                                    params.set(key, value);
+                                }
+                            });
+                            const queryString = params.toString();
+                            router.replace(queryString ? `${geoUrl}?${queryString}` : geoUrl);
+                        }
+                    })
+                    .catch(console.error);
+            }
+        }
+    }, [searchParams, geoLocation, router]);
+
+    // Загрузка количества участков с учётом текущих фильтров
     useEffect(() => {
         const params = new URLSearchParams();
-        const settlementsParam = searchParams.get("settlements");
+
+        // Используем location_id: приоритет selectedLocation > geoLocation.locationId
+        const locationId = selectedLocation?.id || geoLocation?.locationId;
+        if (locationId) {
+            params.set("location_id", locationId.toString());
+        }
+
         const landUseParam = searchParams.get("land_use");
         const priceMinParam = searchParams.get("price_min");
         const priceMaxParam = searchParams.get("price_max");
         const areaMinParam = searchParams.get("area_min");
         const areaMaxParam = searchParams.get("area_max");
 
-        if (settlementsParam) params.set("settlements", settlementsParam);
         if (landUseParam) params.set("land_use", landUseParam);
         if (priceMinParam) params.set("price_min", priceMinParam);
         if (priceMaxParam) params.set("price_max", priceMaxParam);
@@ -85,38 +153,21 @@ export function CatalogFilters({ onFiltersChange, baseUrl = "/catalog", geoLocat
             .then((res) => res.json())
             .then((data) => setPlotsCount(data.count))
             .catch(console.error);
-    }, [searchParams]);
+    }, [searchParams, selectedLocation, geoLocation]);
 
     // Синхронизация состояния с URL (при навигации "назад")
     useEffect(() => {
-        setSettlementIds(parseSettlementsFromUrl());
         setLandUseId(searchParams.get("land_use") || "");
         setPriceMin(searchParams.get("price_min") || "");
         setPriceMax(searchParams.get("price_max") || "");
         setAreaMin(searchParams.get("area_min") || "");
         setAreaMax(searchParams.get("area_max") || "");
         setSort(searchParams.get("sort") || "newest");
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [searchParams]);
 
+    // Применение остальных фильтров (локация управляется через SmartLocationFilter)
     const applyFilters = useCallback(() => {
         const params = new URLSearchParams();
-        if (settlementIds.length > 0) params.set("settlements", settlementIds.join(","));
-        if (landUseId) params.set("land_use", landUseId);
-        if (priceMin) params.set("price_min", priceMin);
-        if (priceMax) params.set("price_max", priceMax);
-        if (areaMin) params.set("area_min", areaMin);
-        if (areaMax) params.set("area_max", areaMax);
-        if (sort && sort !== "newest") params.set("sort", sort);
-
-        router.push(`${baseUrl}?${params.toString()}`);
-        onFiltersChange(Object.fromEntries(params));
-    }, [settlementIds, landUseId, priceMin, priceMax, areaMin, areaMax, sort, router, onFiltersChange, baseUrl]);
-
-    // Применить фильтры с новым значением settlementIds (для LocationFilter)
-    const applyFiltersWithSettlements = useCallback((newSettlementIds: number[]) => {
-        const params = new URLSearchParams();
-        if (newSettlementIds.length > 0) params.set("settlements", newSettlementIds.join(","));
         if (landUseId) params.set("land_use", landUseId);
         if (priceMin) params.set("price_min", priceMin);
         if (priceMax) params.set("price_max", priceMax);
@@ -128,15 +179,21 @@ export function CatalogFilters({ onFiltersChange, baseUrl = "/catalog", geoLocat
         onFiltersChange(Object.fromEntries(params));
     }, [landUseId, priceMin, priceMax, areaMin, areaMax, sort, router, onFiltersChange, baseUrl]);
 
+    // Обработчик изменения локации (SmartLocationFilter управляет URL сам при enableGeoRedirect)
+    const handleLocationChange = useCallback((loc: SmartSelectedLocation | null) => {
+        setSelectedLocation(loc);
+        // SmartLocationFilter с enableGeoRedirect=true сам делает router.push на гео-URL
+    }, []);
+
     const resetFilters = () => {
-        setSettlementIds([]);
+        setSelectedLocation(null);
         setLandUseId("");
         setPriceMin("");
         setPriceMax("");
         setAreaMin("");
         setAreaMax("");
         setSort("newest");
-        router.push(baseUrl);
+        router.push("/catalog");
         onFiltersChange({});
     };
 
@@ -157,12 +214,11 @@ export function CatalogFilters({ onFiltersChange, baseUrl = "/catalog", geoLocat
                 {/* Местоположение */}
                 <div className="space-y-2">
                     <Label>Местоположение</Label>
-                    <LocationFilter
-                        value={settlementIds}
-                        onChange={setSettlementIds}
-                        onApply={applyFiltersWithSettlements}
-                        placeholder="Все районы"
-                        geoLocation={geoLocation}
+                    <SmartLocationFilter
+                        value={selectedLocation}
+                        onChange={handleLocationChange}
+                        placeholder="Район или город"
+                        enableGeoRedirect={true}
                     />
                 </div>
 

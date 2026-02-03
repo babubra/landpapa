@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,7 +13,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { LocationFilter } from "@/components/filters/LocationFilter";
+import { SmartLocationFilter, SmartSelectedLocation } from "@/components/filters/SmartLocationFilter";
 import { Search, MapPin } from "lucide-react";
 import { pluralize } from "@/lib/utils";
 
@@ -30,47 +30,90 @@ export function SearchFilter() {
   const [landUseOptions, setLandUseOptions] = useState<Reference[]>([]);
   const [plotsCount, setPlotsCount] = useState<number | null>(null);
 
-  // Значения фильтров
-  const [settlementIds, setSettlementIds] = useState<number[]>([]);
+  // Выбранная локация (новый SmartLocationFilter)
+  const [selectedLocation, setSelectedLocation] = useState<SmartSelectedLocation | null>(null);
+
+  // Остальные фильтры
   const [landUseId, setLandUseId] = useState("");
   const [areaMin, setAreaMin] = useState("");
   const [areaMax, setAreaMax] = useState("");
   const [priceMin, setPriceMin] = useState("");
   const [priceMax, setPriceMax] = useState("");
 
-  // Загрузка данных при монтировании
+  // Загрузка справочников при монтировании
   useEffect(() => {
     fetch("/api/references/?type=land_use")
       .then((res) => res.json())
       .then(setLandUseOptions)
       .catch(console.error);
-
-    fetch("/api/public-plots/count")
-      .then((res) => res.json())
-      .then((data) => setPlotsCount(data.count))
-      .catch(console.error);
   }, []);
 
-  const handleSearch = () => {
+  // Загрузка количества участков с учётом фильтров
+  useEffect(() => {
     const params = new URLSearchParams();
-    if (settlementIds.length > 0) params.set("settlements", settlementIds.join(","));
-    if (landUseId) params.set("land_use", landUseId);
-    if (areaMin) params.set("area_min", (parseFloat(areaMin) * 100).toString()); // сотки → м²
-    if (areaMax) params.set("area_max", (parseFloat(areaMax) * 100).toString());
-    if (priceMin) params.set("price_min", priceMin);
-    if (priceMax) params.set("price_max", priceMax);
 
-    router.push(`/catalog?${params.toString()}`);
-  };
-
-  const handleShowOnMap = () => {
-    const params = new URLSearchParams();
-    if (settlementIds.length > 0) params.set("settlements", settlementIds.join(","));
+    // Используем location_id для новой иерархии
+    if (selectedLocation) {
+      params.set("location_id", selectedLocation.id.toString());
+    }
     if (landUseId) params.set("land_use", landUseId);
     if (areaMin) params.set("area_min", (parseFloat(areaMin) * 100).toString());
     if (areaMax) params.set("area_max", (parseFloat(areaMax) * 100).toString());
     if (priceMin) params.set("price_min", priceMin);
     if (priceMax) params.set("price_max", priceMax);
+
+    const queryString = params.toString();
+    const url = queryString ? `/api/public-plots/count?${queryString}` : "/api/public-plots/count";
+
+    fetch(url)
+      .then((res) => res.json())
+      .then((data) => setPlotsCount(data.count))
+      .catch(console.error);
+  }, [selectedLocation, landUseId, areaMin, areaMax, priceMin, priceMax]);
+
+  // Обработчик изменения локации
+  const handleLocationChange = useCallback((loc: SmartSelectedLocation | null) => {
+    setSelectedLocation(loc);
+  }, []);
+
+  // Формирование URL для фильтров (без локации)
+  const buildFilterParams = useCallback(() => {
+    const params = new URLSearchParams();
+    if (landUseId) params.set("land_use", landUseId);
+    if (areaMin) params.set("area_min", (parseFloat(areaMin) * 100).toString());
+    if (areaMax) params.set("area_max", (parseFloat(areaMax) * 100).toString());
+    if (priceMin) params.set("price_min", priceMin);
+    if (priceMax) params.set("price_max", priceMax);
+    return params;
+  }, [landUseId, areaMin, areaMax, priceMin, priceMax]);
+
+  // Формирование гео-URL для выбранной локации
+  const buildGeoPath = useCallback(() => {
+    if (!selectedLocation) return "/catalog";
+
+    // Для settlement с parent_slug: /{parent_slug}/{slug}
+    // Для district/city: /{slug}
+    if (selectedLocation.parent_slug) {
+      return `/${selectedLocation.parent_slug}/${selectedLocation.slug}`;
+    }
+    return `/${selectedLocation.slug}`;
+  }, [selectedLocation]);
+
+  const handleSearch = () => {
+    const basePath = buildGeoPath();
+    const params = buildFilterParams();
+    const queryString = params.toString();
+
+    router.push(queryString ? `${basePath}?${queryString}` : basePath);
+  };
+
+  const handleShowOnMap = () => {
+    const params = buildFilterParams();
+
+    // Для карты используем location_id в query params
+    if (selectedLocation) {
+      params.set("location_id", selectedLocation.id.toString());
+    }
 
     const queryString = params.toString();
     router.push(queryString ? `/map?${queryString}` : "/map");
@@ -96,11 +139,11 @@ export function SearchFilter() {
       <CardContent className="space-y-3">
         {/* Местоположение */}
         <div className="space-y-2">
-          <Label>Район</Label>
-          <LocationFilter
-            value={settlementIds}
-            onChange={setSettlementIds}
-            placeholder="Все районы"
+          <Label>Местоположение</Label>
+          <SmartLocationFilter
+            value={selectedLocation}
+            onChange={handleLocationChange}
+            placeholder="Район или город"
           />
         </div>
 

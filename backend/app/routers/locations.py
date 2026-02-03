@@ -402,6 +402,7 @@ async def resolve_location_new(
     Резолв цепочки слагов в иерархию локаций.
     
     Пример: slugs=kaliningradskaja-oblast,zelenogradskij-r-n,svetlogorsk
+    Или просто: slugs=gur-evskij-r-n (для районов без региона в URL)
     """
     slug_list = [s.strip() for s in slugs.split(",") if s.strip()]
     
@@ -411,10 +412,14 @@ async def resolve_location_new(
     }
     
     current_parent_id = None
+    is_first_slug = True
     
     for slug in slug_list:
         query = select(Location).where(Location.slug == slug)
-        if current_parent_id is not None:
+        
+        # Для первого slug ищем на любом уровне (район/город может быть без региона в URL)
+        # Для последующих — строго по parent_id
+        if not is_first_slug and current_parent_id is not None:
             query = query.where(Location.parent_id == current_parent_id)
         
         loc_result = await db.execute(query)
@@ -430,10 +435,64 @@ async def resolve_location_new(
             })
             result["leaf_id"] = location.id
             current_parent_id = location.id
+            is_first_slug = False
         else:
             break  # Прекращаем при первом не найденном слаге
     
     return result
+
+
+@router.get("/resolve-v2", response_model=dict)
+async def resolve_location_v2(
+    slugs: str = Query(..., description="Слаги через запятую (district/settlement)"),
+    db: AsyncSession = Depends(get_async_db),
+):
+    """
+    Резолв цепочки слагов в объект локации для SmartLocationFilter.
+    
+    Возвращает объект location, совместимый с SmartSelectedLocation на фронте.
+    Пример: slugs=zelenogradskij-r-n,svetlogorsk
+    """
+    from sqlalchemy.orm import joinedload
+    
+    slug_list = [s.strip() for s in slugs.split(",") if s.strip()]
+    
+    if not slug_list:
+        return {"location": None}
+    
+    # Берём последний слаг — это целевая локация
+    target_slug = slug_list[-1]
+    parent_slug = slug_list[-2] if len(slug_list) > 1 else None
+    
+    # Ищем локацию
+    query = select(Location).options(joinedload(Location.parent)).where(Location.slug == target_slug)
+    
+    loc_result = await db.execute(query)
+    locations = loc_result.unique().scalars().all()
+    
+    # Если есть parent_slug, фильтруем по родителю
+    location = None
+    if parent_slug and len(locations) > 1:
+        for loc in locations:
+            if loc.parent and loc.parent.slug == parent_slug:
+                location = loc
+                break
+    elif locations:
+        location = locations[0]
+    
+    if not location:
+        return {"location": None}
+    
+    return {
+        "location": {
+            "id": location.id,
+            "name": location.name,
+            "slug": location.slug,
+            "type": location.type.value,
+            "settlement_type": location.settlement_type,
+            "parent_slug": location.parent.slug if location.parent else None,
+        }
+    }
 
 
 # === ПОИСК ЛОКАЦИЙ ===
@@ -567,3 +626,36 @@ async def search_locations(
         query=q,
         total=len(items),
     )
+
+
+# === ПОЛУЧЕНИЕ ЛОКАЦИИ ПО ID ===
+# ВАЖНО: Этот роут должен быть ПОСЛЕДНИМ, чтобы не перехватывать /search, /resolve-v2 и т.д.
+
+@router.get("/{location_id}", response_model=dict)
+async def get_location_by_id(
+    location_id: int,
+    db: AsyncSession = Depends(get_async_db),
+):
+    """
+    Получить локацию по ID.
+    
+    Используется для редиректа старых URL с ?settlements= на гео-URL.
+    """
+    from sqlalchemy.orm import joinedload
+    
+    query = select(Location).options(joinedload(Location.parent)).where(Location.id == location_id)
+    result = await db.execute(query)
+    location = result.unique().scalar_one_or_none()
+    
+    if not location:
+        return {"error": "Location not found"}
+    
+    return {
+        "id": location.id,
+        "name": location.name,
+        "slug": location.slug,
+        "type": location.type.value,
+        "settlement_type": location.settlement_type,
+        "parent_slug": location.parent.slug if location.parent else None,
+        "parent_name": location.parent.name if location.parent else None,
+    }

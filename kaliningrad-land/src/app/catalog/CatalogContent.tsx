@@ -26,6 +26,14 @@ export function CatalogContent({ initialData, geoLocation }: CatalogContentProps
     // Флаг для пропуска первого рендера
     const isFirstRender = useRef(true);
 
+    // Обновляем state когда initialData меняется (при навигации на гео-URL)
+    useEffect(() => {
+        setListings(initialData.items);
+        setTotal(initialData.total);
+        setCurrentPage(initialData.page);
+        setTotalPages(initialData.pages);
+    }, [initialData]);
+
     const fetchListings = useCallback(async () => {
         setLoading(true);
 
@@ -35,10 +43,21 @@ export function CatalogContent({ initialData, geoLocation }: CatalogContentProps
         searchParams.forEach((value, key) => {
             if (key === "district") params.set("district_id", value);
             else if (key === "settlement") params.set("settlement_id", value);
-            else if (key === "settlements") params.set("settlements", value); // список settlements передаём как есть
+            else if (key === "settlements") params.set("settlements", value);
+            else if (key === "location_id") params.set("location_id", value); // Новый параметр
             else if (key === "land_use") params.set("land_use_id", value);
             else params.set(key, value);
         });
+
+        // Если есть geoLocation — добавляем параметры для фильтрации
+        // Приоритет: locationId > settlementId > districtId
+        if (geoLocation?.locationId && !params.has("location_id")) {
+            params.set("location_id", geoLocation.locationId.toString());
+        } else if (geoLocation?.settlementId && !params.has("location_id") && !params.has("settlement_id")) {
+            params.set("settlement_id", geoLocation.settlementId.toString());
+        } else if (geoLocation?.districtId && !params.has("location_id") && !params.has("district_id")) {
+            params.set("district_id", geoLocation.districtId.toString());
+        }
 
         // Размер страницы
         if (!params.has("size")) params.set("size", "12");
@@ -57,7 +76,7 @@ export function CatalogContent({ initialData, geoLocation }: CatalogContentProps
         } finally {
             setLoading(false);
         }
-    }, [searchParams]);
+    }, [searchParams, geoLocation]);
 
     useEffect(() => {
         // Пропускаем первый рендер — данные уже получены с сервера

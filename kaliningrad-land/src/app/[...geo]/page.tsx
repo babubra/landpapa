@@ -177,15 +177,21 @@ export async function generateMetadata({ params }: GeoPageProps): Promise<Metada
     const districtSlug = geo[0];
     const settlementSlug = geo.length >= 2 ? geo[1] : undefined;
 
-    // Резолв локации
+    // Резолв локации через новый и старый API
+    const locationNew = await resolveLocationNew(geo);
     const location = await resolveLocation(districtSlug, settlementSlug);
 
-    if (!location || !location.district_id) {
+    if (!locationNew?.leaf_id && (!location || !location.district_id)) {
         return { title: "Страница не найдена" };
     }
 
+    // Получаем slugs из новой иерархии для canonical
+    const locations = locationNew?.locations || [];
+    const leafLocation = locations.length > 0 ? locations[locations.length - 1] : null;
+    const parentLocation = locations.length > 1 ? locations[locations.length - 2] : null;
+
     // Определяем тип страницы
-    if (geo.length === 3 || (geo.length === 2 && !location.settlement_id)) {
+    if (geo.length === 3 || (geo.length === 2 && !location?.settlement_id)) {
         // Это листинг
         const listingSlug = geo.length === 3 ? geo[2] : geo[1];
         const listing = await getListingByGeoUrl(
@@ -198,13 +204,23 @@ export async function generateMetadata({ params }: GeoPageProps): Promise<Metada
             const title = listing.meta_title || listing.title;
             const description = listing.meta_description || listing.description?.substring(0, 160);
 
+            // Canonical для листинга: используем slugs из новой иерархии
+            let canonicalPath = `/${geo.join("/")}`;
+            if (leafLocation && parentLocation) {
+                // settlement с parent
+                canonicalPath = `/${parentLocation.slug}/${leafLocation.slug}/${listingSlug}`;
+            } else if (leafLocation) {
+                // district/city
+                canonicalPath = `/${leafLocation.slug}/${listingSlug}`;
+            }
+
             return {
                 title,
                 description,
-                alternates: { canonical: `/${geo.join("/")}` },
+                alternates: { canonical: canonicalPath },
                 openGraph: {
                     type: "website",
-                    url: `/${geo.join("/")}`,
+                    url: canonicalPath,
                     title,
                     description: description || undefined,
                 },
@@ -216,18 +232,36 @@ export async function generateMetadata({ params }: GeoPageProps): Promise<Metada
     let title = settings.seo_catalog_title || "Каталог земельных участков";
     let description = settings.seo_catalog_description || "";
 
-    if (location.settlement_name && location.settlement_type) {
-        const settlementFull = formatSettlementName(location.settlement_name, location.settlement_type);
+    // Используем данные из новой иерархии если доступны, иначе fallback
+    const displayName = leafLocation?.name || location?.settlement_name || location?.district_name;
+    const displayType = leafLocation?.settlement_type || location?.settlement_type;
+    const parentName = parentLocation?.name || location?.district_name;
+
+    if (displayName && displayType) {
+        const settlementFull = formatSettlementName(displayName, displayType);
         title = `Участки в ${settlementFull} | РКК земля`;
-        description = `Земельные участки в ${settlementFull}, ${location.district_name}`;
-    } else if (location.district_name) {
-        title = `Участки в ${location.district_name} | РКК земля`;
-        description = `Земельные участки в ${location.district_name}`;
+        description = parentName
+            ? `Земельные участки в ${settlementFull}, ${parentName}`
+            : `Земельные участки в ${settlementFull}`;
+    } else if (displayName) {
+        title = `Участки в ${displayName} | РКК земля`;
+        description = `Земельные участки в ${displayName}`;
     }
 
-    const canonicalPath = settlementSlug
-        ? `/${districtSlug}/${settlementSlug}`
-        : `/${districtSlug}`;
+    // Canonical из новой иерархии
+    let canonicalPath: string;
+    if (leafLocation && parentLocation) {
+        // settlement с parent (district)
+        canonicalPath = `/${parentLocation.slug}/${leafLocation.slug}`;
+    } else if (leafLocation) {
+        // district/city без parent в URL
+        canonicalPath = `/${leafLocation.slug}`;
+    } else {
+        // Fallback на URL params
+        canonicalPath = settlementSlug
+            ? `/${districtSlug}/${settlementSlug}`
+            : `/${districtSlug}`;
+    }
 
     return {
         title,
@@ -258,10 +292,14 @@ export default async function GeoPage({ params, searchParams }: GeoPageProps) {
     const secondSegment = geo.length >= 2 ? geo[1] : undefined;
     const thirdSegment = geo.length >= 3 ? geo[2] : undefined;
 
-    // Резолв локации
-    const location = await resolveLocation(districtSlug, secondSegment);
+    // Резолв локации через новый API (работает с city, district, settlement)
+    const locationNew = await resolveLocationNew(geo);
 
-    if (!location || !location.district_id) {
+    // Fallback на старый API для обратной совместимости
+    const locationOld = await resolveLocation(districtSlug, secondSegment);
+
+    // Проверяем что хотя бы один API нашёл локацию
+    if (!locationNew?.leaf_id && !locationOld?.district_id) {
         notFound();
     }
 
@@ -274,37 +312,72 @@ export default async function GeoPage({ params, searchParams }: GeoPageProps) {
         if (!listing) notFound();
 
         // Рендерим страницу листинга
-        // TODO: Подключить компонент ListingPage
-        return <ListingPageContent listing={listing} geo={location} />;
+        return <ListingPageContent listing={listing} geo={locationOld!} locationNew={locationNew} />;
     }
 
-    if (secondSegment && !location.settlement_id) {
+    if (secondSegment && !locationOld?.settlement_id) {
         // /{district}/{listing} — листинг без settlement
         const listing = await getListingByGeoUrl(districtSlug, null, secondSegment);
         if (listing) {
-            return <ListingPageContent listing={listing} geo={location} />;
+            return <ListingPageContent listing={listing} geo={locationOld!} locationNew={locationNew} />;
         }
         // Если не листинг — 404
         notFound();
     }
 
-    // Это каталог
+    // Это каталог — формируем geoLocation из доступных данных
+    const locations = locationNew?.locations || [];
+    const leafLocation = locations.length > 0 ? locations[locations.length - 1] : null;
+    const parentLocation = locations.length > 1
+        ? locations[locations.length - 2]
+        : null;
+
+    // Формируем geoLocation с учётом типа локации
+    // Для district/city (1 сегмент): заполняем districtSlug
+    // Для settlement (2 сегмента): заполняем и districtSlug, и settlementSlug
+    const isLeafDistrictOrCity = leafLocation?.type === "district" || leafLocation?.type === "city";
+
     const geoLocation: GeoLocation = {
-        districtId: location.district_id || undefined,
-        districtSlug: location.district_slug || undefined,
-        districtName: location.district_name || undefined,
-        settlementId: location.settlement_id || undefined,
-        settlementSlug: location.settlement_slug || undefined,
-        settlementName: location.settlement_name || undefined,
-        settlementType: location.settlement_type || undefined,
+        // Новая унифицированная иерархия — используем для фильтрации
+        locationId: locationNew?.leaf_id || undefined,
+
+        // Старые поля для обратной совместимости с breadcrumbs и URL
+        // Если leaf это district/city — используем его как district
+        districtId: isLeafDistrictOrCity
+            ? leafLocation?.id
+            : (parentLocation?.id || locationOld?.district_id || undefined),
+        districtSlug: isLeafDistrictOrCity
+            ? leafLocation?.slug
+            : (parentLocation?.slug || locationOld?.district_slug || undefined),
+        districtName: isLeafDistrictOrCity
+            ? leafLocation?.name
+            : (parentLocation?.name || locationOld?.district_name || undefined),
+
+        // Settlement заполняем только если leaf это settlement (не district/city)
+        settlementId: isLeafDistrictOrCity
+            ? undefined
+            : (leafLocation?.id || locationOld?.settlement_id || undefined),
+        settlementSlug: isLeafDistrictOrCity
+            ? undefined
+            : (leafLocation?.slug || locationOld?.settlement_slug || undefined),
+        settlementName: isLeafDistrictOrCity
+            ? undefined
+            : (leafLocation?.name || locationOld?.settlement_name || undefined),
+        settlementType: isLeafDistrictOrCity
+            ? undefined
+            : (leafLocation?.settlement_type || locationOld?.settlement_type || undefined),
     };
 
     // Формируем параметры для API
     const apiParams: Record<string, string> = { ...urlParams };
-    if (location.settlement_id) {
-        apiParams.settlement_id = location.settlement_id.toString();
-    } else if (location.district_id) {
-        apiParams.district_id = location.district_id.toString();
+
+    // Приоритет: location_id (новая иерархия) > settlement_id > district_id
+    if (locationNew?.leaf_id) {
+        apiParams.location_id = locationNew.leaf_id.toString();
+    } else if (locationOld?.settlement_id) {
+        apiParams.settlement_id = locationOld.settlement_id.toString();
+    } else if (locationOld?.district_id) {
+        apiParams.district_id = locationOld.district_id.toString();
     }
 
     const initialData = await getListings(apiParams);
@@ -312,10 +385,13 @@ export default async function GeoPage({ params, searchParams }: GeoPageProps) {
 
     // Формируем заголовок
     let pageTitle = "Земельные участки";
-    if (location.settlement_name && location.settlement_type) {
-        pageTitle = `Участки в ${formatSettlementName(location.settlement_name, location.settlement_type)}`;
-    } else if (location.district_name) {
-        pageTitle = `Участки в ${location.district_name}`;
+    const displayName = leafLocation?.name || locationOld?.settlement_name || locationOld?.district_name;
+    const displayType = leafLocation?.settlement_type || locationOld?.settlement_type;
+
+    if (displayName && displayType) {
+        pageTitle = `Участки в ${formatSettlementName(displayName, displayType)}`;
+    } else if (displayName) {
+        pageTitle = `Участки в ${displayName}`;
     }
 
     return (
@@ -337,19 +413,45 @@ export default async function GeoPage({ params, searchParams }: GeoPageProps) {
 
 function ListingPageContent({
     listing,
-    geo
+    geo,
+    locationNew
 }: {
     listing: ListingData;
     geo: ResolvedLocation;
+    locationNew: ResolvedLocationNew | null;
 }) {
+    // Формируем geoLocation: приоритет - новая иерархия (locationNew), fallback - старая (geo)
+    const locations = locationNew?.locations || [];
+    const leafLocation = locations.length > 0 ? locations[locations.length - 1] : null;
+    const parentLocation = locations.length > 1 ? locations[locations.length - 2] : null;
+    const isLeafDistrictOrCity = leafLocation?.type === "district" || leafLocation?.type === "city";
+
     const geoLocation: GeoLocation = {
-        districtId: geo.district_id || undefined,
-        districtSlug: geo.district_slug || undefined,
-        districtName: geo.district_name || undefined,
-        settlementId: geo.settlement_id || undefined,
-        settlementSlug: geo.settlement_slug || undefined,
-        settlementName: geo.settlement_name || undefined,
-        settlementType: geo.settlement_type || undefined,
+        // Новая иерархия для фильтрации
+        locationId: locationNew?.leaf_id || undefined,
+
+        // Приоритет: новая иерархия > старая
+        districtId: isLeafDistrictOrCity
+            ? leafLocation?.id
+            : (parentLocation?.id || geo.district_id || undefined),
+        districtSlug: isLeafDistrictOrCity
+            ? leafLocation?.slug
+            : (parentLocation?.slug || geo.district_slug || undefined),
+        districtName: isLeafDistrictOrCity
+            ? leafLocation?.name
+            : (parentLocation?.name || geo.district_name || undefined),
+        settlementId: isLeafDistrictOrCity
+            ? undefined
+            : (leafLocation?.id || geo.settlement_id || undefined),
+        settlementSlug: isLeafDistrictOrCity
+            ? undefined
+            : (leafLocation?.slug || geo.settlement_slug || undefined),
+        settlementName: isLeafDistrictOrCity
+            ? undefined
+            : (leafLocation?.name || geo.settlement_name || undefined),
+        settlementType: isLeafDistrictOrCity
+            ? undefined
+            : (leafLocation?.settlement_type || geo.settlement_type || undefined),
     };
 
     const breadcrumbs = buildGeoBreadcrumbs(geoLocation, listing.title, listing.slug);

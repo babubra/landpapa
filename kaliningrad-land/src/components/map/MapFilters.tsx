@@ -67,15 +67,35 @@ export function MapFilters({ onFiltersChange, total, isMobile = false }: MapFilt
             .catch(console.error);
     }, []);
 
-    // Синхронизация состояния с URL (при навигации "назад")
+    // Синхронизация состояния с URL (при навигации "назад" или прямом переходе)
     useEffect(() => {
         setLandUseId(searchParams.get("land_use") || "");
         setPriceMin(searchParams.get("price_min") || "");
         setPriceMax(searchParams.get("price_max") || "");
         setAreaMin(searchParams.get("area_min") || "");
         setAreaMax(searchParams.get("area_max") || "");
-        // Сброс локации при переходе на /map без параметров
-        // TODO: можно добавить парсинг location_id из URL если нужно
+
+        // Синхронизация локации из URL
+        const locationIdParam = searchParams.get("location_id");
+        if (locationIdParam) {
+            fetch(`/api/locations/${locationIdParam}`)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.id) {
+                        setSelectedLocation({
+                            id: data.id,
+                            name: data.name,
+                            slug: data.slug,
+                            type: data.type,
+                            settlement_type: data.settlement_type,
+                            parent_slug: data.parent_slug,
+                        });
+                    }
+                })
+                .catch(console.error);
+        } else {
+            setSelectedLocation(null);
+        }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [searchParams]);
 
