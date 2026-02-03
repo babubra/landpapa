@@ -60,7 +60,7 @@ export function CatalogFilters({ onFiltersChange, baseUrl = "/catalog", geoLocat
     useEffect(() => {
         if (geoLocation?.locationId) {
             // Используем locationId для получения полных данных локации
-            fetch(`/api/locations/${geoLocation.locationId}`)
+            fetch(`/api/locations/${geoLocation.locationId}`, { cache: 'no-store' })
                 .then(res => res.json())
                 .then(data => {
                     if (data.id) {

@@ -56,7 +56,7 @@ LOCATIONS_DATA = {
         {"name": "Багратионовский район", "slug": "bagrationovskij-r-n", "sort_order": 10},
         {"name": "Балтийский район", "slug": "baltijskij-r-n", "sort_order": 11},
         {"name": "Гвардейский район", "slug": "gvardejskij-r-n", "sort_order": 12},
-        {"name": "Гурьевский район", "slug": "gurjevskij-r-n", "sort_order": 13},
+        {"name": "Гурьевский район", "slug": "gur-evskij-r-n", "sort_order": 13},  # Legacy slug
         {"name": "Гусевский район", "slug": "gusevskij-r-n", "sort_order": 14},
         {"name": "Зеленоградский район", "slug": "zelenogradskij-r-n", "sort_order": 15},
         {"name": "Краснознаменский район", "slug": "krasnoznamenskij-r-n", "sort_order": 16},
