@@ -7,7 +7,7 @@ YELLOW='\033[1;33m'
 RED='\033[0;31m'
 NC='\033[0m'
 
-echo -e "${GREEN}🚀 Запуск среды разработки LandPapa (Windows Git Bash)...${NC}"
+echo -e "${GREEN}🚀 Запуск среды разработки LandPapa...${NC}"
 
 # Функция для остановки всех процессов при выходе
 cleanup() {
@@ -31,11 +31,13 @@ sleep 2
 # 3. Запуск Backend
 echo -e "${CYAN}🔧 Запуск Backend (порт 8001)...${NC}"
 cd backend
-# В Windows путь к uvicorn в venv другой: venv/Scripts/uvicorn
-if [ -f "venv/Scripts/uvicorn" ]; then
+# Проверяем путь к uvicorn: macOS/Linux vs Windows
+if [ -f "venv/bin/uvicorn" ]; then
+    ./venv/bin/uvicorn app.main:app --reload --port 8001 &
+elif [ -f "venv/Scripts/uvicorn" ]; then
     ./venv/Scripts/uvicorn app.main:app --reload --port 8001 &
 else
-    echo -e "${RED}❌ Ошибка: venv/Scripts/uvicorn не найден. Убедитесь, что venv создан внутри /backend${NC}"
+    echo -e "${RED}❌ Ошибка: uvicorn не найден. Убедитесь, что venv создан внутри /backend${NC}"
 fi
 cd ..
 
