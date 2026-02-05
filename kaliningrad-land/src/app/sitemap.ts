@@ -43,11 +43,43 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         }
     ]
 
+    // === Geo-страницы (районы, города, посёлки) ===
+    interface LocationSitemapItem {
+        path: string[];
+        listings_count: number;
+    }
+
+    try {
+        const res = await fetch(`${SSR_API_URL}/api/locations/slugs/all`, {
+            next: { revalidate: 3600 }
+        });
+
+        if (res.ok) {
+            const items: LocationSitemapItem[] = await res.json();
+            items.forEach((item) => {
+                if (item.path && item.path.length > 0) {
+                    routes.push({
+                        url: `${SITE_URL}/${item.path.join('/')}`,
+                        lastModified: new Date(),
+                        changeFrequency: 'daily',
+                        priority: 0.8,
+                    })
+                }
+            })
+        } else {
+            console.error(`Sitemap fetch failed: ${res.status} from /api/locations/slugs/all`);
+        }
+    } catch (error) {
+        console.error('Error generating geo-pages sitemap:', error)
+    }
+
+    // === Листинги ===
     interface ListingSitemapItem {
         slug: string;
         updated_at: string;
-        settlement_slug: string | null;
-        district_slug: string | null;
+        location_path: string[] | null;  // Новая иерархия
+        settlement_slug: string | null;  // Fallback
+        district_slug: string | null;    // Fallback
     }
 
     try {
@@ -58,9 +90,20 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         if (res.ok) {
             const items: ListingSitemapItem[] = await res.json();
             items.forEach((item) => {
-                if (item.slug && item.district_slug && item.settlement_slug) {
+                let geoPath: string | null = null;
+
+                // Приоритет: location_path (новая иерархия)
+                if (item.location_path && item.location_path.length > 0) {
+                    geoPath = item.location_path.join('/');
+                }
+                // Fallback: старые поля
+                else if (item.district_slug && item.settlement_slug) {
+                    geoPath = `${item.district_slug}/${item.settlement_slug}`;
+                }
+
+                if (geoPath && item.slug) {
                     routes.push({
-                        url: `${SITE_URL}/${item.district_slug}/${item.settlement_slug}/${item.slug}`,
+                        url: `${SITE_URL}/${geoPath}/${item.slug}`,
                         lastModified: new Date(item.updated_at),
                         changeFrequency: 'weekly',
                         priority: 0.6,
@@ -68,12 +111,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
                 }
             })
         } else {
-            console.error(`Sitemap fetch failed: ${res.status} ${res.statusText} from ${SSR_API_URL}/api/listings/slugs/all`);
+            console.error(`Sitemap fetch failed: ${res.status} from /api/listings/slugs/all`);
         }
     } catch (error) {
-        console.error(`Error generating listing sitemap from ${SSR_API_URL}/api/listings/slugs/all:`, error)
+        console.error('Error generating listing sitemap:', error)
     }
 
+    // === Новости ===
     try {
         const res = await fetch(`${SSR_API_URL}/api/news/slugs/all`, {
             next: { revalidate: 3600 }

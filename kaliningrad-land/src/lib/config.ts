@@ -95,6 +95,13 @@ export interface SiteSettings {
     seo_news_description: string | null;
     seo_map_title: string | null;
     seo_map_description: string | null;
+    // Шаблоны для Geo-страниц (районы, города, посёлки)
+    seo_geo_title_template: string | null;        // "Участки {location} | РКК земля"
+    seo_geo_description_template: string | null;  // "Земельные участки {location}..."
+    seo_geo_h1_template: string | null;           // "Участки {location}"
+    // Шаблоны для страниц объявлений (карточка листинга)
+    seo_listing_title_template: string | null;       // "{title} — {area} {location} | РКК земля"
+    seo_listing_description_template: string | null; // "{title}. Площадь {area}, цена {price}..."
     // Соцсети
     org_vk_url: string | null;
     org_telegram_url: string | null;
@@ -153,6 +160,11 @@ export async function getSiteSettings(): Promise<SiteSettings> {
             seo_news_description: null,
             seo_map_title: null,
             seo_map_description: null,
+            seo_geo_title_template: null,
+            seo_geo_description_template: null,
+            seo_geo_h1_template: null,
+            seo_listing_title_template: null,
+            seo_listing_description_template: null,
             org_vk_url: null,
             org_telegram_url: null,
             org_max_url: null,

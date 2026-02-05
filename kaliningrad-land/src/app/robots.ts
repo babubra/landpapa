@@ -7,10 +7,23 @@ export default function robots(): MetadataRoute.Robots {
             userAgent: '*',
             allow: ['/', '/_next/static/'],
             disallow: [
+                // API и системные
                 '/api/',
                 '/_next/',
-                '/map?lat=*',  // Мусорные URL карты с координатами
-                '/map?*lat=*', // Вариант с другими параметрами перед lat
+
+                // Карта с координатами и фильтрами
+                '/map?*',
+
+                // Каталог с фильтрами (кроме page и location_id)
+                '/catalog?*price*',
+                '/catalog?*area*',
+                '/catalog?*sort*',
+                '/catalog?*purpose*',
+                '/catalog?*land_use*',
+
+                // Административные
+                '/admin/',
+                '/login/',
             ],
         },
         sitemap: `${SITE_URL}/sitemap.xml`,

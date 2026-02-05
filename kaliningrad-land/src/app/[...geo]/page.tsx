@@ -50,6 +50,8 @@ interface ResolvedLocationNew {
         slug: string;
         type: string;
         settlement_type: string | null;
+        name_locative: string | null;  // SEO: "в Калининграде"
+        description: string | null;    // SEO: описание локации
     }[];
     leaf_id: number | null;
 }
@@ -191,9 +193,14 @@ async function getListingByGeoUrl(
 
 // === Metadata ===
 
-export async function generateMetadata({ params }: GeoPageProps): Promise<Metadata> {
+export async function generateMetadata({ params, searchParams }: GeoPageProps): Promise<Metadata> {
     const { geo } = await params;
+    const queryParams = await searchParams;
     const settings = await getSiteSettings();
+
+    // Получаем номер страницы
+    const page = parseInt(queryParams.page || "1", 10);
+    const pageNum = isNaN(page) || page < 1 ? 1 : page;
 
     // Проверка на зарезервированные slug
     if (geo.length > 0 && RESERVED_SLUGS.includes(geo[0])) {
@@ -227,8 +234,62 @@ export async function generateMetadata({ params }: GeoPageProps): Promise<Metada
         );
 
         if (listing) {
-            const title = listing.meta_title || listing.title;
-            const description = listing.meta_description || listing.description?.substring(0, 160);
+            // === Подготовка переменных для шаблона ===
+            const priceMin = listing.price_min;
+            const priceStr = priceMin ? `${priceMin.toLocaleString("ru-RU")} ₽` : "";
+
+            const areaNum = listing.total_area ?? listing.area_min;
+            let areaStr = "";
+            if (areaNum) {
+                if (areaNum >= 10000) {
+                    areaStr = `${(areaNum / 10000).toFixed(1)} га`;
+                } else {
+                    areaStr = `${(areaNum / 100).toFixed(1)} сот.`;
+                }
+            }
+
+            // Локация
+            const locationStr = listing.location?.name_locative || "";
+
+            // Кадастровый номер
+            const cadastralStr = listing.plots?.[0]?.cadastral_number || "";
+
+            // Назначение
+            const purposeStr = listing.plots?.[0]?.purpose?.name || "";
+
+            // === Генерация Title ===
+            let title = listing.meta_title;
+            if (!title) {
+                const titleTemplate = settings.seo_listing_title_template;
+                if (titleTemplate) {
+                    title = titleTemplate
+                        .replace(/\{title\}/g, listing.title || "Участок")
+                        .replace(/\{price\}/g, priceStr)
+                        .replace(/\{area\}/g, areaStr)
+                        .replace(/\{location\}/g, locationStr)
+                        .replace(/\{cadastral\}/g, cadastralStr)
+                        .replace(/\{purpose\}/g, purposeStr);
+                } else {
+                    title = listing.title;
+                }
+            }
+
+            // === Генерация Description ===
+            let description = listing.meta_description;
+            if (!description) {
+                const descTemplate = settings.seo_listing_description_template;
+                if (descTemplate) {
+                    description = descTemplate
+                        .replace(/\{title\}/g, listing.title || "Участок")
+                        .replace(/\{price\}/g, priceStr)
+                        .replace(/\{area\}/g, areaStr)
+                        .replace(/\{location\}/g, locationStr)
+                        .replace(/\{cadastral\}/g, cadastralStr)
+                        .replace(/\{purpose\}/g, purposeStr);
+                } else {
+                    description = listing.description?.substring(0, 160);
+                }
+            }
 
             // Canonical для листинга: используем slugs из новой иерархии
             let canonicalPath = `/${geo.join("/")}`;
@@ -259,19 +320,40 @@ export async function generateMetadata({ params }: GeoPageProps): Promise<Metada
     let description = settings.seo_catalog_description || "";
 
     // Используем данные из новой иерархии если доступны, иначе fallback
+    const nameLocative = leafLocation?.name_locative;  // SEO: "в Калининграде"
     const displayName = leafLocation?.name || location?.settlement_name || location?.district_name;
     const displayType = leafLocation?.settlement_type || location?.settlement_type;
     const parentName = parentLocation?.name || location?.district_name;
 
-    if (displayName && displayType) {
-        const settlementFull = formatSettlementName(displayName, displayType);
-        title = `Участки в ${settlementFull} | РКК земля`;
-        description = parentName
-            ? `Земельные участки в ${settlementFull}, ${parentName}`
-            : `Земельные участки в ${settlementFull}`;
+    // Формируем переменные для шаблонов
+    let locationVar = "";  // {location} — "в Калининграде"
+    let locationNameVar = "";  // {location_name} — "Калининград"
+
+    if (nameLocative) {
+        locationVar = nameLocative;
+        locationNameVar = displayName || "";
+    } else if (displayName && displayType) {
+        locationVar = `в ${formatSettlementName(displayName, displayType)}`;
+        locationNameVar = displayName;
     } else if (displayName) {
-        title = `Участки в ${displayName} | РКК земля`;
-        description = `Земельные участки в ${displayName}`;
+        locationVar = `в ${displayName}`;
+        locationNameVar = displayName;
+    }
+
+    // Применяем шаблоны если есть location
+    if (locationVar) {
+        // Title
+        const titleTemplate = settings.seo_geo_title_template || "Участки {location} | РКК земля";
+        title = titleTemplate
+            .replace(/\{location\}/g, locationVar)
+            .replace(/\{location_name\}/g, locationNameVar);
+
+        // Description
+        const descTemplate = settings.seo_geo_description_template ||
+            "Земельные участки {location}. Актуальные предложения по продаже земли.";
+        description = descTemplate
+            .replace(/\{location\}/g, locationVar)
+            .replace(/\{location_name\}/g, locationNameVar);
     }
 
     // Canonical из новой иерархии
@@ -287,6 +369,12 @@ export async function generateMetadata({ params }: GeoPageProps): Promise<Metada
         canonicalPath = settlementSlug
             ? `/${districtSlug}/${settlementSlug}`
             : `/${districtSlug}`;
+    }
+
+    // Добавляем суффикс страницы для title на страницах > 1
+    if (pageNum > 1) {
+        title = `${title} — страница ${pageNum}`;
+        canonicalPath = `${canonicalPath}?page=${pageNum}`;
     }
 
     return {
@@ -383,22 +471,46 @@ export default async function GeoPage({ params, searchParams }: GeoPageProps) {
     }));
     const breadcrumbs = buildHierarchyBreadcrumbs(hierarchyLocations);
 
-    // Формируем заголовок
-    let pageTitle = "Земельные участки";
+    // Формируем заголовок с использованием шаблона
+    const settings = await getSiteSettings();
+    const nameLocative = leafLocation?.name_locative;  // SEO: "в Калининграде"
     const displayName = leafLocation?.name || locationOld?.settlement_name || locationOld?.district_name;
     const displayType = leafLocation?.settlement_type || locationOld?.settlement_type;
 
-    if (displayName && displayType) {
-        pageTitle = `Участки в ${formatSettlementName(displayName, displayType)}`;
+    // Формируем переменные для шаблона H1
+    let locationVar = "";  // {location} — "в Калининграде"
+    let locationNameVar = "";  // {location_name} — "Калининград"
+
+    if (nameLocative) {
+        locationVar = nameLocative;
+        locationNameVar = displayName || "";
+    } else if (displayName && displayType) {
+        locationVar = `в ${formatSettlementName(displayName, displayType)}`;
+        locationNameVar = displayName;
     } else if (displayName) {
-        pageTitle = `Участки в ${displayName}`;
+        locationVar = `в ${displayName}`;
+        locationNameVar = displayName;
+    }
+
+    // Применяем шаблон H1
+    let pageTitle = "Земельные участки";
+    if (locationVar) {
+        const h1Template = settings.seo_geo_h1_template || "Участки {location}";
+        pageTitle = h1Template
+            .replace(/\{location\}/g, locationVar)
+            .replace(/\{location_name\}/g, locationNameVar);
     }
 
     return (
         <div className="min-h-screen bg-background">
             <div className="container mx-auto px-4 py-8 max-w-7xl">
                 <Breadcrumbs items={breadcrumbs} />
-                <h1 className="text-3xl font-bold mb-8">{pageTitle}</h1>
+                <h1 className="text-3xl font-bold mb-4">{pageTitle}</h1>
+                {leafLocation?.description && (
+                    <p className="text-muted-foreground mb-8 max-w-3xl">
+                        {leafLocation.description}
+                    </p>
+                )}
 
                 <CatalogContent
                     initialData={initialData}

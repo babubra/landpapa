@@ -332,6 +332,8 @@ class LocationPublicItem(BaseModel):
     type: LocationType
     settlement_type: str | None = None
     sort_order: int = 0
+    name_locative: str | None = None  # SEO: "в Калининграде"
+    description: str | None = None  # SEO: описание локации
     listings_count: int = 0
     children: list["LocationPublicItem"] = []
 
@@ -384,6 +386,8 @@ async def get_locations_hierarchy(
                 type=loc.type,
                 settlement_type=loc.settlement_type,
                 sort_order=loc.sort_order or 0,
+                name_locative=loc.name_locative,
+                description=loc.description,
                 listings_count=own_count + children_count,
                 children=child_tree,
             ))
@@ -432,6 +436,8 @@ async def resolve_location_new(
                 "slug": location.slug,
                 "type": location.type.value,
                 "settlement_type": location.settlement_type,
+                "name_locative": location.name_locative,
+                "description": location.description,
             })
             result["leaf_id"] = location.id
             current_parent_id = location.id
@@ -659,3 +665,88 @@ async def get_location_by_id(
         "parent_slug": location.parent.slug if location.parent else None,
         "parent_name": location.parent.name if location.parent else None,
     }
+
+
+@router.get("/slugs/all", response_model=list[dict])
+async def get_all_location_slugs(
+    db: AsyncSession = Depends(get_async_db),
+):
+    """
+    Получить список всех путей локаций для sitemap geo-страниц.
+    
+    Возвращает массив объектов:
+    {
+        "path": ["zelenogradskij-r-n", "svetlogorsk"],
+        "listings_count": 15
+    }
+    """
+    from sqlalchemy.orm import aliased
+    from app.models.listing import Listing
+    
+    # Получаем все локации с количеством листингов
+    locations_result = await db.execute(
+        select(Location)
+        .where(Location.type != "region")  # Регион не включаем
+    )
+    all_locations = locations_result.scalars().all()
+    
+    # Подсчитываем листинги для каждой локации
+    listings_count_result = await db.execute(
+        select(Listing.location_id, func.count(Listing.id).label("count"))
+        .where(Listing.is_published == True)
+        .group_by(Listing.location_id)
+    )
+    listings_by_location = {row.location_id: row.count for row in listings_count_result.all()}
+    
+    # Строим словарь локаций для быстрого доступа
+    locations_dict = {loc.id: loc for loc in all_locations}
+    
+    # Рекурсивная функция для получения пути от локации до корня
+    def get_path(loc_id: int) -> list[str]:
+        path: list[str] = []
+        current_id = loc_id
+        max_depth = 10
+        
+        while current_id and max_depth > 0:
+            loc = locations_dict.get(current_id)
+            if not loc:
+                # Проверяем родителя (регион может быть не в словаре)
+                parent_result_sync = None
+                break
+            
+            # Регион пропускаем
+            if loc.type != "region":
+                path.insert(0, loc.slug)
+            
+            current_id = loc.parent_id
+            max_depth -= 1
+        
+        return path
+    
+    # Рекурсивный подсчёт листингов с учётом детей
+    def count_with_children(loc_id: int) -> int:
+        own_count = listings_by_location.get(loc_id, 0)
+        children_count = sum(
+            count_with_children(child.id)
+            for child in all_locations
+            if child.parent_id == loc_id
+        )
+        return own_count + children_count
+    
+    # Формируем результат
+    result = []
+    for loc in all_locations:
+        path = get_path(loc.id)
+        if not path:
+            continue
+            
+        total_count = count_with_children(loc.id)
+        
+        # Включаем только локации с объявлениями
+        if total_count > 0:
+            result.append({
+                "path": path,
+                "listings_count": total_count,
+            })
+    
+    return result

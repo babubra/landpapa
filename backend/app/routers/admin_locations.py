@@ -28,6 +28,8 @@ class LocationBase(BaseModel):
     settlement_type: str | None = None  # "г", "пос", "пгт", "с"
     fias_id: str | None = None
     sort_order: int = 0
+    name_locative: str | None = None  # SEO: "в Калининграде"
+    description: str | None = None  # SEO: описание локации
 
 
 class LocationCreate(LocationBase):
@@ -41,11 +43,14 @@ class LocationUpdate(BaseModel):
     settlement_type: str | None = None
     fias_id: str | None = None
     sort_order: int | None = None
+    name_locative: str | None = None  # SEO: "в Калининграде"
+    description: str | None = None  # SEO: описание локации
 
 
 class LocationItem(LocationBase):
     id: int
     children_count: int = 0
+    name_locative: str | None = None
     
     class Config:
         from_attributes = True
@@ -220,6 +225,7 @@ async def create_location(
         settlement_type=data.settlement_type,
         fias_id=data.fias_id,
         sort_order=data.sort_order,
+        name_locative=data.name_locative,
     )
     db.add(location)
     await db.commit()
@@ -275,6 +281,10 @@ async def update_location(
         location.fias_id = data.fias_id
     if data.sort_order is not None:
         location.sort_order = data.sort_order
+    if data.name_locative is not None:
+        location.name_locative = data.name_locative
+    if data.description is not None:
+        location.description = data.description
     
     await db.commit()
     await db.refresh(location)

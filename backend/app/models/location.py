@@ -1,6 +1,6 @@
 from enum import Enum as PyEnum
 
-from sqlalchemy import String, Integer, ForeignKey, Enum as SQLEnum
+from sqlalchemy import String, Integer, ForeignKey, Enum as SQLEnum, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -50,6 +50,12 @@ class Location(Base):
         String(20), nullable=True
     )  # "г", "пос", "пгт", "с" — для отображения
     sort_order: Mapped[int] = mapped_column(Integer, default=0)
+    
+    # SEO: склонённая форма для мета-тегов ("в Калининграде", "в Зеленоградске")
+    name_locative: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    
+    # SEO: краткое описание для geo-страниц (отображается под H1)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     # Связи
     parent: Mapped["Location | None"] = relationship(

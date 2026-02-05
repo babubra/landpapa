@@ -19,6 +19,7 @@ interface Plot {
     status: string;
     land_use: { name: string } | null;
     land_category: { name: string } | null;
+    purpose?: { name: string } | null;  // Назначение (ИЖС, СНТ и т.д.)
     // Геоданные
     latitude: number | null;
     longitude: number | null;
@@ -39,6 +40,15 @@ interface ImageType {
     thumbnail_url: string | null;
 }
 
+interface ListingLocation {
+    id: number;
+    name: string;
+    slug: string;
+    type: string;
+    settlement_type: string | null;
+    name_locative: string | null;
+}
+
 interface ListingDetail {
     id: number;
     slug: string;
@@ -52,6 +62,7 @@ interface ListingDetail {
     plots_count: number;
     realtor: Realtor;
     settlement?: Settlement | null;
+    location?: ListingLocation | null;  // Новая иерархия локаций
     plots: Plot[];
     images: ImageType[];
     meta_title: string | null;
@@ -80,72 +91,111 @@ export async function generateMetadata({
     params,
 }: ListingPageProps): Promise<Metadata> {
     const { slug } = await params;
-    const listing = await getListing(slug);
+    const [listing, settings] = await Promise.all([
+        getListing(slug),
+        getSiteSettings()
+    ]);
 
     if (!listing) {
         return { title: "Объявление не найдено" };
     }
 
-    // --- Auto-Generation Logic ---
+    // --- Подготовка переменных для шаблонов ---
 
-    // 1. Формируем локацию
+    // Локация
     const locationParts = [];
-    if (listing.settlement?.district?.name) locationParts.push(listing.settlement.district.name);
-    if (listing.settlement?.name) locationParts.push(listing.settlement.name);
-    const locationStr = locationParts.join(", ");
-
-    // 2. Title
-    let title = listing.meta_title;
-    if (!title) {
-        // Автогенерация уникального title с кадастровыми номерами и ценой
-        const plotsCount = listing.plots?.length || 0;
-        const isMultiple = plotsCount > 1;
-
-        // Площадь: если несколько участков - "от X", иначе просто площадь
-        const firstArea = listing.plots[0]?.area ? (listing.plots[0].area / 100).toFixed(2).replace(".00", "") : null;
-        const areaStr = firstArea
-            ? (isMultiple ? `от ${firstArea}` : firstArea)
-            : null;
-
-        // Цена: если несколько участков - "от X", иначе просто цена
-        const priceValue = listing.price_min;
-        const formatPrice = (price: number) => {
-            return new Intl.NumberFormat("ru-RU").format(price) + " ₽";
-        };
-        const priceStr = priceValue
-            ? (isMultiple ? `от ${formatPrice(priceValue)}` : formatPrice(priceValue))
-            : null;
-
-        // Кадастровые номера: до 2-х с многоточием
-        const cadastralNumbers = listing.plots
-            .map(p => p.cadastral_number)
-            .filter((cn): cn is string => !!cn);
-        let cadastralStr: string | null = null;
-        if (cadastralNumbers.length === 1) {
-            cadastralStr = cadastralNumbers[0];
-        } else if (cadastralNumbers.length === 2) {
-            cadastralStr = cadastralNumbers.slice(0, 2).join(", ");
-        } else if (cadastralNumbers.length > 2) {
-            cadastralStr = cadastralNumbers.slice(0, 2).join(", ") + "...";
+    if (listing.location?.name) {
+        // Новая иерархия
+        const loc = listing.location;
+        if (loc.name_locative) {
+            locationParts.push(loc.name_locative);
+        } else if (loc.settlement_type) {
+            locationParts.push(`в ${loc.name}`);
+        } else {
+            locationParts.push(loc.name);
         }
+    } else if (listing.settlement?.name) {
+        // Fallback на старую систему
+        locationParts.push(listing.settlement.name);
+        if (listing.settlement.district?.name) {
+            locationParts.push(listing.settlement.district.name);
+        }
+    }
+    const locationStr = locationParts.length > 0 ? locationParts[0] : "";
+    const locationFull = locationParts.join(", ");
 
-        // Собираем title: Участок {площадь} соток | {цена} | {кадастр} | {локация}
-        const titleParts = ["Участок"];
-        if (areaStr) titleParts.push(`${areaStr} сот.`);
-        if (priceStr) titleParts.push(priceStr);
-        if (cadastralStr) titleParts.push(cadastralStr);
-        if (locationStr) titleParts.push(locationStr);
+    // Площадь
+    const plotsCount = listing.plots?.length || 0;
+    const isMultiple = plotsCount > 1;
+    const firstArea = listing.plots?.[0]?.area ? (listing.plots[0].area / 100).toFixed(2).replace(".00", "") : null;
+    const areaStr = firstArea
+        ? (isMultiple ? `от ${firstArea} сот.` : `${firstArea} сот.`)
+        : "";
 
-        title = titleParts.join(" | ");
+    // Цена
+    const formatPrice = (price: number) => new Intl.NumberFormat("ru-RU").format(price) + " ₽";
+    const priceValue = listing.price_min;
+    const priceStr = priceValue
+        ? (isMultiple ? `от ${formatPrice(priceValue)}` : formatPrice(priceValue))
+        : "";
+
+    // Кадастровые номера
+    const cadastralNumbers = listing.plots
+        ?.map(p => p.cadastral_number)
+        .filter((cn): cn is string => !!cn) || [];
+    let cadastralStr = "";
+    if (cadastralNumbers.length === 1) {
+        cadastralStr = cadastralNumbers[0];
+    } else if (cadastralNumbers.length === 2) {
+        cadastralStr = cadastralNumbers.slice(0, 2).join(", ");
+    } else if (cadastralNumbers.length > 2) {
+        cadastralStr = cadastralNumbers.slice(0, 2).join(", ") + "...";
     }
 
-    // 3. Description
+    // Назначение
+    const purposeStr = listing.plots?.[0]?.purpose?.name || "";
+
+    // --- Генерация Title ---
+    let title = listing.meta_title;
+    if (!title) {
+        const titleTemplate = settings.seo_listing_title_template;
+        if (titleTemplate) {
+            // Применяем шаблон
+            title = titleTemplate
+                .replace(/\{title\}/g, listing.title || "Участок")
+                .replace(/\{price\}/g, priceStr)
+                .replace(/\{area\}/g, areaStr)
+                .replace(/\{location\}/g, locationStr)
+                .replace(/\{cadastral\}/g, cadastralStr)
+                .replace(/\{purpose\}/g, purposeStr);
+        } else {
+            // Fallback на старую логику
+            const titleParts = ["Участок"];
+            if (areaStr) titleParts.push(areaStr);
+            if (priceStr) titleParts.push(priceStr);
+            if (cadastralStr) titleParts.push(cadastralStr);
+            if (locationFull) titleParts.push(locationFull);
+            title = titleParts.join(" | ");
+        }
+    }
+
+    // --- Генерация Description ---
     let description = listing.meta_description;
     if (!description) {
-        // Автогенерация: Земельный участок: {title}. {location}, Калининградская область.
-        // Если title совпадал с автогенерацией, можно использовать listing.title
-        const baseTitle = listing.title;
-        description = `Земельный участок: ${baseTitle}. ${locationStr ? `${locationStr}, ` : ""}Калининградская область.`;
+        const descTemplate = settings.seo_listing_description_template;
+        if (descTemplate) {
+            // Применяем шаблон
+            description = descTemplate
+                .replace(/\{title\}/g, listing.title || "Участок")
+                .replace(/\{price\}/g, priceStr)
+                .replace(/\{area\}/g, areaStr)
+                .replace(/\{location\}/g, locationStr)
+                .replace(/\{cadastral\}/g, cadastralStr)
+                .replace(/\{purpose\}/g, purposeStr);
+        } else {
+            // Fallback на старую логику
+            description = `Земельный участок: ${listing.title}. ${locationFull ? `${locationFull}, ` : ""}Калининградская область.`;
+        }
     }
 
     const ogImages = [];

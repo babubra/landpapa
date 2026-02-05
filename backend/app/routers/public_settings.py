@@ -50,6 +50,13 @@ PUBLIC_SETTING_KEYS = [
     "seo_news_description",
     "seo_map_title",
     "seo_map_description",
+    # Шаблоны для Geo-страниц
+    "seo_geo_title_template",
+    "seo_geo_description_template",
+    "seo_geo_h1_template",
+    # Шаблоны для страниц объявлений
+    "seo_listing_title_template",
+    "seo_listing_description_template",
     # Соцсети
     "org_vk_url",
     "org_telegram_url",
@@ -93,6 +100,13 @@ class PublicSettingsResponse(BaseModel):
     seo_news_description: str | None = None
     seo_map_title: str | None = None
     seo_map_description: str | None = None
+    # Шаблоны для Geo-страниц
+    seo_geo_title_template: str | None = None
+    seo_geo_description_template: str | None = None
+    seo_geo_h1_template: str | None = None
+    # Шаблоны для страниц объявлений
+    seo_listing_title_template: str | None = None
+    seo_listing_description_template: str | None = None
     # Соцсети
     org_vk_url: str | None = None
     org_telegram_url: str | None = None

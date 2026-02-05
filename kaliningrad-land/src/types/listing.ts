@@ -34,6 +34,7 @@ export interface Location {
     type: string;
     parent_id?: number | null;
     settlement_type?: string | null;
+    name_locative?: string | null;  // Склонение для SEO ("в Калининграде")
     parent?: Location | null;
 }
 
@@ -52,6 +53,11 @@ export interface ListingData {
     realtor: Realtor;
     settlement?: Settlement | null;
     location?: Location | null;
+    // Участки (для SEO шаблонов)
+    plots?: {
+        cadastral_number?: string | null;
+        purpose?: { name: string } | null;
+    }[] | null;
     // Поддержка обоих имён поля изображения
     image?: ImageData | null;
     main_image?: ImageData | null;

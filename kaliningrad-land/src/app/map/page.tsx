@@ -14,6 +14,8 @@ export async function generateMetadata(): Promise<Metadata> {
     return {
         title,
         description,
+        // noindex — карта это интерактивный инструмент, не SEO-страница
+        robots: { index: false, follow: true },
         alternates: {
             canonical: "/map",
         },

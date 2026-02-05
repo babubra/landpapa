@@ -43,33 +43,34 @@ LOCATIONS_DATA = {
     "region": {
         "name": "Калининградская область",
         "slug": "kaliningradskaja-oblast",
+        "name_locative": "в Калининградской области",
     },
     # Городские округа (города, которые сами являются муниципальными образованиями)
     "urban_okrugs": [
-        {"name": "Калининград", "slug": "kaliningrad", "settlement_type": "г", "sort_order": 0},
-        {"name": "Пионерский", "slug": "pionerskij", "settlement_type": "г", "sort_order": 1},
-        {"name": "Светлогорск", "slug": "svetlogorsk", "settlement_type": "г", "sort_order": 2},
-        {"name": "Янтарный", "slug": "yantarnyj", "settlement_type": "пгт", "sort_order": 3},
+        {"name": "Калининград", "slug": "kaliningrad", "settlement_type": "г", "sort_order": 0, "name_locative": "в Калининграде"},
+        {"name": "Пионерский", "slug": "pionerskij", "settlement_type": "г", "sort_order": 1, "name_locative": "в Пионерском"},
+        {"name": "Светлогорск", "slug": "svetlogorsk", "settlement_type": "г", "sort_order": 2, "name_locative": "в Светлогорске"},
+        {"name": "Янтарный", "slug": "yantarnyj", "settlement_type": "пгт", "sort_order": 3, "name_locative": "в Янтарном"},
     ],
     # Муниципальные районы
     "districts": [
-        {"name": "Багратионовский район", "slug": "bagrationovskij-r-n", "sort_order": 10},
-        {"name": "Балтийский район", "slug": "baltijskij-r-n", "sort_order": 11},
-        {"name": "Гвардейский район", "slug": "gvardejskij-r-n", "sort_order": 12},
-        {"name": "Гурьевский район", "slug": "gur-evskij-r-n", "sort_order": 13},  # Legacy slug
-        {"name": "Гусевский район", "slug": "gusevskij-r-n", "sort_order": 14},
-        {"name": "Зеленоградский район", "slug": "zelenogradskij-r-n", "sort_order": 15},
-        {"name": "Краснознаменский район", "slug": "krasnoznamenskij-r-n", "sort_order": 16},
-        {"name": "Мамоновский район", "slug": "mamonovskij-r-n", "sort_order": 17},
-        {"name": "Неманский район", "slug": "nemanskij-r-n", "sort_order": 18},
-        {"name": "Нестеровский район", "slug": "nesterovskij-r-n", "sort_order": 19},
-        {"name": "Озёрский район", "slug": "ozerskij-r-n", "sort_order": 20},
-        {"name": "Полесский район", "slug": "polesskij-r-n", "sort_order": 21},
-        {"name": "Правдинский район", "slug": "pravdinskij-r-n", "sort_order": 22},
-        {"name": "Светловский район", "slug": "svetlovskij-r-n", "sort_order": 23},
-        {"name": "Славский район", "slug": "slavskij-r-n", "sort_order": 24},
-        {"name": "Советский район", "slug": "sovetskij-r-n", "sort_order": 25},
-        {"name": "Черняховский район", "slug": "chernjahovskij-r-n", "sort_order": 26},
+        {"name": "Багратионовский район", "slug": "bagrationovskij-r-n", "sort_order": 10, "name_locative": "в Багратионовском районе"},
+        {"name": "Балтийский район", "slug": "baltijskij-r-n", "sort_order": 11, "name_locative": "в Балтийском районе"},
+        {"name": "Гвардейский район", "slug": "gvardejskij-r-n", "sort_order": 12, "name_locative": "в Гвардейском районе"},
+        {"name": "Гурьевский район", "slug": "gur-evskij-r-n", "sort_order": 13, "name_locative": "в Гурьевском районе"},
+        {"name": "Гусевский район", "slug": "gusevskij-r-n", "sort_order": 14, "name_locative": "в Гусевском районе"},
+        {"name": "Зеленоградский район", "slug": "zelenogradskij-r-n", "sort_order": 15, "name_locative": "в Зеленоградском районе"},
+        {"name": "Краснознаменский район", "slug": "krasnoznamenskij-r-n", "sort_order": 16, "name_locative": "в Краснознаменском районе"},
+        {"name": "Мамоновский район", "slug": "mamonovskij-r-n", "sort_order": 17, "name_locative": "в Мамоновском районе"},
+        {"name": "Неманский район", "slug": "nemanskij-r-n", "sort_order": 18, "name_locative": "в Неманском районе"},
+        {"name": "Нестеровский район", "slug": "nesterovskij-r-n", "sort_order": 19, "name_locative": "в Нестеровском районе"},
+        {"name": "Озёрский район", "slug": "ozerskij-r-n", "sort_order": 20, "name_locative": "в Озёрском районе"},
+        {"name": "Полесский район", "slug": "polesskij-r-n", "sort_order": 21, "name_locative": "в Полесском районе"},
+        {"name": "Правдинский район", "slug": "pravdinskij-r-n", "sort_order": 22, "name_locative": "в Правдинском районе"},
+        {"name": "Светловский район", "slug": "svetlovskij-r-n", "sort_order": 23, "name_locative": "в Светловском районе"},
+        {"name": "Славский район", "slug": "slavskij-r-n", "sort_order": 24, "name_locative": "в Славском районе"},
+        {"name": "Советский район", "slug": "sovetskij-r-n", "sort_order": 25, "name_locative": "в Советском районе"},
+        {"name": "Черняховский район", "slug": "chernjahovskij-r-n", "sort_order": 26, "name_locative": "в Черняховском районе"},
     ],
 }
 
@@ -131,6 +132,7 @@ def seed_locations(db: Session):
         type=LocationType.REGION,
         parent_id=None,
         sort_order=0,
+        name_locative=region_data.get("name_locative"),
     )
     db.add(region)
     db.flush()  # Получаем ID региона
@@ -144,6 +146,7 @@ def seed_locations(db: Session):
             settlement_type=data.get("settlement_type"),
             parent_id=region.id,
             sort_order=data.get("sort_order", 0),
+            name_locative=data.get("name_locative"),
         )
         db.add(city)
     
@@ -155,6 +158,7 @@ def seed_locations(db: Session):
             type=LocationType.DISTRICT,
             parent_id=region.id,
             sort_order=data.get("sort_order", 0),
+            name_locative=data.get("name_locative"),
         )
         db.add(district)
     
@@ -340,6 +344,35 @@ def seed_settings(db: Session):
             "key": "seo_map_description",
             "value": "",
             "description": "Description страницы «Карта»"
+        },
+        # Шаблоны для Geo-страниц (районы, города, посёлки)
+        # Доступные переменные: {location} — название с типом, {location_name} — только название
+        {
+            "key": "seo_geo_title_template",
+            "value": "Участки {location} | РКК земля",
+            "description": "Шаблон Title для geo-страниц. Переменные: {location} — 'в Калининграде', {location_name} — 'Калининград'"
+        },
+        {
+            "key": "seo_geo_description_template",
+            "value": "Земельные участки {location}. Актуальные предложения по продаже земли с проверенными документами.",
+            "description": "Шаблон Description для geo-страниц. Переменные: {location}, {location_name}"
+        },
+        {
+            "key": "seo_geo_h1_template",
+            "value": "Участки {location}",
+            "description": "Шаблон H1 для geo-страниц. Переменные: {location}, {location_name}"
+        },
+        # Шаблоны для страниц объявлений (карточка листинга)
+        # Доступные переменные: {title}, {price}, {area}, {location}, {cadastral}, {purpose}
+        {
+            "key": "seo_listing_title_template",
+            "value": "{title} — {area} {location} | РКК земля",
+            "description": "Шаблон Title для страницы объявления. Переменные: {title}, {price}, {area}, {location}, {cadastral}, {purpose}"
+        },
+        {
+            "key": "seo_listing_description_template",
+            "value": "{title}. Площадь {area}, цена {price}. {location}. Кадастровый номер: {cadastral}.",
+            "description": "Шаблон Description для страницы объявления. Переменные: {title}, {price}, {area}, {location}, {cadastral}, {purpose}"
         },
         # Ссылки на соцсети
         {

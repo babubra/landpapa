@@ -80,8 +80,18 @@ export async function generateMetadata({ searchParams }: MetadataProps): Promise
     const settings = await getSiteSettings();
     const params = await searchParams;
 
-    const title = settings.seo_catalog_title || "Каталог земельных участков";
+    // Получаем номер страницы
+    const page = parseInt(params.page || "1", 10);
+    const pageNum = isNaN(page) || page < 1 ? 1 : page;
+
+    // Базовый title и description
+    let title = settings.seo_catalog_title || "Каталог земельных участков";
     const description = settings.seo_catalog_description || "Все земельные участки в Калининградской области. Фильтрация по районам, цене и площади.";
+
+    // Добавляем суффикс страницы для страниц > 1
+    if (pageNum > 1) {
+        title = `${title} — страница ${pageNum}`;
+    }
 
     // Определяем canonical URL
     let canonicalPath = "/catalog";
@@ -94,9 +104,22 @@ export async function generateMetadata({ searchParams }: MetadataProps): Promise
         }
     }
 
+    // Добавляем page к canonical для страниц > 1
+    if (pageNum > 1) {
+        canonicalPath = `${canonicalPath}?page=${pageNum}`;
+    }
+
+    // noindex для страниц с фильтрами (кроме page и location_id)
+    const filterParams = Object.keys(params).filter(
+        (key) => !["page", "location_id"].includes(key)
+    );
+    const hasFilters = filterParams.length > 0;
+
     return {
         title,
         description,
+        // noindex для страниц с фильтрами — предотвращает индексацию мусорных URL
+        robots: hasFilters ? { index: false, follow: true } : undefined,
         alternates: {
             canonical: `${SITE_URL}${canonicalPath}`,
         },

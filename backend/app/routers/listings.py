@@ -193,27 +193,65 @@ async def get_all_slugs(
     db: AsyncSession = Depends(get_async_db),
 ):
     """Получить список всех слагов опубликованных объявлений (для sitemap)."""
-    # Выбираем slug объявления, дату обновления, slug поселения и района
+    
+    # Получаем все опубликованные листинги с их location и старыми полями
     query = (
         select(
             Listing.slug, 
             Listing.updated_at,
+            Listing.location_id,
             Settlement.slug.label("settlement_slug"),
             District.slug.label("district_slug")
         )
-        .join(Settlement, Listing.settlement_id == Settlement.id)
-        .join(District, Settlement.district_id == District.id)
+        .outerjoin(Settlement, Listing.settlement_id == Settlement.id)
+        .outerjoin(District, Settlement.district_id == District.id)
         .where(Listing.is_published == True)
     )
     
     result = await db.execute(query)
     
-    # SQLAlchemy возвращает Row, которые можно распаковать в dict
+    # Собираем все location_id для пакетного получения путей
+    rows = result.all()
+    location_ids = {row.location_id for row in rows if row.location_id}
+    
+    # Получаем пути для всех локаций сразу
+    location_paths: dict[int, list[str]] = {}
+    if location_ids:
+        # Для каждой локации строим путь от неё до корня
+        for loc_id in location_ids:
+            path: list[str] = []
+            current_id = loc_id
+            
+            # Защита от бесконечного цикла
+            max_depth = 10
+            while current_id and max_depth > 0:
+                loc_result = await db.execute(
+                    select(Location.slug, Location.parent_id, Location.type)
+                    .where(Location.id == current_id)
+                )
+                loc = loc_result.first()
+                if not loc:
+                    break
+                    
+                # Регион не включаем в URL
+                if loc.type != "region":
+                    path.insert(0, loc.slug)
+                    
+                current_id = loc.parent_id
+                max_depth -= 1
+            
+            if path:
+                location_paths[loc_id] = path
+    
+    # Формируем ответ
     items = []
-    for row in result.all():
+    for row in rows:
+        location_path = location_paths.get(row.location_id) if row.location_id else None
+        
         items.append(ListingSitemapItem(
             slug=row.slug,
             updated_at=row.updated_at,
+            location_path=location_path,
             settlement_slug=row.settlement_slug,
             district_slug=row.district_slug
         ))

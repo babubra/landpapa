@@ -339,6 +339,85 @@ export default function SeoSettingsPage() {
                             </div>
                         </div>
 
+                        {/* Шаблоны geo-страниц */}
+                        <div className="bg-card rounded-lg border p-6 border-indigo-200 dark:border-indigo-800/50">
+                            <h2 className="text-lg font-semibold mb-4 text-indigo-700 dark:text-indigo-400">
+                                🗺️ Шаблоны geo-страниц
+                            </h2>
+                            <p className="text-sm text-muted-foreground mb-4">
+                                Шаблоны для страниц районов и населённых пунктов (например, /zelenogradskij-r-n, /kaliningrad).
+                            </p>
+                            <div className="bg-indigo-50 dark:bg-indigo-950/30 rounded-lg p-4 mb-6">
+                                <p className="text-sm text-indigo-700 dark:text-indigo-300">
+                                    <strong>Доступные переменные:</strong>
+                                </p>
+                                <ul className="text-sm text-indigo-600 dark:text-indigo-400 mt-2 space-y-1">
+                                    <li><code className="bg-indigo-100 dark:bg-indigo-900 px-1 rounded">{"{location}"}</code> — локация со склонением (&quot;в Калининграде&quot;, &quot;в Гурьевском районе&quot;)</li>
+                                    <li><code className="bg-indigo-100 dark:bg-indigo-900 px-1 rounded">{"{location_name}"}</code> — только название (&quot;Калининград&quot;, &quot;Гурьевский район&quot;)</li>
+                                </ul>
+                            </div>
+                            <div className="space-y-6">
+                                {renderTextSetting(
+                                    "seo_geo_title_template",
+                                    "Шаблон Title",
+                                    "Участки {location} | РКК земля"
+                                )}
+                                {renderTextSetting(
+                                    "seo_geo_description_template",
+                                    "Шаблон Description",
+                                    "Земельные участки {location}. Актуальные предложения...",
+                                    true
+                                )}
+                                {renderTextSetting(
+                                    "seo_geo_h1_template",
+                                    "Шаблон H1 (заголовок страницы)",
+                                    "Участки {location}"
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Шаблоны страниц объявлений */}
+                        <div className="bg-card rounded-lg border p-6 border-emerald-200 dark:border-emerald-800/50">
+                            <h2 className="text-lg font-semibold mb-4 text-emerald-700 dark:text-emerald-400">
+                                📋 Шаблоны страниц объявлений
+                            </h2>
+                            <p className="text-sm text-muted-foreground mb-4">
+                                Шаблоны для страниц отдельных объявлений (карточек листингов).
+                            </p>
+                            <div className="bg-emerald-50 dark:bg-emerald-950/30 rounded-lg p-4 mb-6">
+                                <p className="text-sm text-emerald-700 dark:text-emerald-300">
+                                    <strong>Доступные переменные:</strong>
+                                </p>
+                                <ul className="text-sm text-emerald-600 dark:text-emerald-400 mt-2 space-y-1">
+                                    <li><code className="bg-emerald-100 dark:bg-emerald-900 px-1 rounded">{"{title}"}</code> — заголовок объявления</li>
+                                    <li><code className="bg-emerald-100 dark:bg-emerald-900 px-1 rounded">{"{price}"}</code> — цена (&quot;1 500 000 ₽&quot;)</li>
+                                    <li><code className="bg-emerald-100 dark:bg-emerald-900 px-1 rounded">{"{area}"}</code> — площадь (&quot;15 соток&quot;)</li>
+                                    <li><code className="bg-emerald-100 dark:bg-emerald-900 px-1 rounded">{"{location}"}</code> — локация (&quot;в Калининграде&quot;)</li>
+                                    <li><code className="bg-emerald-100 dark:bg-emerald-900 px-1 rounded">{"{cadastral}"}</code> — кадастровый номер</li>
+                                    <li><code className="bg-emerald-100 dark:bg-emerald-900 px-1 rounded">{"{purpose}"}</code> — назначение (ИЖС, СНТ, ЛПХ)</li>
+                                </ul>
+                            </div>
+                            <div className="space-y-6">
+                                {renderTextSetting(
+                                    "seo_listing_title_template",
+                                    "Шаблон Title",
+                                    "{title} — {area} {location} | РКК земля"
+                                )}
+                                {renderTextSetting(
+                                    "seo_listing_description_template",
+                                    "Шаблон Description",
+                                    "{title}. Площадь {area}, цена {price}. {location}. Кадастровый номер: {cadastral}.",
+                                    true
+                                )}
+                            </div>
+                            <div className="mt-4 p-3 bg-muted/50 rounded-lg">
+                                <p className="text-xs text-muted-foreground">
+                                    <strong>Примечание:</strong> H1 заголовок страницы объявления = заголовок объявления (title).
+                                    Шаблон не требуется, так как заголовок редактируется индивидуально для каждого объявления.
+                                </p>
+                            </div>
+                        </div>
+
                         {/* Ссылки на соцсети */}
                         <div className="bg-card rounded-lg border p-6">
                             <h2 className="text-lg font-semibold mb-4">Ссылки на соцсети</h2>

@@ -3,13 +3,14 @@
 import { useEffect, useState, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, ChevronRight, ChevronDown, Building2, MapPin, Home, Globe, Pencil, Check, X, Loader2 } from "lucide-react";
+import { ArrowLeft, ChevronRight, ChevronDown, Building2, MapPin, Home, Globe, Pencil, Check, X, Loader2, FileText } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { API_URL } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 
 // Типы
@@ -22,6 +23,8 @@ interface Location {
     parent_id: number | null;
     listings_count: number;
     sort_order: number;
+    name_locative: string | null;  // SEO: "в Калининграде"
+    description: string | null;  // SEO: описание локации
     children: Location[];
 }
 
@@ -69,6 +72,8 @@ function LocationNode({
     expandedIds,
     onToggleExpand,
     onUpdateSortOrder,
+    onUpdateLocative,
+    onUpdateDescription,
     token,
 }: {
     node: Location;
@@ -76,12 +81,18 @@ function LocationNode({
     expandedIds: Set<number>;
     onToggleExpand: (id: number) => void;
     onUpdateSortOrder: (id: number, sortOrder: number) => void;
+    onUpdateLocative: (id: number, nameLocative: string | null) => void;
+    onUpdateDescription: (id: number, description: string | null) => void;
     token: string | null;
 }) {
     const isExpanded = expandedIds.has(node.id);
     const hasChildren = node.children.length > 0;
     const [isEditing, setIsEditing] = useState(false);
+    const [isEditingLocative, setIsEditingLocative] = useState(false);
+    const [isEditingDescription, setIsEditingDescription] = useState(false);
     const [sortOrderValue, setSortOrderValue] = useState(node.sort_order?.toString() || "0");
+    const [locativeValue, setLocativeValue] = useState(node.name_locative || "");
+    const [descriptionValue, setDescriptionValue] = useState(node.description || "");
     const [isSaving, setIsSaving] = useState(false);
     const [isHovered, setIsHovered] = useState(false);
 
@@ -113,6 +124,60 @@ function LocationNode({
     const handleCancel = () => {
         setSortOrderValue(node.sort_order?.toString() || "0");
         setIsEditing(false);
+    };
+
+    const handleSaveLocative = async () => {
+        setIsSaving(true);
+        try {
+            const res = await fetch(`${API_URL}/api/admin/locations/${node.id}`, {
+                method: "PATCH",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify({ name_locative: locativeValue || null }),
+            });
+            if (res.ok) {
+                onUpdateLocative(node.id, locativeValue || null);
+                setIsEditingLocative(false);
+            }
+        } catch (error) {
+            console.error("Ошибка сохранения:", error);
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    const handleCancelLocative = () => {
+        setLocativeValue(node.name_locative || "");
+        setIsEditingLocative(false);
+    };
+
+    const handleSaveDescription = async () => {
+        setIsSaving(true);
+        try {
+            const res = await fetch(`${API_URL}/api/admin/locations/${node.id}`, {
+                method: "PATCH",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify({ description: descriptionValue || null }),
+            });
+            if (res.ok) {
+                onUpdateDescription(node.id, descriptionValue || null);
+                setIsEditingDescription(false);
+            }
+        } catch (error) {
+            console.error("Ошибка сохранения:", error);
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    const handleCancelDescription = () => {
+        setDescriptionValue(node.description || "");
+        setIsEditingDescription(false);
     };
 
     return (
@@ -203,7 +268,112 @@ function LocationNode({
                 <code className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded">
                     {node.slug}
                 </code>
+
+                {/* Name Locative (SEO) */}
+                {isEditingLocative ? (
+                    <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                        <Input
+                            type="text"
+                            value={locativeValue}
+                            onChange={(e) => setLocativeValue(e.target.value)}
+                            placeholder="в Калининграде"
+                            className="w-40 h-7 text-sm"
+                            disabled={isSaving}
+                            autoFocus
+                            onKeyDown={(e) => {
+                                if (e.key === "Enter") handleSaveLocative();
+                                if (e.key === "Escape") handleCancelLocative();
+                            }}
+                        />
+                        <Button size="icon" variant="ghost" className="h-7 w-7" onClick={handleSaveLocative} disabled={isSaving}>
+                            {isSaving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3 text-green-600" />}
+                        </Button>
+                        <Button size="icon" variant="ghost" className="h-7 w-7" onClick={handleCancelLocative} disabled={isSaving}>
+                            <X className="h-3 w-3 text-red-600" />
+                        </Button>
+                    </div>
+                ) : (
+                    <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                        {node.name_locative ? (
+                            <span className="text-xs text-green-600 bg-green-50 px-2 py-0.5 rounded">
+                                {node.name_locative}
+                            </span>
+                        ) : (
+                            <span className="text-xs text-muted-foreground italic">
+                                нет SEO
+                            </span>
+                        )}
+                        {node.description && (
+                            <span className="text-xs text-blue-600 bg-blue-50 px-2 py-0.5 rounded">
+                                описание ✓
+                            </span>
+                        )}
+                        {isHovered && (node.type === "city" || node.type === "district" || node.type === "settlement") && (
+                            <>
+                                <Button
+                                    size="icon"
+                                    variant="ghost"
+                                    className="h-6 w-6"
+                                    onClick={() => setIsEditingLocative(true)}
+                                    title="Редактировать SEO склонение"
+                                >
+                                    <Pencil className="h-3 w-3" />
+                                </Button>
+                                <Button
+                                    size="icon"
+                                    variant="ghost"
+                                    className={cn("h-6 w-6", node.description && "text-blue-500")}
+                                    onClick={() => setIsEditingDescription(true)}
+                                    title="Редактировать описание"
+                                >
+                                    <FileText className="h-3 w-3" />
+                                </Button>
+                            </>
+                        )}
+                    </div>
+                )}
             </div>
+
+            {/* Редактирование описания — expandable секция */}
+            {isEditingDescription && (
+                <div
+                    className={cn("ml-6 mt-2 p-3 bg-muted/30 rounded-lg border", level > 0 && "ml-12")}
+                    onClick={(e) => e.stopPropagation()}
+                >
+                    <div className="text-xs text-muted-foreground mb-2">
+                        SEO-описание (отображается на geo-странице под H1)
+                    </div>
+                    <Textarea
+                        value={descriptionValue}
+                        onChange={(e) => setDescriptionValue(e.target.value)}
+                        placeholder="Описание локации для SEO..."
+                        className="min-h-[100px] text-sm"
+                    />
+                    <div className="flex gap-2 mt-2">
+                        <Button
+                            size="sm"
+                            onClick={handleSaveDescription}
+                            disabled={isSaving}
+                        >
+                            {isSaving ? (
+                                <Loader2 className="h-3 w-3 animate-spin" />
+                            ) : (
+                                <Check className="h-3 w-3 mr-1" />
+                            )}
+                            Сохранить
+                        </Button>
+                        <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={handleCancelDescription}
+                            disabled={isSaving}
+                        >
+                            <X className="h-3 w-3 mr-1" />
+                            Отмена
+                        </Button>
+                    </div>
+                </div>
+            )}
 
             {/* Children */}
             {hasChildren && isExpanded && (
@@ -216,6 +386,8 @@ function LocationNode({
                             expandedIds={expandedIds}
                             onToggleExpand={onToggleExpand}
                             onUpdateSortOrder={onUpdateSortOrder}
+                            onUpdateLocative={onUpdateLocative}
+                            onUpdateDescription={onUpdateDescription}
                             token={token}
                         />
                     ))}
@@ -290,6 +462,38 @@ export default function LocationsPage() {
             return nodes.map(node => {
                 if (node.id === id) {
                     return { ...node, sort_order: newSortOrder };
+                }
+                if (node.children.length > 0) {
+                    return { ...node, children: updateRecursive(node.children) };
+                }
+                return node;
+            });
+        };
+        setHierarchy(updateRecursive);
+    }, []);
+
+    // Callback для обновления name_locative в локальном state
+    const updateLocative = useCallback((id: number, newLocative: string | null) => {
+        const updateRecursive = (nodes: Location[]): Location[] => {
+            return nodes.map(node => {
+                if (node.id === id) {
+                    return { ...node, name_locative: newLocative };
+                }
+                if (node.children.length > 0) {
+                    return { ...node, children: updateRecursive(node.children) };
+                }
+                return node;
+            });
+        };
+        setHierarchy(updateRecursive);
+    }, []);
+
+    // Callback для обновления description в локальном state
+    const updateDescription = useCallback((id: number, newDescription: string | null) => {
+        const updateRecursive = (nodes: Location[]): Location[] => {
+            return nodes.map(node => {
+                if (node.id === id) {
+                    return { ...node, description: newDescription };
                 }
                 if (node.children.length > 0) {
                     return { ...node, children: updateRecursive(node.children) };
@@ -393,6 +597,8 @@ export default function LocationsPage() {
                                         expandedIds={expandedIds}
                                         onToggleExpand={toggleExpand}
                                         onUpdateSortOrder={updateSortOrder}
+                                        onUpdateLocative={updateLocative}
+                                        onUpdateDescription={updateDescription}
                                         token={token}
                                     />
                                 ))}

@@ -19,6 +19,9 @@ class ListingSitemapItem(BaseModel):
     """Данные для sitemap."""
     slug: str
     updated_at: datetime
+    # Новая иерархия (приоритет)
+    location_path: list[str] | None = None  # ["zelenogradskij-r-n", "svetlogorsk"]
+    # Старая схема (fallback)
     settlement_slug: str | None = None
     district_slug: str | None = None
 
@@ -70,6 +73,7 @@ class LocationParentItem(BaseModel):
     slug: str
     type: str
     settlement_type: str | None = None
+    name_locative: str | None = None  # SEO: "в Калининграде"
 
     class Config:
         from_attributes = True
@@ -83,6 +87,7 @@ class LocationItem(BaseModel):
     type: str  # region, district, city, settlement
     parent_id: int | None = None
     settlement_type: str | None = None
+    name_locative: str | None = None  # SEO: "в Калининграде"
     parent: LocationParentItem | None = None  # Используем упрощенную схему без рекурсии
 
     class Config:
