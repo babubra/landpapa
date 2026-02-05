@@ -219,7 +219,7 @@ export default async function ListingPage({ params }: ListingPageProps) {
         <div className="min-h-screen bg-background">
             <SeoJsonLd data={jsonLd} />
             <ListingProvider>
-                <div className="container mx-auto px-4 py-8 max-w-6xl">
+                <div className="container mx-auto px-4 py-8 max-w-7xl">
                     {/* Хлебные крошки */}
                     <Breadcrumbs items={[
                         { name: "Каталог", href: "/catalog" },

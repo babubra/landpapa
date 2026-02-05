@@ -6,14 +6,14 @@ import { ListingCard } from "@/components/catalog/ListingCard";
 import { CatalogFilters } from "@/components/catalog/CatalogFilters";
 import { Pagination } from "@/components/ui/pagination";
 import type { ListingsResponse, ListingData } from "@/types/listing";
-import type { GeoLocation } from "@/lib/geoUrl";
 
 interface CatalogContentProps {
     initialData: ListingsResponse;
-    geoLocation?: GeoLocation;
+    locationId?: number;  // ID текущей локации из URL path
+    baseUrl?: string;     // Базовый URL для пагинации и фильтров
 }
 
-export function CatalogContent({ initialData, geoLocation }: CatalogContentProps) {
+export function CatalogContent({ initialData, locationId, baseUrl = "/catalog" }: CatalogContentProps) {
     const searchParams = useSearchParams();
 
     // Инициализируем state данными с сервера
@@ -49,14 +49,9 @@ export function CatalogContent({ initialData, geoLocation }: CatalogContentProps
             else params.set(key, value);
         });
 
-        // Если есть geoLocation — добавляем параметры для фильтрации
-        // Приоритет: locationId > settlementId > districtId
-        if (geoLocation?.locationId && !params.has("location_id")) {
-            params.set("location_id", geoLocation.locationId.toString());
-        } else if (geoLocation?.settlementId && !params.has("location_id") && !params.has("settlement_id")) {
-            params.set("settlement_id", geoLocation.settlementId.toString());
-        } else if (geoLocation?.districtId && !params.has("location_id") && !params.has("district_id")) {
-            params.set("district_id", geoLocation.districtId.toString());
+        // Если есть locationId — добавляем параметр для фильтрации
+        if (locationId && !params.has("location_id")) {
+            params.set("location_id", locationId.toString());
         }
 
         // Размер страницы
@@ -76,7 +71,7 @@ export function CatalogContent({ initialData, geoLocation }: CatalogContentProps
         } finally {
             setLoading(false);
         }
-    }, [searchParams, geoLocation]);
+    }, [searchParams, locationId]);
 
     useEffect(() => {
         // Пропускаем первый рендер — данные уже получены с сервера
@@ -98,18 +93,13 @@ export function CatalogContent({ initialData, geoLocation }: CatalogContentProps
         searchParamsObj[key] = value;
     });
 
-    // Вычисляем baseUrl для фильтров
-    const baseUrl = geoLocation?.settlementSlug && geoLocation?.districtSlug
-        ? `/${geoLocation.districtSlug}/${geoLocation.settlementSlug}`
-        : geoLocation?.districtSlug
-            ? `/${geoLocation.districtSlug}`
-            : "/catalog";
+    // baseUrl уже передан готовым из page.tsx
 
     return (
         <div className="flex flex-col lg:flex-row gap-8">
             {/* Сайдбар с фильтрами */}
             <aside className="w-full lg:w-80 flex-shrink-0">
-                <CatalogFilters onFiltersChange={handleFiltersChange} baseUrl={baseUrl} geoLocation={geoLocation} />
+                <CatalogFilters onFiltersChange={handleFiltersChange} baseUrl={baseUrl} locationId={locationId} />
             </aside>
 
             {/* Основной контент */}
@@ -147,13 +137,7 @@ export function CatalogContent({ initialData, geoLocation }: CatalogContentProps
                             <Pagination
                                 currentPage={currentPage}
                                 totalPages={totalPages}
-                                baseUrl={
-                                    geoLocation?.settlementSlug && geoLocation?.districtSlug
-                                        ? `/${geoLocation.districtSlug}/${geoLocation.settlementSlug}`
-                                        : geoLocation?.districtSlug
-                                            ? `/${geoLocation.districtSlug}`
-                                            : "/catalog"
-                                }
+                                baseUrl={baseUrl}
                                 searchParams={searchParamsObj}
                             />
                         </div>

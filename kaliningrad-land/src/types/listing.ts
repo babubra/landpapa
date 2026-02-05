@@ -27,6 +27,16 @@ export interface Realtor {
     company: string | null;
 }
 
+export interface Location {
+    id: number;
+    name: string;
+    slug: string;
+    type: string;
+    parent_id?: number | null;
+    settlement_type?: string | null;
+    parent?: Location | null;
+}
+
 export interface ListingData {
     id: number;
     slug: string;
@@ -41,6 +51,7 @@ export interface ListingData {
     is_featured?: boolean;
     realtor: Realtor;
     settlement?: Settlement | null;
+    location?: Location | null;
     // Поддержка обоих имён поля изображения
     image?: ImageData | null;
     main_image?: ImageData | null;

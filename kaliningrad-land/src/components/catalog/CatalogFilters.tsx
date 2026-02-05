@@ -15,7 +15,6 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { SmartLocationFilter, SmartSelectedLocation } from "@/components/filters/SmartLocationFilter";
 import { pluralize } from "@/lib/utils";
-import type { GeoLocation } from "@/lib/geoUrl";
 
 interface Reference {
     id: number;
@@ -26,10 +25,10 @@ interface Reference {
 interface CatalogFiltersProps {
     onFiltersChange: (filters: Record<string, string>) => void;
     baseUrl?: string;  // По умолчанию /catalog
-    geoLocation?: GeoLocation;  // Текущая гео-локация из URL path
+    locationId?: number;  // ID текущей локации из URL path
 }
 
-export function CatalogFilters({ onFiltersChange, baseUrl = "/catalog", geoLocation }: CatalogFiltersProps) {
+export function CatalogFilters({ onFiltersChange, baseUrl = "/catalog", locationId }: CatalogFiltersProps) {
     const router = useRouter();
     const searchParams = useSearchParams();
 
@@ -56,11 +55,11 @@ export function CatalogFilters({ onFiltersChange, baseUrl = "/catalog", geoLocat
             .catch(console.error);
     }, []);
 
-    // Автозаполнение локации из geoLocation (при переходе по гео-URL)
+    // Автозаполнение локации из locationId (при переходе по гео-URL)
     useEffect(() => {
-        if (geoLocation?.locationId) {
+        if (locationId) {
             // Используем locationId для получения полных данных локации
-            fetch(`/api/locations/${geoLocation.locationId}`, { cache: 'no-store' })
+            fetch(`/api/locations/${locationId}`, { cache: 'no-store' })
                 .then(res => res.json())
                 .then(data => {
                     if (data.id) {
@@ -75,28 +74,15 @@ export function CatalogFilters({ onFiltersChange, baseUrl = "/catalog", geoLocat
                     }
                 })
                 .catch(console.error);
-        } else if (geoLocation?.districtSlug) {
-            // Fallback: резолв через слаги
-            const slugs = geoLocation.settlementSlug
-                ? `${geoLocation.districtSlug},${geoLocation.settlementSlug}`
-                : geoLocation.districtSlug;
-            fetch(`/api/locations/resolve-v2?slugs=${slugs}`)
-                .then(res => res.json())
-                .then(data => {
-                    if (data.location) {
-                        setSelectedLocation(data.location);
-                    }
-                })
-                .catch(console.error);
         } else {
             setSelectedLocation(null);
         }
-    }, [geoLocation]);
+    }, [locationId]);
 
     // Обратная совместимость: редирект старых URL с ?settlements= на новый формат
     useEffect(() => {
         const settlementsParam = searchParams.get("settlements");
-        if (settlementsParam && !geoLocation?.districtSlug) {
+        if (settlementsParam && !locationId) {
             // Берём первый settlement ID и получаем его локацию для редиректа
             const firstId = settlementsParam.split(",")[0];
             if (firstId) {
@@ -122,16 +108,16 @@ export function CatalogFilters({ onFiltersChange, baseUrl = "/catalog", geoLocat
                     .catch(console.error);
             }
         }
-    }, [searchParams, geoLocation, router]);
+    }, [searchParams, locationId, router]);
 
     // Загрузка количества участков с учётом текущих фильтров
     useEffect(() => {
         const params = new URLSearchParams();
 
-        // Используем location_id: приоритет selectedLocation > geoLocation.locationId
-        const locationId = selectedLocation?.id || geoLocation?.locationId;
-        if (locationId) {
-            params.set("location_id", locationId.toString());
+        // Используем location_id: приоритет selectedLocation > locationId
+        const locId = selectedLocation?.id || locationId;
+        if (locId) {
+            params.set("location_id", locId.toString());
         }
 
         const landUseParam = searchParams.get("land_use");
@@ -153,7 +139,7 @@ export function CatalogFilters({ onFiltersChange, baseUrl = "/catalog", geoLocat
             .then((res) => res.json())
             .then((data) => setPlotsCount(data.count))
             .catch(console.error);
-    }, [searchParams, selectedLocation, geoLocation]);
+    }, [searchParams, selectedLocation, locationId]);
 
     // Синхронизация состояния с URL (при навигации "назад")
     useEffect(() => {

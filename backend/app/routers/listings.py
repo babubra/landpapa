@@ -65,28 +65,38 @@ async def get_listings(
     # Основной запрос
     query = (
         select(Listing)
-        .options(selectinload(Listing.settlement).selectinload(Settlement.district))
+        .options(
+            selectinload(Listing.settlement).selectinload(Settlement.district),
+            selectinload(Listing.location).selectinload(Location.parent)
+        )
         .where(Listing.is_published == True)
         .where(Listing.id.in_(select(active_listings_ids.c.listing_id)))
     )
     
     # Фильтры по локации
     # Приоритет: location_id (новая иерархия) > settlements > settlement_id > district_id
+    # Фильтры по локации
+    # Приоритет: location_id (новая иерархия) > settlements > settlement_id > district_id
     if location_id:
-        # Новая иерархия: ищем все дочерние локации рекурсивно
-        async def get_descendant_ids(loc_id: int) -> list[int]:
-            """Рекурсивно получить все ID локации и её потомков."""
-            ids = [loc_id]
-            children_result = await db.execute(
-                select(Location.id).where(Location.parent_id == loc_id)
-            )
-            children_ids = [row[0] for row in children_result.all()]
-            for child_id in children_ids:
-                ids.extend(await get_descendant_ids(child_id))
-            return ids
+        # Используем рекурсивный CTE для получения всех ID потомков
+        # WITH RECURSIVE location_tree AS (
+        #     SELECT id FROM locations WHERE id = :location_id
+        #     UNION ALL
+        #     SELECT l.id FROM locations l
+        #     JOIN location_tree lt ON l.parent_id = lt.id
+        # )
+        # SELECT id FROM location_tree;
         
-        all_location_ids = await get_descendant_ids(location_id)
-        query = query.where(Listing.location_id.in_(all_location_ids))
+        # SQLAlchemy CTE
+        cte = select(Location.id).where(Location.id == location_id).cte("location_tree", recursive=True)
+        cte = cte.union_all(
+            select(Location.id).join(cte, Location.parent_id == cte.c.id)
+        )
+        
+        # Подзапрос всех ID
+        all_location_ids_query = select(cte.c.id)
+        query = query.where(Listing.location_id.in_(all_location_ids_query))
+        
     elif settlements:
         # Парсим список ID из строки "7,8,9"
         settlement_ids = [int(s.strip()) for s in settlements.split(",") if s.strip().isdigit()]
@@ -106,9 +116,9 @@ async def get_listings(
     
     # Сортировка
     if sort == "price_asc":
-        query = query.order_by(Listing.created_at)
+        query = query.order_by(Listing.price_min)
     elif sort == "price_desc":
-        query = query.order_by(desc(Listing.created_at))
+        query = query.order_by(desc(Listing.price_min))
     else:  # newest
         query = query.order_by(desc(Listing.created_at))
     
@@ -143,7 +153,7 @@ async def get_popular_listings(
     # Сначала featured, затем по дате создания
     query = (
         select(Listing)
-        .options(selectinload(Listing.settlement).selectinload(Settlement.district))
+        .options(selectinload(Listing.location).selectinload(Location.parent))
         .where(Listing.is_published == True)
         .where(Listing.id.in_(select(active_listings_ids.c.listing_id)))
         .order_by(desc(Listing.is_featured), desc(Listing.created_at))
@@ -164,7 +174,10 @@ async def get_listing_by_slug(
     """Получить объявление по slug."""
     result = await db.execute(
         select(Listing)
-        .options(selectinload(Listing.settlement).selectinload(Settlement.district))
+        .options(
+            selectinload(Listing.settlement).selectinload(Settlement.district),
+            selectinload(Listing.location).selectinload(Location.parent)
+        )
         .where(Listing.slug == slug, Listing.is_published == True)
     )
     listing = result.scalar_one_or_none()

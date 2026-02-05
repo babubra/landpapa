@@ -9,6 +9,8 @@ from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from geoalchemy2.functions import ST_X, ST_Y
 
+from sqlalchemy.orm import aliased
+
 from app.database import get_async_db
 from app.models.plot import Plot, PlotStatus
 from app.models.listing import Listing
@@ -39,17 +41,17 @@ async def get_all_plots(
     from app.models.location import Location
     
     # Вспомогательная функция для получения всех дочерних ID локации
-    async def get_descendant_ids(parent_id: int) -> list[int]:
-        """Получает все ID потомков (включая саму локацию)."""
-        ids = [parent_id]
-        result = await db.execute(
-            select(Location.id).where(Location.parent_id == parent_id)
+    # Используем CTE для оптимизации
+    async def get_descendant_ids(loc_id: int) -> list[int]:
+        cte = select(Location.id).where(Location.id == loc_id).cte("location_tree", recursive=True)
+        cte = cte.union_all(
+            select(Location.id).join(cte, Location.parent_id == cte.c.id)
         )
-        child_ids = [row[0] for row in result.all()]
-        for child_id in child_ids:
-            ids.extend(await get_descendant_ids(child_id))
-        return ids
+        result = await db.execute(select(cte.c.id))
+        return result.scalars().all()
     
+    ParentLocation = aliased(Location)
+
     # Базовый запрос
     query = (
         select(
@@ -59,8 +61,13 @@ async def get_all_plots(
             Plot.price_public.label('price'),
             Listing.slug.label('listing_slug'),
             Listing.title.label('title'),
+            Location.slug.label('location_slug'),
+            ParentLocation.slug.label('location_parent_slug'),
+            Location.type.label('location_type'),
         )
         .join(Listing, Plot.listing_id == Listing.id)
+        .outerjoin(Location, Listing.location_id == Location.id)
+        .outerjoin(ParentLocation, Location.parent_id == ParentLocation.id)
         .where(
             Plot.status == PlotStatus.active,
             Plot.centroid.isnot(None),
@@ -104,6 +111,9 @@ async def get_all_plots(
                 price=p.price,
                 listing_slug=p.listing_slug,
                 title=p.title,
+                location_slug=p.location_slug,
+                location_parent_slug=p.location_parent_slug,
+                location_type=p.location_type,
             )
             for p in plots
         ],

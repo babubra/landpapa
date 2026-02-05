@@ -2,7 +2,8 @@ import { Metadata } from "next";
 import { CatalogContent } from "./CatalogContent";
 import { Breadcrumbs } from "@/components/seo/Breadcrumbs";
 import { getSiteSettings } from "@/lib/server-config";
-import { SSR_API_URL } from "@/lib/config";
+import { SSR_API_URL, SITE_URL } from "@/lib/config";
+import { buildLocationUrlForCanonical } from "@/lib/geoUrl";
 import type { ListingData, ListingsResponse } from "@/types/listing";
 
 // Реэкспорт для обратной совместимости
@@ -10,6 +11,25 @@ export type { ListingsResponse } from "@/types/listing";
 
 interface CatalogPageProps {
     searchParams: Promise<Record<string, string>>;
+}
+
+/**
+ * Получить данные локации для canonical URL.
+ */
+async function getLocationForCanonical(locationId: string): Promise<{
+    slug: string;
+    type: string;
+    parent?: { slug: string } | null;
+} | null> {
+    try {
+        const res = await fetch(`${SSR_API_URL}/api/locations/${locationId}`, {
+            next: { revalidate: 3600 }, // Кеш на 1 час
+        });
+        if (!res.ok) return null;
+        return res.json();
+    } catch {
+        return null;
+    }
 }
 
 /**
@@ -52,21 +72,37 @@ async function getListings(
     }
 }
 
-export async function generateMetadata(): Promise<Metadata> {
+interface MetadataProps {
+    searchParams: Promise<Record<string, string>>;
+}
+
+export async function generateMetadata({ searchParams }: MetadataProps): Promise<Metadata> {
     const settings = await getSiteSettings();
+    const params = await searchParams;
 
     const title = settings.seo_catalog_title || "Каталог земельных участков";
     const description = settings.seo_catalog_description || "Все земельные участки в Калининградской области. Фильтрация по районам, цене и площади.";
+
+    // Определяем canonical URL
+    let canonicalPath = "/catalog";
+
+    // Если есть location_id — строим geo-URL для canonical
+    if (params.location_id) {
+        const location = await getLocationForCanonical(params.location_id);
+        if (location) {
+            canonicalPath = buildLocationUrlForCanonical(location);
+        }
+    }
 
     return {
         title,
         description,
         alternates: {
-            canonical: "/catalog",
+            canonical: `${SITE_URL}${canonicalPath}`,
         },
         openGraph: {
             type: "website",
-            url: "/catalog",
+            url: `${SITE_URL}${canonicalPath}`,
             title,
             description,
             images: settings.og_image ? [{ url: settings.og_image }] : undefined,

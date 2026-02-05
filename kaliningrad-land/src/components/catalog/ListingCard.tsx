@@ -37,17 +37,29 @@ export function ListingCard({ listing, variant = "default" }: ListingCardProps) 
     const imgData = listing.image || listing.main_image;
     const imageUrl = imgData ? (imgData.thumbnail_url || imgData.url) : null;
 
-    const locationText = listing.settlement
-        ? listing.settlement.district
-            ? `${listing.settlement.name}, ${listing.settlement.district.name}`
-            : listing.settlement.name
-        : "Калининградская область";
+    const locationText = (() => {
+        if (listing.location) {
+            const locName = listing.location.settlement_type
+                ? `${listing.location.settlement_type} ${listing.location.name}`
+                : listing.location.name;
+
+            if (listing.location.type === 'settlement' && listing.location.parent) {
+                return `${locName}, ${listing.location.parent.name}`;
+            }
+            return locName;
+        }
+
+        return listing.settlement
+            ? listing.settlement.district
+                ? `${listing.settlement.name}, ${listing.settlement.district.name}`
+                : listing.settlement.name
+            : "Калининградская область";
+    })();
 
     // Строим гео-URL для листинга
     const listingUrl = buildListingUrl({
         slug: listing.slug,
-        districtSlug: listing.settlement?.district?.slug,
-        settlementSlug: listing.settlement?.slug,
+        location: listing.location,
     });
 
     if (variant === "compact") {

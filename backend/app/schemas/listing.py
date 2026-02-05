@@ -50,6 +50,7 @@ class DistrictItem(BaseModel):
         from_attributes = True
 
 
+
 class SettlementItem(BaseModel):
     """Населённый пункт."""
     id: int
@@ -58,6 +59,32 @@ class SettlementItem(BaseModel):
     type: str | None = None  # "г", "пос", "с" и т.д.
     district: DistrictItem | None = None
     
+    class Config:
+        from_attributes = True
+
+
+class LocationParentItem(BaseModel):
+    """Родительская локация (без рекурсии)."""
+    id: int
+    name: str
+    slug: str
+    type: str
+    settlement_type: str | None = None
+
+    class Config:
+        from_attributes = True
+
+
+class LocationItem(BaseModel):
+    """Локация (единая иерархическая модель)."""
+    id: int
+    name: str
+    slug: str
+    type: str  # region, district, city, settlement
+    parent_id: int | None = None
+    settlement_type: str | None = None
+    parent: LocationParentItem | None = None  # Используем упрощенную схему без рекурсии
+
     class Config:
         from_attributes = True
 
@@ -101,6 +128,7 @@ class ListingListItem(BaseModel):
     is_featured: bool
     realtor: RealtorItem
     settlement: SettlementItem | None = None
+    location: LocationItem | None = None
     image: ImageItem | None = Field(default=None, validation_alias="main_image")
     # Координаты для карты (все участки)
     coordinates: list[list[float]] = []  # [[lat, lon], [lat, lon], ...]
@@ -123,7 +151,8 @@ class ListingDetail(BaseModel):
     area_max: float | None = None  # Максимальная площадь участка
     plots_count: int
     realtor: RealtorItem
-    settlement: SettlementItem | None = None  # Гео-информация для URL
+    settlement: SettlementItem | None = None  # Гео-информация для URL (DEPRECATED)
+    location: LocationItem | None = None  # Новая гео-информация
     plots: list[PlotListItem] = Field(default=[], validation_alias="viewable_plots")
     images: list[ImageItem] = []
     meta_title: str | None

@@ -16,7 +16,7 @@ import { getSiteSettings } from "@/lib/server-config";
 import { SSR_API_URL, SITE_URL, getImageUrl } from "@/lib/config";
 import type { ListingsResponse } from "@/app/catalog/page";
 import type { ListingData } from "@/types/listing";
-import { buildGeoBreadcrumbs, formatSettlementName, type GeoLocation } from "@/lib/geoUrl";
+import { buildHierarchyBreadcrumbs, formatSettlementName, type HierarchyLocation } from "@/lib/geoUrl";
 import { ListingContent } from "@/components/listing/ListingContent";
 import { SeoJsonLd } from "@/components/seo/SeoJsonLd";
 
@@ -144,15 +144,41 @@ async function getListingByGeoUrl(
 
         if (!res.ok) return null;
 
-        const listing = await res.json();
+        const listing: ListingData = await res.json();
 
+        // 1. Проверка по новой иерархии (location)
+        if (listing.location) {
+            // Если в URL передан поселок (2 сегмента пути перед slug)
+            if (settlementSlug) {
+                // Ожидаем, что локация - settlement, slug совпадает, и parent совпадает
+                const isMatch =
+                    listing.location.slug === settlementSlug &&
+                    listing.location.parent?.slug === districtSlug;
+
+                if (isMatch) return listing;
+            } else {
+                // Если в URL только район/город (1 сегмент пути перед slug)
+                // Ожидаем, что локация совпадает с districtSlug
+                if (listing.location.slug === districtSlug) return listing;
+            }
+
+            // Если новая локация есть, но URL не совпал - возможно, стоит проверить старые поля (fallback)?
+            // Но если мы перешли на новые, лучше строго следовать им.
+            // Однако, для плавности миграции можно оставить проверку старых полей ниже.
+        }
+
+        // 2. Старая проверка (fallback для объявлений без location или если миграция частичная)
         // Проверяем, что листинг соответствует гео-URL
         // (если указан settlement, он должен совпадать)
         if (listing.settlement?.district?.slug !== districtSlug) {
+            // Если есть location, и мы уже проверили выше, что он не совпал - это точно несовпадение.
+            // Но если location нет, проверяем старые поля.
+            if (listing.location) return null; // У жесткой новой логики приоритет
             return null;
         }
 
         if (settlementSlug && listing.settlement?.slug !== settlementSlug) {
+            if (listing.location) return null;
             return null;
         }
 
@@ -332,41 +358,7 @@ export default async function GeoPage({ params, searchParams }: GeoPageProps) {
         ? locations[locations.length - 2]
         : null;
 
-    // Формируем geoLocation с учётом типа локации
-    // Для district/city (1 сегмент): заполняем districtSlug
-    // Для settlement (2 сегмента): заполняем и districtSlug, и settlementSlug
-    const isLeafDistrictOrCity = leafLocation?.type === "district" || leafLocation?.type === "city";
 
-    const geoLocation: GeoLocation = {
-        // Новая унифицированная иерархия — используем для фильтрации
-        locationId: locationNew?.leaf_id || undefined,
-
-        // Старые поля для обратной совместимости с breadcrumbs и URL
-        // Если leaf это district/city — используем его как district
-        districtId: isLeafDistrictOrCity
-            ? leafLocation?.id
-            : (parentLocation?.id || locationOld?.district_id || undefined),
-        districtSlug: isLeafDistrictOrCity
-            ? leafLocation?.slug
-            : (parentLocation?.slug || locationOld?.district_slug || undefined),
-        districtName: isLeafDistrictOrCity
-            ? leafLocation?.name
-            : (parentLocation?.name || locationOld?.district_name || undefined),
-
-        // Settlement заполняем только если leaf это settlement (не district/city)
-        settlementId: isLeafDistrictOrCity
-            ? undefined
-            : (leafLocation?.id || locationOld?.settlement_id || undefined),
-        settlementSlug: isLeafDistrictOrCity
-            ? undefined
-            : (leafLocation?.slug || locationOld?.settlement_slug || undefined),
-        settlementName: isLeafDistrictOrCity
-            ? undefined
-            : (leafLocation?.name || locationOld?.settlement_name || undefined),
-        settlementType: isLeafDistrictOrCity
-            ? undefined
-            : (leafLocation?.settlement_type || locationOld?.settlement_type || undefined),
-    };
 
     // Формируем параметры для API
     const apiParams: Record<string, string> = { ...urlParams };
@@ -381,7 +373,15 @@ export default async function GeoPage({ params, searchParams }: GeoPageProps) {
     }
 
     const initialData = await getListings(apiParams);
-    const breadcrumbs = buildGeoBreadcrumbs(geoLocation);
+
+    // Конвертируем locations в HierarchyLocation[] для breadcrumbs
+    const hierarchyLocations: HierarchyLocation[] = locations.map(loc => ({
+        ...loc,
+        type: loc.type as HierarchyLocation["type"],
+        listings_count: 0,
+        children: [],
+    }));
+    const breadcrumbs = buildHierarchyBreadcrumbs(hierarchyLocations);
 
     // Формируем заголовок
     let pageTitle = "Земельные участки";
@@ -402,7 +402,8 @@ export default async function GeoPage({ params, searchParams }: GeoPageProps) {
 
                 <CatalogContent
                     initialData={initialData}
-                    geoLocation={geoLocation}
+                    locationId={locationNew?.leaf_id ?? undefined}
+                    baseUrl={`/${geo.join('/')}`}
                 />
             </div>
         </div>
@@ -420,41 +421,17 @@ function ListingPageContent({
     geo: ResolvedLocation;
     locationNew: ResolvedLocationNew | null;
 }) {
-    // Формируем geoLocation: приоритет - новая иерархия (locationNew), fallback - старая (geo)
+    // Получаем локации из новой иерархии
     const locations = locationNew?.locations || [];
-    const leafLocation = locations.length > 0 ? locations[locations.length - 1] : null;
-    const parentLocation = locations.length > 1 ? locations[locations.length - 2] : null;
-    const isLeafDistrictOrCity = leafLocation?.type === "district" || leafLocation?.type === "city";
 
-    const geoLocation: GeoLocation = {
-        // Новая иерархия для фильтрации
-        locationId: locationNew?.leaf_id || undefined,
-
-        // Приоритет: новая иерархия > старая
-        districtId: isLeafDistrictOrCity
-            ? leafLocation?.id
-            : (parentLocation?.id || geo.district_id || undefined),
-        districtSlug: isLeafDistrictOrCity
-            ? leafLocation?.slug
-            : (parentLocation?.slug || geo.district_slug || undefined),
-        districtName: isLeafDistrictOrCity
-            ? leafLocation?.name
-            : (parentLocation?.name || geo.district_name || undefined),
-        settlementId: isLeafDistrictOrCity
-            ? undefined
-            : (leafLocation?.id || geo.settlement_id || undefined),
-        settlementSlug: isLeafDistrictOrCity
-            ? undefined
-            : (leafLocation?.slug || geo.settlement_slug || undefined),
-        settlementName: isLeafDistrictOrCity
-            ? undefined
-            : (leafLocation?.name || geo.settlement_name || undefined),
-        settlementType: isLeafDistrictOrCity
-            ? undefined
-            : (leafLocation?.settlement_type || geo.settlement_type || undefined),
-    };
-
-    const breadcrumbs = buildGeoBreadcrumbs(geoLocation, listing.title, listing.slug);
+    // Конвертируем locations в HierarchyLocation[] для breadcrumbs
+    const hierarchyLocations: HierarchyLocation[] = locations.map(loc => ({
+        ...loc,
+        type: loc.type as HierarchyLocation["type"],
+        listings_count: 0,
+        children: [],
+    }));
+    const breadcrumbs = buildHierarchyBreadcrumbs(hierarchyLocations, listing.title, listing.slug);
 
     // Schema.org Product/Offer
     const jsonLd = {
@@ -468,7 +445,7 @@ function ListingPageContent({
             "price": listing.price_min,
             "priceCurrency": "RUB",
             "availability": "https://schema.org/InStock",
-            "url": `${SITE_URL}/${geoLocation.districtSlug}/${geoLocation.settlementSlug}/${listing.slug}`,
+            "url": `${SITE_URL}/${locations.map(l => l.slug).join('/')}/${listing.slug}`,
         }
     };
 
