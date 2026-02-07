@@ -137,6 +137,10 @@ export default async function CatalogPage({ searchParams }: CatalogPageProps) {
     // Получаем параметры из URL
     const params = await searchParams;
 
+    // Получаем настройки для H1
+    const settings = await getSiteSettings();
+    const catalogH1 = settings.seo_catalog_h1 || "Каталог земельных участков";
+
     // Загружаем данные на сервере
     const initialData = await getListings(params);
 
@@ -144,9 +148,9 @@ export default async function CatalogPage({ searchParams }: CatalogPageProps) {
         <div className="min-h-screen bg-background">
             <div className="container mx-auto px-4 py-8 max-w-7xl">
                 <Breadcrumbs items={[{ name: "Каталог", href: "/catalog" }]} />
-                <h1 className="text-3xl font-bold mb-8">Каталог земельных участков</h1>
+                <h1 className="text-3xl font-bold mb-8">{catalogH1}</h1>
 
-                <CatalogContent initialData={initialData} />
+                <CatalogContent initialData={initialData} h1Template={settings.seo_listing_h1_template} />
             </div>
         </div>
     );

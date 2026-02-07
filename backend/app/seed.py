@@ -301,6 +301,11 @@ def seed_settings(db: Session):
             "description": "Title страницы «Каталог»"
         },
         {
+            "key": "seo_catalog_h1",
+            "value": "Каталог земельных участков Калининградской области",
+            "description": "Заголовок H1 страницы «Каталог»"
+        },
+        {
             "key": "seo_catalog_description",
             "value": "",
             "description": "Description страницы «Каталог»"

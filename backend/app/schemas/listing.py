@@ -123,7 +123,7 @@ class ListingListItem(BaseModel):
     """Объявление в списке (краткое)."""
     id: int
     slug: str
-    title: str
+    title: str | None = None  # H1 генерируется на фронте
     price_min: int | None
     price_max: int | None
     total_area: float | None  # м²
@@ -131,6 +131,7 @@ class ListingListItem(BaseModel):
     area_max: float | None = None  # Максимальная площадь участка
     plots_count: int
     is_featured: bool
+    land_use_name: str | None = None  # Назначение (ИЖС, ЛПХ) — из первого участка
     realtor: RealtorItem
     settlement: SettlementItem | None = None
     location: LocationItem | None = None
@@ -147,7 +148,7 @@ class ListingDetail(BaseModel):
     """Объявление (полное)."""
     id: int
     slug: str
-    title: str
+    title: str | None = None  # H1 генерируется на фронте
     description: str | None
     price_min: int | None
     price_max: int | None

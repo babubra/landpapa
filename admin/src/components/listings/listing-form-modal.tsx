@@ -173,6 +173,10 @@ export function ListingFormModal({
             toast.error("Выберите риэлтора");
             return;
         }
+        if (!selectedLocation) {
+            toast.error("Выберите локацию (район или населённый пункт)");
+            return;
+        }
 
         setIsLoading(true);
 
@@ -298,7 +302,7 @@ export function ListingFormModal({
                                     </div>
 
                                     <div className="space-y-2">
-                                        <Label>Локация</Label>
+                                        <Label>Локация *</Label>
                                         <LocationSelect
                                             value={selectedLocation}
                                             onSelect={setSelectedLocation}

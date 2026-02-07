@@ -76,20 +76,16 @@ export function ListingsMap({
 
     // Переход на страницу участка
     const handleDetailsClick = (plot: PlotPoint) => {
-        // Логика Geo-URL на основе location_slug и location_parent_slug
-        const url = (() => {
-            // Новая логика (если есть данные из API)
-            if (plot.location_slug) {
-                // Для поселков добавляем родителя (район)
-                if (plot.location_type === 'settlement' && plot.location_parent_slug) {
-                    return `/${plot.location_parent_slug}/${plot.location_slug}/${plot.listing_slug}`;
-                }
-                return `/${plot.location_slug}/${plot.listing_slug}`;
-            }
+        // Локация обязательна для формирования URL
+        if (!plot.location_slug) {
+            console.error(`Plot ${plot.id} не имеет location_slug. Невозможно перейти.`);
+            return;
+        }
 
-            // Fallback
-            return `/listing/${plot.listing_slug}`;
-        })();
+        // Для поселков добавляем родителя (район)
+        const url = (plot.location_type === 'settlement' && plot.location_parent_slug)
+            ? `/${plot.location_parent_slug}/${plot.location_slug}/${plot.listing_slug}`
+            : `/${plot.location_slug}/${plot.listing_slug}`;
 
         router.push(url);
     };

@@ -17,7 +17,10 @@ interface ListingGalleryProps {
     placeholderImage?: string;
 }
 
-export function ListingGallery({ images, title, placeholderImage }: ListingGalleryProps) {
+// Статический placeholder для избежания мигания при гидратации
+const DEFAULT_PLACEHOLDER = "/hero-bg.jpg";
+
+export function ListingGallery({ images, title, placeholderImage = DEFAULT_PLACEHOLDER }: ListingGalleryProps) {
     // Если нет изображений, используем заглушку
     const hasImages = images.length > 0;
     const [activeIndex, setActiveIndex] = useState(0);

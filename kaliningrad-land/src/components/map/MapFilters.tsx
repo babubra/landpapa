@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { RangeFilterButton } from "@/components/filters/RangeFilterButton";
 import {
     Select,
     SelectContent,
@@ -159,12 +160,12 @@ export function MapFilters({ onFiltersChange, total, isMobile = false }: MapFilt
     // Ссылка на каталог с текущими фильтрами
     const catalogUrl = `/catalog?${buildFilterParams().toString()}`;
 
-    // Содержимое фильтров (переиспользуется в desktop и mobile)
-    const renderFiltersContent = (inSheet = false) => (
-        <div className={inSheet ? "space-y-4 px-4" : "flex items-center gap-2 flex-wrap"}>
+    // Содержимое фильтров для мобильной версии (Sheet с инпутами)
+    const renderMobileFiltersContent = () => (
+        <div className="space-y-4 px-4">
             {/* Местоположение */}
-            <div className={inSheet ? "space-y-1" : "w-72"}>
-                {inSheet && <label className="text-sm font-medium">Местоположение</label>}
+            <div className="space-y-1">
+                <label className="text-sm font-medium">Местоположение</label>
                 <SmartLocationFilter
                     value={selectedLocation}
                     onChange={handleLocationChange}
@@ -173,8 +174,8 @@ export function MapFilters({ onFiltersChange, total, isMobile = false }: MapFilt
             </div>
 
             {/* Назначение */}
-            <div className={inSheet ? "space-y-1" : "w-36"}>
-                {inSheet && <label className="text-sm font-medium">Назначение</label>}
+            <div className="space-y-1">
+                <label className="text-sm font-medium">Назначение</label>
                 <Select value={landUseId} onValueChange={setLandUseId}>
                     <SelectTrigger className="h-9">
                         <SelectValue placeholder="Назначение" />
@@ -190,16 +191,16 @@ export function MapFilters({ onFiltersChange, total, isMobile = false }: MapFilt
             </div>
 
             {/* Цена */}
-            <div className={inSheet ? "space-y-1" : "flex items-center gap-1"}>
-                {inSheet && <label className="text-sm font-medium">Цена, ₽</label>}
+            <div className="space-y-1">
+                <label className="text-sm font-medium">Цена, ₽</label>
                 <div className="flex items-center gap-1">
                     <Input
                         id="price-min-input"
                         type="number"
-                        placeholder="Цена от"
+                        placeholder="от"
                         value={priceMin}
                         onChange={(e) => setPriceMin(e.target.value)}
-                        className="h-9 w-24"
+                        className="h-9 w-full"
                     />
                     <span className="text-muted-foreground">—</span>
                     <Input
@@ -208,22 +209,22 @@ export function MapFilters({ onFiltersChange, total, isMobile = false }: MapFilt
                         placeholder="до"
                         value={priceMax}
                         onChange={(e) => setPriceMax(e.target.value)}
-                        className="h-9 w-24"
+                        className="h-9 w-full"
                     />
                 </div>
             </div>
 
             {/* Площадь */}
-            <div className={inSheet ? "space-y-1" : "flex items-center gap-1"}>
-                {inSheet && <label className="text-sm font-medium">Площадь, м²</label>}
+            <div className="space-y-1">
+                <label className="text-sm font-medium">Площадь, сот.</label>
                 <div className="flex items-center gap-1">
                     <Input
                         id="area-min-input"
                         type="number"
-                        placeholder="Площадь от"
+                        placeholder="от"
                         value={areaMin}
                         onChange={(e) => setAreaMin(e.target.value)}
-                        className="h-9 w-24"
+                        className="h-9 w-full"
                     />
                     <span className="text-muted-foreground">—</span>
                     <Input
@@ -232,13 +233,13 @@ export function MapFilters({ onFiltersChange, total, isMobile = false }: MapFilt
                         placeholder="до"
                         value={areaMax}
                         onChange={(e) => setAreaMax(e.target.value)}
-                        className="h-9 w-24"
+                        className="h-9 w-full"
                     />
                 </div>
             </div>
 
             {/* Кнопки */}
-            <div className={inSheet ? "flex gap-2 pt-2" : "flex items-center gap-2"}>
+            <div className="flex gap-2 pt-2">
                 <Button onClick={applyFilters} size="sm" className="h-9">
                     Применить
                 </Button>
@@ -249,6 +250,78 @@ export function MapFilters({ onFiltersChange, total, isMobile = false }: MapFilt
                     </Button>
                 )}
             </div>
+        </div>
+    );
+
+    // Содержимое фильтров для desktop версии (кнопки с popup)
+    const renderDesktopFiltersContent = () => (
+        <div className="flex items-center gap-2 flex-wrap">
+            {/* Местоположение */}
+            <div className="w-72">
+                <SmartLocationFilter
+                    value={selectedLocation}
+                    onChange={handleLocationChange}
+                    placeholder="Район или город"
+                />
+            </div>
+
+            {/* Назначение */}
+            <div className="w-36">
+                <Select value={landUseId} onValueChange={(value) => {
+                    setLandUseId(value);
+                    // Применяем фильтры сразу при выборе назначения
+                    const params = new URLSearchParams();
+                    if (selectedLocation) params.set("location_id", selectedLocation.id.toString());
+                    if (value) params.set("land_use", value);
+                    if (priceMin) params.set("price_min", priceMin);
+                    if (priceMax) params.set("price_max", priceMax);
+                    if (areaMin) params.set("area_min", areaMin);
+                    if (areaMax) params.set("area_max", areaMax);
+                    router.push(`/map?${params.toString()}`);
+                    onFiltersChange();
+                }}>
+                    <SelectTrigger className="h-9">
+                        <SelectValue placeholder="Назначение" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        {landUseOptions.map((r) => (
+                            <SelectItem key={r.id} value={r.id.toString()}>
+                                {r.name}
+                            </SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
+            </div>
+
+            {/* Цена — кнопка с popup */}
+            <RangeFilterButton
+                label="Цена"
+                minValue={priceMin}
+                maxValue={priceMax}
+                onMinChange={setPriceMin}
+                onMaxChange={setPriceMax}
+                unit="₽"
+                onClose={applyFilters}
+            />
+
+            {/* Площадь — кнопка с popup */}
+            <RangeFilterButton
+                label="Площадь"
+                minValue={areaMin}
+                maxValue={areaMax}
+                onMinChange={setAreaMin}
+                onMaxChange={setAreaMax}
+                unit="сот."
+                onClose={applyFilters}
+            />
+
+            {/* Кнопка сброса (только если есть активные фильтры) */}
+            {activeFiltersCount > 0 && (
+                <Button variant="ghost" size="sm" onClick={resetFilters} className="h-9">
+                    <X className="h-4 w-4 mr-1" />
+                    Сбросить
+                </Button>
+            )}
         </div>
     );
 
@@ -273,7 +346,7 @@ export function MapFilters({ onFiltersChange, total, isMobile = false }: MapFilt
                             <SheetTitle>Фильтры</SheetTitle>
                         </SheetHeader>
                         <div className="py-2 pb-6">
-                            {renderFiltersContent(true)}
+                            {renderMobileFiltersContent()}
                         </div>
                     </SheetContent>
                 </Sheet>
@@ -298,7 +371,7 @@ export function MapFilters({ onFiltersChange, total, isMobile = false }: MapFilt
     return (
         <div className="border-b bg-background relative z-50">
             <div className="container mx-auto px-4 py-2 flex items-center justify-between gap-4">
-                {renderFiltersContent()}
+                {renderDesktopFiltersContent()}
 
                 {/* Счётчик и кнопка списком */}
                 <div className="flex items-center gap-3 flex-shrink-0">

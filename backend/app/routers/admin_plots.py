@@ -16,7 +16,6 @@ from app.models.plot import Plot, PlotStatus
 from app.models.listing import Listing
 from app.models.admin_user import AdminUser
 from app.routers.auth import get_current_user
-from app.utils.title_generator import generate_listing_title
 from app.nspd_client import NspdClient, get_nspd_client
 
 from app.schemas.admin_plot import (
@@ -40,32 +39,6 @@ from app.schemas.admin_plot import (
 
 
 router = APIRouter()
-
-
-async def regenerate_listing_title(db: AsyncSession, listing_id: int | None) -> None:
-    """Перегенерировать название объявления если title_auto=True."""
-    if not listing_id:
-        return
-    
-    result = await db.execute(
-        select(Listing).where(Listing.id == listing_id)
-    )
-    listing = result.scalar_one_or_none()
-    
-    if not listing or not listing.title_auto:
-        return
-    
-    # Получаем все участки объявления
-    result = await db.execute(
-        select(Plot).where(Plot.listing_id == listing_id)
-    )
-    plots = result.scalars().all()
-    
-    # Генерируем новое название
-    new_title = generate_listing_title(plots)
-    if new_title:
-        listing.title = new_title
-        await db.commit()
 
 
 def plot_to_list_item(plot: Plot) -> dict:
@@ -304,8 +277,6 @@ async def bulk_assign_plots(
     updated = len(data.plot_ids)
     await db.commit()
     
-    await regenerate_listing_title(db, data.listing_id)
-    
     return BulkAssignResponse(updated_count=updated)
 
 
@@ -435,8 +406,6 @@ async def create_plot(
     await db.commit()
     await db.refresh(plot)
     
-    await regenerate_listing_title(db, plot.listing_id)
-    
     return {
         **plot_to_list_item(plot),
         "listing_id": plot.listing_id,
@@ -469,8 +438,6 @@ async def update_plot(
     await db.commit()
     await db.refresh(plot)
     
-    await regenerate_listing_title(db, plot.listing_id)
-    
     return {
         **plot_to_list_item(plot),
         "listing_id": plot.listing_id,
@@ -498,8 +465,6 @@ async def delete_plot(
     listing_id = plot.listing_id
     await db.delete(plot)
     await db.commit()
-    
-    await regenerate_listing_title(db, listing_id)
     
     return None
 

@@ -4,7 +4,6 @@ import { ListingGallery } from "@/components/listing/ListingGallery";
 import { ListingSidebar, ListingInfoBlock, ListingPlotsBlock } from "@/components/listing/ListingSidebar";
 import { ListingMapClient } from "@/components/listing/ListingMapClient";
 import { Breadcrumbs, BreadcrumbItem } from "@/components/seo/Breadcrumbs";
-import { usePlaceholderImage } from "@/contexts/SiteSettingsContext";
 import { ListingProvider } from "@/context/ListingContext";
 
 interface Plot {
@@ -60,15 +59,14 @@ interface ListingDetail {
 interface ListingContentProps {
     listing: ListingDetail;
     breadcrumbs: BreadcrumbItem[];
+    h1: string;  // Заголовок H1, генерируемый на сервере по шаблону
 }
 
 /**
  * Клиентский компонент для рендеринга содержимого страницы листинга.
  * Переиспользуется в /listing/[slug] и /[...geo] роутах.
  */
-export function ListingContent({ listing, breadcrumbs }: ListingContentProps) {
-    const placeholderImage = usePlaceholderImage();
-
+export function ListingContent({ listing, breadcrumbs, h1 }: ListingContentProps) {
     // Формируем локацию
     const location = listing.settlement
         ? listing.settlement.district
@@ -79,10 +77,11 @@ export function ListingContent({ listing, breadcrumbs }: ListingContentProps) {
     // Определяем основное назначение земли
     const landUse = listing.plots[0]?.land_use?.name;
 
-    // Формируем заголовок для UI и ALT-тегов (с регионом)
-    const displayTitle = listing.title.toLowerCase().includes("калининград")
-        ? listing.title
-        : `${listing.title}, Калининградская область`;
+    // H1 используется напрямую из пропсов
+    // Для ALT-тегов добавляем регион если нет
+    const displayTitle = h1.toLowerCase().includes("калининград")
+        ? h1
+        : `${h1}, Калининградская область`;
 
     return (
         <ListingProvider>
@@ -92,7 +91,7 @@ export function ListingContent({ listing, breadcrumbs }: ListingContentProps) {
                     <Breadcrumbs items={breadcrumbs} />
 
                     {/* Заголовок */}
-                    <h1 className="text-3xl font-bold mb-8">{displayTitle}</h1>
+                    <h1 className="text-3xl font-bold mb-8">{h1}</h1>
 
                     {/* Основной контент */}
                     <div className="grid lg:grid-cols-3 gap-8">
@@ -102,7 +101,6 @@ export function ListingContent({ listing, breadcrumbs }: ListingContentProps) {
                             <ListingGallery
                                 images={listing.images}
                                 title={displayTitle}
-                                placeholderImage={placeholderImage}
                             />
 
                             {/* Sidebar Info для мобильных (над описанием) */}

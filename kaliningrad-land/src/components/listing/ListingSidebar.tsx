@@ -63,7 +63,9 @@ function formatPriceRange(min: number | null, max: number | null): string {
 function scrollToMap() {
     const mapSection = document.getElementById('map-section');
     if (mapSection) {
-        mapSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        const headerHeight = document.querySelector('header')?.offsetHeight || 80;
+        const top = mapSection.getBoundingClientRect().top + window.scrollY - headerHeight - 8;
+        window.scrollTo({ top, behavior: 'smooth' });
     }
 }
 
@@ -112,7 +114,17 @@ export function ListingInfoBlock({
                 {hasMultiplePlots ? (
                     <>
                         {/* Информационная надпись */}
-                        <div className="bg-primary/10 rounded-lg p-3">
+                        <div
+                            className="bg-primary/10 rounded-lg p-3 cursor-pointer hover:bg-primary/20 transition-colors"
+                            onClick={() => {
+                                const mapSection = document.getElementById('map-section');
+                                if (mapSection) {
+                                    const headerHeight = document.querySelector('header')?.offsetHeight || 80;
+                                    const top = mapSection.getBoundingClientRect().top + window.scrollY - headerHeight - 8;
+                                    window.scrollTo({ top, behavior: 'smooth' });
+                                }
+                            }}
+                        >
                             <p className="text-sm font-medium text-primary">
                                 ⚡ Доступно {plotsCount} {pluralize(plotsCount, ['участок', 'участка', 'участков'])}
                             </p>

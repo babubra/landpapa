@@ -26,6 +26,80 @@ const RESERVED_SLUGS = [
     "catalog", "listing", "api", "_next"
 ];
 
+// === Хелперы для генерации H1 ===
+
+/**
+ * Форматирование площади в сотках или гектарах.
+ */
+function formatArea(areaM2: number | null, plotsCount: number): string {
+    if (!areaM2) return "";
+
+    let areaStr: string;
+    if (areaM2 >= 10000) {
+        areaStr = `${(areaM2 / 10000).toFixed(1)} га`;
+    } else {
+        areaStr = `${(areaM2 / 100).toFixed(1)} сот.`;
+    }
+
+    // Для нескольких участков добавляем "от"
+    return plotsCount > 1 ? `от ${areaStr}` : areaStr;
+}
+
+/**
+ * Обработка условного синтаксиса {ед./мн.} в шаблоне.
+ * Например: "Продажа {участка/участков}" → "Продажа участка" или "Продажа участков"
+ */
+function processConditionalSyntax(template: string, plotsCount: number): string {
+    // Паттерн: {слово1/слово2} — выбираем слово1 для 1, слово2 для 2+
+    return template.replace(/\{([^/}]+)\/([^}]+)\}/g, (_, singular, plural) => {
+        return plotsCount === 1 ? singular : plural;
+    });
+}
+
+/**
+ * Генерация H1 по шаблону.
+ */
+function generateListingH1(
+    listing: ListingData,
+    settings: { seo_listing_h1_template: string | null }
+): string {
+    const template = settings.seo_listing_h1_template || "Продажа {участка/участков} {area} {purpose} {location}";
+
+    const plotsCount = listing.plots_count || 1;
+    const areaNum = listing.total_area ?? listing.area_min ?? null;
+    const priceMin = listing.price_min;
+
+    // Подготовка переменных
+    const areaStr = formatArea(areaNum, plotsCount);
+    let priceStr = "";
+    if (priceMin) {
+        const formatted = `${priceMin.toLocaleString("ru-RU")} ₽`;
+        priceStr = plotsCount > 1 ? `от ${formatted}` : formatted;
+    }
+    const locationStr = listing.location?.name_locative || "";
+    const locationName = listing.location?.name || "";
+    const locationType = listing.location?.settlement_type || "";
+    const purposeStr = listing.plots?.[0]?.land_use?.name || "";
+    const cadastralStr = listing.plots?.[0]?.cadastral_number || "";
+
+    // Сначала обрабатываем условный синтаксис
+    let result = processConditionalSyntax(template, plotsCount);
+
+    // Затем заменяем переменные
+    result = result
+        .replace(/\{area\}/g, areaStr)
+        .replace(/\{price\}/g, priceStr)
+        .replace(/\{location\}/g, locationStr || locationName)
+        .replace(/\{location_name\}/g, locationName)
+        .replace(/\{location_type\}/g, locationType)
+        .replace(/\{purpose\}/g, purposeStr)
+        .replace(/\{cadastral\}/g, cadastralStr)
+        .replace(/\{plots_count\}/g, String(plotsCount));
+
+    // Убираем лишние пробелы
+    return result.replace(/\s+/g, " ").trim();
+}
+
 // === Типы ===
 interface GeoPageProps {
     params: Promise<{ geo: string[] }>;
@@ -236,7 +310,12 @@ export async function generateMetadata({ params, searchParams }: GeoPageProps): 
         if (listing) {
             // === Подготовка переменных для шаблона ===
             const priceMin = listing.price_min;
-            const priceStr = priceMin ? `${priceMin.toLocaleString("ru-RU")} ₽` : "";
+            const plotsCount = listing.plots_count || 1;
+            let priceStr = "";
+            if (priceMin) {
+                const formatted = `${priceMin.toLocaleString("ru-RU")} ₽`;
+                priceStr = plotsCount > 1 ? `от ${formatted}` : formatted;
+            }
 
             const areaNum = listing.total_area ?? listing.area_min;
             let areaStr = "";
@@ -255,7 +334,7 @@ export async function generateMetadata({ params, searchParams }: GeoPageProps): 
             const cadastralStr = listing.plots?.[0]?.cadastral_number || "";
 
             // Назначение
-            const purposeStr = listing.plots?.[0]?.purpose?.name || "";
+            const purposeStr = listing.plots?.[0]?.land_use?.name || "";
 
             // === Генерация Title ===
             let title = listing.meta_title;
@@ -270,7 +349,7 @@ export async function generateMetadata({ params, searchParams }: GeoPageProps): 
                         .replace(/\{cadastral\}/g, cadastralStr)
                         .replace(/\{purpose\}/g, purposeStr);
                 } else {
-                    title = listing.title;
+                    title = listing.title || "Участок";
                 }
             }
 
@@ -406,6 +485,9 @@ export default async function GeoPage({ params, searchParams }: GeoPageProps) {
     const secondSegment = geo.length >= 2 ? geo[1] : undefined;
     const thirdSegment = geo.length >= 3 ? geo[2] : undefined;
 
+    // Получаем настройки для генерации H1
+    const settings = await getSiteSettings();
+
     // Резолв локации через новый API (работает с city, district, settlement)
     const locationNew = await resolveLocationNew(geo);
 
@@ -426,14 +508,14 @@ export default async function GeoPage({ params, searchParams }: GeoPageProps) {
         if (!listing) notFound();
 
         // Рендерим страницу листинга
-        return <ListingPageContent listing={listing} geo={locationOld!} locationNew={locationNew} />;
+        return <ListingPageContent listing={listing} geo={locationOld!} locationNew={locationNew} settings={settings} />;
     }
 
     if (secondSegment && !locationOld?.settlement_id) {
         // /{district}/{listing} — листинг без settlement
         const listing = await getListingByGeoUrl(districtSlug, null, secondSegment);
         if (listing) {
-            return <ListingPageContent listing={listing} geo={locationOld!} locationNew={locationNew} />;
+            return <ListingPageContent listing={listing} geo={locationOld!} locationNew={locationNew} settings={settings} />;
         }
         // Если не листинг — 404
         notFound();
@@ -471,8 +553,7 @@ export default async function GeoPage({ params, searchParams }: GeoPageProps) {
     }));
     const breadcrumbs = buildHierarchyBreadcrumbs(hierarchyLocations);
 
-    // Формируем заголовок с использованием шаблона
-    const settings = await getSiteSettings();
+    // Формируем заголовок с использованием шаблона (settings уже получены выше)
     const nameLocative = leafLocation?.name_locative;  // SEO: "в Калининграде"
     const displayName = leafLocation?.name || locationOld?.settlement_name || locationOld?.district_name;
     const displayType = leafLocation?.settlement_type || locationOld?.settlement_type;
@@ -505,17 +586,14 @@ export default async function GeoPage({ params, searchParams }: GeoPageProps) {
         <div className="min-h-screen bg-background">
             <div className="container mx-auto px-4 py-8 max-w-7xl">
                 <Breadcrumbs items={breadcrumbs} />
-                <h1 className="text-3xl font-bold mb-4">{pageTitle}</h1>
-                {leafLocation?.description && (
-                    <p className="text-muted-foreground mb-8 max-w-3xl">
-                        {leafLocation.description}
-                    </p>
-                )}
+                <h1 className="text-3xl font-bold mb-6">{pageTitle}</h1>
 
                 <CatalogContent
                     initialData={initialData}
                     locationId={locationNew?.leaf_id ?? undefined}
                     baseUrl={`/${geo.join('/')}`}
+                    locationDescription={leafLocation?.description || undefined}
+                    h1Template={settings.seo_listing_h1_template}
                 />
             </div>
         </div>
@@ -527,14 +605,19 @@ export default async function GeoPage({ params, searchParams }: GeoPageProps) {
 function ListingPageContent({
     listing,
     geo,
-    locationNew
+    locationNew,
+    settings
 }: {
     listing: ListingData;
     geo: ResolvedLocation;
     locationNew: ResolvedLocationNew | null;
+    settings: { seo_listing_h1_template: string | null };
 }) {
     // Получаем локации из новой иерархии
     const locations = locationNew?.locations || [];
+
+    // Генерируем H1: если listing.title заполнен — используем его, иначе генерируем по шаблону
+    const h1 = listing.title || generateListingH1(listing, settings);
 
     // Конвертируем locations в HierarchyLocation[] для breadcrumbs
     const hierarchyLocations: HierarchyLocation[] = locations.map(loc => ({
@@ -543,13 +626,13 @@ function ListingPageContent({
         listings_count: 0,
         children: [],
     }));
-    const breadcrumbs = buildHierarchyBreadcrumbs(hierarchyLocations, listing.title, listing.slug);
+    const breadcrumbs = buildHierarchyBreadcrumbs(hierarchyLocations, h1, listing.slug);
 
     // Schema.org Product/Offer
     const jsonLd = {
         "@context": "https://schema.org",
         "@type": "Product",
-        "name": listing.title,
+        "name": h1,
         "description": listing.description,
         "image": (listing as any).images?.map((img: any) => getImageUrl(img.thumbnail_url || img.url)) || [],
         "offers": {
@@ -567,6 +650,7 @@ function ListingPageContent({
             <ListingContent
                 listing={listing as any}
                 breadcrumbs={breadcrumbs}
+                h1={h1}
             />
         </>
     );

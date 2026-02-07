@@ -41,7 +41,7 @@ export interface Location {
 export interface ListingData {
     id: number;
     slug: string;
-    title: string;
+    title: string | null;  // Если заполнен — используется как H1, иначе генерируется по шаблону
     description?: string | null;
     price_min: number | null;
     price_max: number | null;
@@ -56,8 +56,9 @@ export interface ListingData {
     // Участки (для SEO шаблонов)
     plots?: {
         cadastral_number?: string | null;
-        purpose?: { name: string } | null;
+        land_use?: { name: string } | null;
     }[] | null;
+    land_use_name?: string | null;  // Назначение (ИЖС, ЛПХ) — из первого участка
     // Поддержка обоих имён поля изображения
     image?: ImageData | null;
     main_image?: ImageData | null;

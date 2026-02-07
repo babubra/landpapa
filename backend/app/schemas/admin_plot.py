@@ -23,7 +23,7 @@ class ListingShort(BaseModel):
     """Краткая информация об объявлении."""
     id: int
     slug: str
-    title: str
+    title: str | None = None  # H1 генерируется на фронте
     is_published: bool = True  # Статус публикации для цветовой индикации на карте
 
     class Config:

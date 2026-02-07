@@ -41,6 +41,7 @@ PUBLIC_SETTING_KEYS = [
     "seo_homepage_text",
     # Метаданные страниц
     "seo_catalog_title",
+    "seo_catalog_h1",
     "seo_catalog_description",
     "seo_about_title",
     "seo_about_description",
@@ -56,6 +57,7 @@ PUBLIC_SETTING_KEYS = [
     "seo_geo_h1_template",
     # Шаблоны для страниц объявлений
     "seo_listing_title_template",
+    "seo_listing_h1_template",
     "seo_listing_description_template",
     # Соцсети
     "org_vk_url",
@@ -91,6 +93,7 @@ class PublicSettingsResponse(BaseModel):
     seo_homepage_text: str | None = None
     # Метаданные страниц
     seo_catalog_title: str | None = None
+    seo_catalog_h1: str | None = None
     seo_catalog_description: str | None = None
     seo_about_title: str | None = None
     seo_about_description: str | None = None
@@ -106,6 +109,7 @@ class PublicSettingsResponse(BaseModel):
     seo_geo_h1_template: str | None = None
     # Шаблоны для страниц объявлений
     seo_listing_title_template: str | None = None
+    seo_listing_h1_template: str | None = None
     seo_listing_description_template: str | None = None
     # Соцсети
     org_vk_url: str | None = None

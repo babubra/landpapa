@@ -4,16 +4,19 @@ import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState, useRef } from "react";
 import { ListingCard } from "@/components/catalog/ListingCard";
 import { CatalogFilters } from "@/components/catalog/CatalogFilters";
+import { MapBanner } from "@/components/catalog/MapBanner";
 import { Pagination } from "@/components/ui/pagination";
 import type { ListingsResponse, ListingData } from "@/types/listing";
 
 interface CatalogContentProps {
     initialData: ListingsResponse;
-    locationId?: number;  // ID текущей локации из URL path
-    baseUrl?: string;     // Базовый URL для пагинации и фильтров
+    locationId?: number;           // ID текущей локации из URL path
+    baseUrl?: string;              // Базовый URL для пагинации и фильтров
+    locationDescription?: string;  // Описание локации (отображается под баннером)
+    h1Template?: string | null;    // Шаблон H1 для генерации названий карточек
 }
 
-export function CatalogContent({ initialData, locationId, baseUrl = "/catalog" }: CatalogContentProps) {
+export function CatalogContent({ initialData, locationId, baseUrl = "/catalog", locationDescription, h1Template }: CatalogContentProps) {
     const searchParams = useSearchParams();
 
     // Инициализируем state данными с сервера
@@ -104,6 +107,8 @@ export function CatalogContent({ initialData, locationId, baseUrl = "/catalog" }
 
             {/* Основной контент */}
             <main className="flex-1">
+                {/* Баннер карты */}
+                <MapBanner locationId={locationId} />
 
                 {/* Список карточек */}
                 {loading ? (
@@ -128,7 +133,7 @@ export function CatalogContent({ initialData, locationId, baseUrl = "/catalog" }
                     <>
                         <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
                             {listings.map((listing) => (
-                                <ListingCard key={listing.id} listing={listing} />
+                                <ListingCard key={listing.id} listing={listing} h1Template={h1Template} />
                             ))}
                         </div>
 
@@ -141,6 +146,16 @@ export function CatalogContent({ initialData, locationId, baseUrl = "/catalog" }
                                 searchParams={searchParamsObj}
                             />
                         </div>
+
+                        {/* Описание локации (внизу для SEO) */}
+                        {locationDescription && (
+                            <div className="mt-12 pt-8 border-t border-border">
+                                <h2 className="text-lg font-semibold mb-3">Описание</h2>
+                                <p className="text-muted-foreground text-sm leading-relaxed">
+                                    {locationDescription}
+                                </p>
+                            </div>
+                        )}
                     </>
                 )}
             </main>

@@ -138,6 +138,12 @@ class Listing(Base):
         """
         return [p for p in self.plots if p.status in ("active", "reserved")]
 
+    @property
+    def land_use_name(self) -> str | None:
+        """Назначение земли из первого активного участка."""
+        active = [p for p in self.plots if p.status == "active" and p.land_use]
+        return active[0].land_use.name if active else None
+
 
 # Импорт для relationship
 from app.models.realtor import Realtor

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import dynamic from "next/dynamic";
 import { useListingContext } from "@/context/ListingContext";
 import { Navigation, X, Map as MapIcon } from "lucide-react";
@@ -58,7 +58,22 @@ export function ListingMapClient({ plots }: ListingMapClientProps) {
     const { selectedPlotId, setSelectedPlotId } = useListingContext();
     const selectedPlot = plots.find((p) => p.id === selectedPlotId);
 
+    // Фильтруем участки с координатами для определения "единственного"
+    const plotsWithCoords = plots.filter(
+        (p) => (p.polygon && p.polygon.length > 0) || (p.latitude && p.longitude)
+    );
+    const isSinglePlot = plotsWithCoords.length === 1;
+
+    // Автоматически выбираем участок, если он единственный
+    useEffect(() => {
+        if (isSinglePlot && !selectedPlotId) {
+            setSelectedPlotId(plotsWithCoords[0].id);
+        }
+    }, [isSinglePlot, selectedPlotId, setSelectedPlotId, plotsWithCoords]);
+
     const handleClose = () => {
+        // Не закрываем, если участок единственный
+        if (isSinglePlot) return;
         setSelectedPlotId(null);
     };
 
@@ -133,7 +148,7 @@ export function ListingMapClient({ plots }: ListingMapClientProps) {
                                     ● {STATUS_LABELS[selectedPlot.status] || selectedPlot.status}
                                 </span>
                                 {selectedPlot.cadastral_number && (
-                                    <span className="text-muted-foreground bg-muted px-1.5 py-0.5 rounded font-mono truncate hidden xs:inline-block">
+                                    <span className="text-muted-foreground bg-muted px-1.5 py-0.5 rounded font-mono truncate">
                                         {selectedPlot.cadastral_number}
                                     </span>
                                 )}
@@ -149,13 +164,16 @@ export function ListingMapClient({ plots }: ListingMapClientProps) {
                                 <span className="sm:hidden">Маршрут</span>
                                 <span className="hidden sm:inline">Проложить маршрут</span>
                             </button>
-                            <button
-                                onClick={handleClose}
-                                className="text-muted-foreground hover:text-foreground transition-colors p-1.5 sm:p-2 hover:bg-muted rounded-full"
-                                aria-label="Закрыть"
-                            >
-                                <X className="h-5 w-5 sm:h-6 sm:w-6" />
-                            </button>
+                            {/* Кнопка закрытия — только если участков больше одного */}
+                            {!isSinglePlot && (
+                                <button
+                                    onClick={handleClose}
+                                    className="text-muted-foreground hover:text-foreground transition-colors p-1.5 sm:p-2 hover:bg-muted rounded-full"
+                                    aria-label="Закрыть"
+                                >
+                                    <X className="h-5 w-5 sm:h-6 sm:w-6" />
+                                </button>
+                            )}
                         </div>
                     </div>
                 ) : (

@@ -17,7 +17,6 @@ from app.models.plot import Plot, PlotStatus
 from app.models.image import Image
 from app.models.admin_user import AdminUser
 from app.routers.auth import get_current_user
-from app.utils.title_generator import generate_listing_title
 from app.schemas.admin_listing import (
     ListingAdminListItem,
     ListingAdminDetail,
@@ -362,12 +361,6 @@ async def create_listing(
     await db.commit()
     await db.refresh(listing)
     
-    # Перегенерируем название если включён авто-режим
-    if listing.title_auto and listing.plots:
-        listing.title = generate_listing_title(listing.plots, listing.settlement)
-        await db.commit()
-        await db.refresh(listing)
-    
     return listing_to_detail(listing)
 
 
@@ -471,12 +464,6 @@ async def update_listing(
     
     await db.commit()
     await db.refresh(listing)
-
-    # Перегенерируем название если включён авто-режим
-    if listing.title_auto and listing.plots:
-        listing.title = generate_listing_title(listing.plots, listing.settlement)
-        await db.commit()
-        await db.refresh(listing)
     
     return listing_to_detail(listing)
 

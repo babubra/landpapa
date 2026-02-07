@@ -89,7 +89,7 @@ class ListingAdminListItem(BaseModel):
     """Объявление в списке (для таблицы)."""
     id: int
     slug: str
-    title: str
+    title: str | None = None  # H1 генерируется на фронте
     cadastral_numbers: list[str] = []  # Кадастровые номера привязанных участков
     is_published: bool
     is_featured: bool
@@ -114,7 +114,7 @@ class ListingAdminDetail(BaseModel):
     """Объявление (полная информация для формы)."""
     id: int
     slug: str
-    title: str
+    title: str | None = None  # H1 генерируется на фронте
     description: str | None = None
     is_published: bool
     is_featured: bool

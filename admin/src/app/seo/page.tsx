@@ -266,6 +266,11 @@ export default function SeoSettingsPage() {
                                         "Каталог земельных участков"
                                     )}
                                     {renderTextSetting(
+                                        "seo_catalog_h1",
+                                        "Заголовок H1",
+                                        "Каталог земельных участков Калининградской области"
+                                    )}
+                                    {renderTextSetting(
                                         "seo_catalog_description",
                                         "Описание (Description)",
                                         "Все земельные участки в Калининградской области...",
@@ -395,25 +400,43 @@ export default function SeoSettingsPage() {
                                     <li><code className="bg-emerald-100 dark:bg-emerald-900 px-1 rounded">{"{location}"}</code> — локация (&quot;в Калининграде&quot;)</li>
                                     <li><code className="bg-emerald-100 dark:bg-emerald-900 px-1 rounded">{"{cadastral}"}</code> — кадастровый номер</li>
                                     <li><code className="bg-emerald-100 dark:bg-emerald-900 px-1 rounded">{"{purpose}"}</code> — назначение (ИЖС, СНТ, ЛПХ)</li>
+                                    <li><code className="bg-emerald-100 dark:bg-emerald-900 px-1 rounded">{"{plots_count}"}</code> — количество участков</li>
                                 </ul>
+                                <div className="mt-3 p-3 bg-blue-50 dark:bg-blue-950 rounded border border-blue-200 dark:border-blue-800">
+                                    <p className="text-xs font-medium text-blue-800 dark:text-blue-200 mb-2">
+                                        Условный синтаксис для H1 (ед./мн. число):
+                                    </p>
+                                    <p className="text-xs text-blue-700 dark:text-blue-300 mb-2">
+                                        Используйте <code className="bg-blue-100 dark:bg-blue-900 px-1 rounded">{"{ед.форма/мн.форма}"}</code> для автоматического выбора формы слова:
+                                    </p>
+                                    <ul className="text-xs text-blue-700 dark:text-blue-300 space-y-1 ml-3">
+                                        <li><code className="bg-blue-100 dark:bg-blue-900 px-1 rounded">{"{участка/участков}"}</code> → "участка" (1 уч.) или "участков" (2+ уч.)</li>
+                                        <li><code className="bg-blue-100 dark:bg-blue-900 px-1 rounded">{"{Участок/Участки}"}</code> → "Участок" или "Участки"</li>
+                                    </ul>
+                                </div>
                             </div>
                             <div className="space-y-6">
                                 {renderTextSetting(
+                                    "seo_listing_h1_template",
+                                    "Шаблон H1 (заголовок страницы)",
+                                    "Продажа {участка/участков} {area} {purpose} {location}"
+                                )}
+                                {renderTextSetting(
                                     "seo_listing_title_template",
-                                    "Шаблон Title",
+                                    "Шаблон Title (meta)",
                                     "{title} — {area} {location} | РКК земля"
                                 )}
                                 {renderTextSetting(
                                     "seo_listing_description_template",
-                                    "Шаблон Description",
+                                    "Шаблон Description (meta)",
                                     "{title}. Площадь {area}, цена {price}. {location}. Кадастровый номер: {cadastral}.",
                                     true
                                 )}
                             </div>
                             <div className="mt-4 p-3 bg-muted/50 rounded-lg">
                                 <p className="text-xs text-muted-foreground">
-                                    <strong>Примечание:</strong> H1 заголовок страницы объявления = заголовок объявления (title).
-                                    Шаблон не требуется, так как заголовок редактируется индивидуально для каждого объявления.
+                                    <strong>Примечание:</strong> Если в объявлении заполнен заголовок (title), он используется вместо шаблона H1.
+                                    Переменная <code className="bg-muted px-1 rounded">{"{title}"}</code> для Title и Description берётся из заголовка или генерируется по H1-шаблону.
                                 </p>
                             </div>
                         </div>

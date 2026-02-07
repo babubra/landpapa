@@ -7,8 +7,11 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import type { ListingData } from "@/types/listing";
 import { getImageUrl } from "@/lib/config";
-import { usePlaceholderImage } from "@/contexts/SiteSettingsContext";
 import { buildListingUrl } from "@/lib/geoUrl";
+import { getListingDisplayTitle } from "@/lib/listingTitle";
+
+// Статический placeholder для избежания мигания при гидратации
+const DEFAULT_PLACEHOLDER = "/hero-bg.jpg";
 
 function formatPrice(price: number): string {
     return new Intl.NumberFormat("ru-RU").format(price);
@@ -28,11 +31,10 @@ function formatPriceRange(min: number | null, max: number | null): string {
 export interface ListingCardProps {
     listing: ListingData;
     variant?: "default" | "compact";
+    h1Template?: string | null;  // Шаблон для генерации названия по настройкам сайта
 }
 
-export function ListingCard({ listing, variant = "default" }: ListingCardProps) {
-    const placeholderImage = usePlaceholderImage();
-
+export function ListingCard({ listing, variant = "default", h1Template }: ListingCardProps) {
     // Получаем URL изображения (поддержка обоих полей)
     const imgData = listing.image || listing.main_image;
     const imageUrl = imgData ? (imgData.thumbnail_url || imgData.url) : null;
@@ -68,8 +70,8 @@ export function ListingCard({ listing, variant = "default" }: ListingCardProps) 
                 {/* Изображение */}
                 <div className="relative h-48 overflow-hidden bg-muted">
                     <Image
-                        src={getImageUrl(imageUrl, placeholderImage)}
-                        alt={listing.title}
+                        src={getImageUrl(imageUrl, DEFAULT_PLACEHOLDER)}
+                        alt={getListingDisplayTitle(listing, h1Template)}
                         fill
                         className="object-cover group-hover:scale-105 transition-transform duration-300"
                         unoptimized
@@ -82,7 +84,7 @@ export function ListingCard({ listing, variant = "default" }: ListingCardProps) 
                 </div>
 
                 <CardContent className="p-4 flex-1 flex flex-col">
-                    <h3 className="font-semibold text-lg mb-1 line-clamp-1">{listing.title}</h3>
+                    <h3 className="font-semibold text-lg mb-1 line-clamp-1">{getListingDisplayTitle(listing, h1Template)}</h3>
 
                     <div className="flex items-center gap-1 text-muted-foreground text-sm mb-3">
                         <MapPin className="h-4 w-4" />
@@ -128,8 +130,8 @@ export function ListingCard({ listing, variant = "default" }: ListingCardProps) 
             {/* Изображение */}
             <div className="relative h-48 overflow-hidden bg-muted">
                 <Image
-                    src={getImageUrl(imageUrl, placeholderImage)}
-                    alt={listing.title}
+                    src={getImageUrl(imageUrl, DEFAULT_PLACEHOLDER)}
+                    alt={getListingDisplayTitle(listing, h1Template)}
                     fill
                     className="object-cover group-hover:scale-105 transition-transform duration-300"
                     unoptimized
@@ -147,7 +149,7 @@ export function ListingCard({ listing, variant = "default" }: ListingCardProps) 
             </div>
 
             <CardContent className="p-3 flex-1 flex flex-col">
-                <h3 className="font-semibold text-base mb-1 line-clamp-2">{listing.title}</h3>
+                <h3 className="font-semibold text-base mb-1 line-clamp-2">{getListingDisplayTitle(listing, h1Template)}</h3>
 
                 <div className="flex items-center gap-1 text-muted-foreground text-sm mb-3">
                     <MapPin className="h-4 w-4 flex-shrink-0" />

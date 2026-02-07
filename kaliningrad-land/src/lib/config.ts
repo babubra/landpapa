@@ -86,6 +86,7 @@ export interface SiteSettings {
     seo_homepage_text: string | null;
     // Метаданные страниц
     seo_catalog_title: string | null;
+    seo_catalog_h1: string | null;
     seo_catalog_description: string | null;
     seo_about_title: string | null;
     seo_about_description: string | null;
@@ -102,6 +103,7 @@ export interface SiteSettings {
     // Шаблоны для страниц объявлений (карточка листинга)
     seo_listing_title_template: string | null;       // "{title} — {area} {location} | РКК земля"
     seo_listing_description_template: string | null; // "{title}. Площадь {area}, цена {price}..."
+    seo_listing_h1_template: string | null;          // "Продажа {участка/участков} {area} {purpose} {location}"
     // Соцсети
     org_vk_url: string | null;
     org_telegram_url: string | null;
@@ -151,6 +153,7 @@ export async function getSiteSettings(): Promise<SiteSettings> {
             og_image: null,
             seo_homepage_text: null,
             seo_catalog_title: null,
+            seo_catalog_h1: null,
             seo_catalog_description: null,
             seo_about_title: null,
             seo_about_description: null,
@@ -165,6 +168,7 @@ export async function getSiteSettings(): Promise<SiteSettings> {
             seo_geo_h1_template: null,
             seo_listing_title_template: null,
             seo_listing_description_template: null,
+            seo_listing_h1_template: null,
             org_vk_url: null,
             org_telegram_url: null,
             org_max_url: null,

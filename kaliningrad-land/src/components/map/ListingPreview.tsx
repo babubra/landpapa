@@ -7,8 +7,11 @@ import { Button } from "@/components/ui/button";
 import type { ListingData } from "@/types/listing";
 
 import { getImageUrl } from "@/lib/config";
-import { usePlaceholderImage } from "@/contexts/SiteSettingsContext";
 import { buildListingUrl } from "@/lib/geoUrl";
+import { getListingDisplayTitle } from "@/lib/listingTitle";
+
+// Статический placeholder для избежания мигания при гидратации
+const DEFAULT_PLACEHOLDER = "/hero-bg.jpg";
 
 interface ListingPreviewProps {
     listing: ListingData;
@@ -35,7 +38,6 @@ function formatPriceRange(min: number | null, max: number | null): string {
  * Фиксированная ширина 350px, вертикальный layout.
  */
 export function ListingPreview({ listing, onClose }: ListingPreviewProps) {
-    const placeholderImage = usePlaceholderImage();
     const locationText = (() => {
         if (listing.location) {
             const locName = listing.location.settlement_type
@@ -83,8 +85,8 @@ export function ListingPreview({ listing, onClose }: ListingPreviewProps) {
             <div className="p-4 pb-0">
                 <div className="relative w-full h-44 rounded-lg overflow-hidden">
                     <Image
-                        src={getImageUrl(imageUrl, placeholderImage)}
-                        alt={listing.title}
+                        src={getImageUrl(imageUrl, DEFAULT_PLACEHOLDER)}
+                        alt={getListingDisplayTitle(listing)}
                         fill
                         className="object-cover"
                         unoptimized
@@ -100,7 +102,7 @@ export function ListingPreview({ listing, onClose }: ListingPreviewProps) {
             {/* Информация */}
             <div className="flex-1 p-4 flex flex-col overflow-y-auto">
                 <h3 className="font-semibold text-lg line-clamp-2 mb-2">
-                    {listing.title}
+                    {getListingDisplayTitle(listing)}
                 </h3>
 
                 <div className="flex items-center gap-1 text-muted-foreground text-sm mb-3">

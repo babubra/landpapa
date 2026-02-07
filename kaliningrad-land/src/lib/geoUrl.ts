@@ -6,7 +6,6 @@
  * - /{district_slug} — район
  * - /{district_slug}/{settlement_slug} — район + населённый пункт
  * - /{district_slug}/{settlement_slug}/{listing_slug} — листинг
- * - /listing/{slug} — листинг без географии (fallback)
  */
 
 
@@ -76,20 +75,21 @@ export interface ListingGeoInfo {
  * Строит URL страницы листинга.
  * 
  * - С географией: /{location_slug}/{listing_slug} или /{parent_slug}/{location_slug}/{listing_slug}
- * - Без географии: /listing/{slug}
+ * 
+ * @throws Error если у листинга нет привязанной локации
  */
 export function buildListingUrl(listing: ListingGeoInfo): string {
-    if (listing.location) {
-        // Если тип settlement - добавляем родителя (район)
-        // Для city и district родитель не выводится в URL (они верхнеуровневые, либо parent=region)
-        if (listing.location.type === 'settlement' && listing.location.parent?.slug) {
-            return `/${listing.location.parent.slug}/${listing.location.slug}/${listing.slug}`;
-        }
-        return `/${listing.location.slug}/${listing.slug}`;
+    if (!listing.location) {
+        // Локация обязательна для формирования URL
+        throw new Error(`Listing "${listing.slug}" не имеет привязанной локации. Невозможно построить URL.`);
     }
 
-    // Fallback без географии
-    return `/listing/${listing.slug}`;
+    // Если тип settlement - добавляем родителя (район)
+    // Для city и district родитель не выводится в URL (они верхнеуровневые, либо parent=region)
+    if (listing.location.type === 'settlement' && listing.location.parent?.slug) {
+        return `/${listing.location.parent.slug}/${listing.location.slug}/${listing.slug}`;
+    }
+    return `/${listing.location.slug}/${listing.slug}`;
 }
 
 
