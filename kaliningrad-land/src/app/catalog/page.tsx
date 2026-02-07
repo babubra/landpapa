@@ -49,6 +49,10 @@ async function getListings(
             else if (key === "settlement") searchParams.set("settlement_id", value);
             else if (key === "settlements") searchParams.set("settlements", value);
             else if (key === "land_use") searchParams.set("land_use_id", value);
+            // Пересчёт площади: сотки → м² (* 100)
+            else if (key === "area_min" || key === "area_max") {
+                searchParams.set(key, (parseFloat(value) * 100).toString());
+            }
             else searchParams.set(key, value);
         }
 

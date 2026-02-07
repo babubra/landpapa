@@ -547,6 +547,58 @@ export async function searchPlots(query: string, listingId?: number): Promise<Pl
   return response.json();
 }
 
+// === Генерация скриншотов карты ===
+
+export interface ScreenshotResponse {
+  success: boolean;
+  image_id: number | null;
+  image_url: string | null;
+  error: string | null;
+}
+
+export interface BulkScreenshotResponse {
+  total: number;
+  success: number;
+  skipped: number;
+  failed: number;
+  generated_image_ids: number[];
+}
+
+/**
+ * Генерация скриншота карты для одного объявления.
+ */
+export async function generateListingScreenshot(listingId: number): Promise<ScreenshotResponse> {
+  const response = await fetchWithAuth(`/api/admin/listings/${listingId}/generate-screenshot`, {
+    method: "POST",
+  });
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.detail || "Ошибка генерации скриншота");
+  }
+  return response.json();
+}
+
+/**
+ * Массовая генерация скриншотов для нескольких объявлений.
+ */
+export async function bulkGenerateScreenshots(
+  listingIds: number[],
+  onlyWithoutImages: boolean = true
+): Promise<BulkScreenshotResponse> {
+  const response = await fetchWithAuth("/api/admin/listings/bulk-generate-screenshots", {
+    method: "POST",
+    body: JSON.stringify({
+      listing_ids: listingIds,
+      only_without_images: onlyWithoutImages,
+    }),
+  });
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.detail || "Ошибка массовой генерации скриншотов");
+  }
+  return response.json();
+}
+
 // === Справочники для форм ===
 
 export async function getSettlements(): Promise<SettlementItem[]> {

@@ -80,8 +80,9 @@ export function SearchFilter() {
   const buildFilterParams = useCallback(() => {
     const params = new URLSearchParams();
     if (landUseId) params.set("land_use", landUseId);
-    if (areaMin) params.set("area_min", (parseFloat(areaMin) * 100).toString());
-    if (areaMax) params.set("area_max", (parseFloat(areaMax) * 100).toString());
+    // URL хранит сотки, пересчёт делается только при запросах к API
+    if (areaMin) params.set("area_min", areaMin);
+    if (areaMax) params.set("area_max", areaMax);
     if (priceMin) params.set("price_min", priceMin);
     if (priceMax) params.set("price_max", priceMax);
     return params;

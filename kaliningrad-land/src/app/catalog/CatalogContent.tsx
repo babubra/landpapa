@@ -49,6 +49,10 @@ export function CatalogContent({ initialData, locationId, baseUrl = "/catalog", 
             else if (key === "settlements") params.set("settlements", value);
             else if (key === "location_id") params.set("location_id", value); // Новый параметр
             else if (key === "land_use") params.set("land_use_id", value);
+            // Пересчёт площади: сотки → м² (* 100)
+            else if (key === "area_min" || key === "area_max") {
+                params.set(key, (parseFloat(value) * 100).toString());
+            }
             else params.set(key, value);
         });
 

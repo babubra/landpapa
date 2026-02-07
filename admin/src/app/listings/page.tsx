@@ -3,11 +3,11 @@
 import { Suspense, useEffect, useState, useMemo, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { RowSelectionState } from "@tanstack/react-table";
-import { Plus, Trash2, ArrowLeft } from "lucide-react";
+import { Plus, Trash2, ArrowLeft, Image as ImageIcon, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { useAuth } from "@/lib/auth";
-import { getListings, bulkDeleteListings, ListingListItem, ListingFilters } from "@/lib/api";
+import { getListings, bulkDeleteListings, bulkGenerateScreenshots, ListingListItem, ListingFilters } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { ListingsTable } from "@/components/listings/listings-table";
 import { getColumns } from "@/components/listings/listings-columns";
@@ -121,6 +121,32 @@ function ListingsPageContent() {
         }
     };
 
+    const [isGenerating, setIsGenerating] = useState(false);
+
+    const handleBulkGenerateScreenshots = async () => {
+        const selectedIds = Object.keys(rowSelection).map(Number);
+        if (selectedIds.length === 0) return;
+
+        setIsGenerating(true);
+        try {
+            const result = await bulkGenerateScreenshots(selectedIds, true);
+            if (result.success > 0) {
+                toast.success(`Сгенерировано: ${result.success} скриншотов`);
+            }
+            if (result.skipped > 0) {
+                toast.info(`Пропущено (есть фото): ${result.skipped}`);
+            }
+            if (result.failed > 0) {
+                toast.warning(`Ошибок: ${result.failed}`);
+            }
+            loadListings();
+        } catch (error) {
+            toast.error("Ошибка генерации скриншотов");
+        } finally {
+            setIsGenerating(false);
+        }
+    };
+
     const handlePageChange = (page: number) => {
         setFilters({ ...filters, page });
     };
@@ -215,6 +241,19 @@ function ListingsPageContent() {
                         <Button variant="destructive" size="sm" onClick={handleBulkDelete}>
                             <Trash2 className="mr-2 h-4 w-4" />
                             Удалить выбранные
+                        </Button>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={handleBulkGenerateScreenshots}
+                            disabled={isGenerating}
+                        >
+                            {isGenerating ? (
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            ) : (
+                                <ImageIcon className="mr-2 h-4 w-4" />
+                            )}
+                            Сгенерировать фото
                         </Button>
                     </div>
                 )}

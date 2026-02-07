@@ -41,8 +41,9 @@ export function MapPageContent() {
             else if (key === "land_use") params.set("land_use_id", value);
             else if (key === "price_min") params.set("price_min", value);
             else if (key === "price_max") params.set("price_max", value);
-            else if (key === "area_min") params.set("area_min", value);
-            else if (key === "area_max") params.set("area_max", value);
+            // Пересчёт площади: сотки → м² (* 100)
+            else if (key === "area_min") params.set("area_min", (parseFloat(value) * 100).toString());
+            else if (key === "area_max") params.set("area_max", (parseFloat(value) * 100).toString());
         });
 
         try {

@@ -129,8 +129,8 @@ export function CatalogFilters({ onFiltersChange, baseUrl = "/catalog", location
         if (landUseParam) params.set("land_use", landUseParam);
         if (priceMinParam) params.set("price_min", priceMinParam);
         if (priceMaxParam) params.set("price_max", priceMaxParam);
-        if (areaMinParam) params.set("area_min", areaMinParam);
-        if (areaMaxParam) params.set("area_max", areaMaxParam);
+        if (areaMinParam) params.set("area_min", (parseFloat(areaMinParam) * 100).toString());
+        if (areaMaxParam) params.set("area_max", (parseFloat(areaMaxParam) * 100).toString());
 
         const queryString = params.toString();
         const url = queryString ? `/api/public-plots/count?${queryString}` : "/api/public-plots/count";
@@ -246,7 +246,7 @@ export function CatalogFilters({ onFiltersChange, baseUrl = "/catalog", location
 
                 {/* Площадь */}
                 <div className="space-y-2">
-                    <Label>Площадь, м²</Label>
+                    <Label>Площадь, соток</Label>
                     <div className="flex gap-2">
                         <Input
                             type="number"

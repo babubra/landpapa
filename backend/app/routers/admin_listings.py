@@ -543,3 +543,105 @@ async def bulk_delete_listings(
     await db.commit()
     
     return BulkDeleteResponse(deleted_count=deleted)
+
+
+# === Генерация скриншотов карты ===
+
+from pydantic import BaseModel
+
+
+class ScreenshotResponse(BaseModel):
+    """Ответ на генерацию скриншота."""
+    success: bool
+    image_id: int | None = None
+    image_url: str | None = None
+    error: str | None = None
+
+
+class BulkScreenshotRequest(BaseModel):
+    """Запрос на массовую генерацию скриншотов."""
+    listing_ids: list[int]
+    only_without_images: bool = True
+
+
+class BulkScreenshotResponse(BaseModel):
+    """Ответ на массовую генерацию скриншотов."""
+    total: int
+    success: int
+    skipped: int
+    failed: int
+    generated_image_ids: list[int]
+
+
+@router.post("/{listing_id}/generate-screenshot", response_model=ScreenshotResponse)
+async def generate_screenshot(
+    listing_id: int,
+    db: AsyncSession = Depends(get_async_db),
+    current_user: AdminUser = Depends(get_current_user),
+):
+    """
+    Генерация скриншота карты для одного объявления.
+    
+    Создаёт PNG-изображение 1200x630 и привязывает его к объявлению.
+    """
+    from app.services.screenshot_service import ScreenshotService
+    
+    # Проверяем существование объявления
+    result = await db.execute(
+        select(Listing).where(Listing.id == listing_id)
+    )
+    listing = result.scalar_one_or_none()
+    
+    if not listing:
+        raise HTTPException(status_code=404, detail="Объявление не найдено")
+    
+    # Определяем URL фронтенда
+    frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
+    
+    # Генерируем скриншот
+    service = ScreenshotService(db)
+    image = await service.generate_map_screenshot(listing_id, frontend_url)
+    
+    if image:
+        return ScreenshotResponse(
+            success=True,
+            image_id=image.id,
+            image_url=image.url,
+        )
+    else:
+        return ScreenshotResponse(
+            success=False,
+            error="Не удалось сгенерировать скриншот",
+        )
+
+
+@router.post("/bulk-generate-screenshots", response_model=BulkScreenshotResponse)
+async def bulk_generate_screenshots(
+    data: BulkScreenshotRequest,
+    db: AsyncSession = Depends(get_async_db),
+    current_user: AdminUser = Depends(get_current_user),
+):
+    """
+    Массовая генерация скриншотов карты для нескольких объявлений.
+    
+    По умолчанию генерирует только для объявлений без изображений.
+    """
+    from app.services.screenshot_service import ScreenshotService
+    
+    frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
+    
+    service = ScreenshotService(db)
+    stats = await service.bulk_generate_screenshots(
+        data.listing_ids,
+        frontend_url,
+        data.only_without_images
+    )
+    
+    return BulkScreenshotResponse(
+        total=stats["total"],
+        success=stats["success"],
+        skipped=stats["skipped"],
+        failed=stats["failed"],
+        generated_image_ids=stats["generated_ids"],
+    )
+

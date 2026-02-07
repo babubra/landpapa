@@ -27,7 +27,7 @@ import {
     TabsList,
     TabsTrigger,
 } from "@/components/ui/tabs";
-import { Loader2 } from "lucide-react";
+import { Loader2, Map } from "lucide-react";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { PlotSearchInput } from "@/components/listings/plot-search-input";
 import { LocationSelect } from "@/components/locations/location-select";
@@ -42,9 +42,67 @@ import {
     RealtorItem,
     PlotShortItem,
     LocationResolved,
-    Image as ImageType,
 } from "@/lib/api";
+import { generateListingScreenshot, Image as ImageType } from "@/lib/api";
 import { ImageUpload } from "@/components/image-upload";
+
+// Компонент кнопки генерации скриншота карты
+function GenerateScreenshotButton({
+    listingId,
+    onSuccess,
+}: {
+    listingId: number;
+    onSuccess: (image: ImageType) => void;
+}) {
+    const [isGenerating, setIsGenerating] = useState(false);
+
+    const handleGenerate = async () => {
+        setIsGenerating(true);
+        try {
+            const result = await generateListingScreenshot(listingId);
+            if (result.success && result.image_id && result.image_url) {
+                // Создаём объект изображения для добавления в список
+                const newImage: ImageType = {
+                    id: result.image_id,
+                    url: result.image_url,
+                    thumbnail_url: result.image_url,
+                    original_filename: `map_${listingId}.png`,
+                    mime_type: "image/png",
+                    size: null,
+                    width: 1200,
+                    height: 630,
+                    sort_order: 999,
+                    created_at: new Date().toISOString(),
+                };
+                onSuccess(newImage);
+                toast.success("Скриншот карты сгенерирован");
+            } else {
+                toast.error(result.error || "Ошибка генерации скриншота");
+            }
+        } catch (error: any) {
+            toast.error(error.message || "Ошибка генерации скриншота");
+        } finally {
+            setIsGenerating(false);
+        }
+    };
+
+    return (
+        <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={handleGenerate}
+            disabled={isGenerating}
+        >
+            {isGenerating ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+                <Map className="mr-2 h-4 w-4" />
+            )}
+            Сгенерировать скриншот карты
+        </Button>
+    );
+}
 
 interface ListingFormModalProps {
     open: boolean;
@@ -100,7 +158,7 @@ export function ListingFormModal({
                     // Если редактирование — загружаем объявление
                     if (listingId) {
                         const listing = await getListing(listingId);
-                        setTitle(listing.title);
+                        setTitle(listing.title || "");
                         setDescription(listing.description || "");
                         setRealtorId(String(listing.realtor_id));
 
@@ -165,7 +223,7 @@ export function ListingFormModal({
         e.preventDefault();
 
         // Валидация: название обязательно только если не авто-режим
-        if (!titleAuto && !title.trim()) {
+        if (!titleAuto && !title?.trim()) {
             toast.error("Введите название объявления");
             return;
         }
@@ -182,7 +240,7 @@ export function ListingFormModal({
 
         try {
             // При авто-режиме отправляем временное название — бэкенд перегенерирует его
-            const finalTitle = titleAuto ? (title.trim() || "Продажа участка") : title.trim();
+            const finalTitle = titleAuto ? (title?.trim() || "Продажа участка") : (title?.trim() || "");
 
             const data: ListingCreate = {
                 title: finalTitle,
@@ -192,8 +250,8 @@ export function ListingFormModal({
                 is_published: isPublished,
                 is_featured: isFeatured,
                 title_auto: titleAuto,
-                meta_title: metaTitle.trim() || null,
-                meta_description: metaDescription.trim() || null,
+                meta_title: metaTitle?.trim() || null,
+                meta_description: metaDescription?.trim() || null,
                 plot_ids: selectedPlots.map(p => p.id),
                 image_ids: images.map(i => i.id),
             };
@@ -338,11 +396,21 @@ export function ListingFormModal({
 
                             {/* Фото */}
                             <TabsContent value="media" className="mt-4 space-y-4">
-                                <div className="space-y-2">
-                                    <Label>Фотографии</Label>
-                                    <p className="text-sm text-muted-foreground mb-4">
-                                        Загрузите изображения. Перетаскивайте для изменения порядка.
-                                    </p>
+                                <div className="space-y-4">
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <Label>Фотографии</Label>
+                                            <p className="text-sm text-muted-foreground">
+                                                Загрузите изображения. Перетаскивайте для изменения порядка.
+                                            </p>
+                                        </div>
+                                        {isEditing && listingId && selectedPlots.length > 0 && (
+                                            <GenerateScreenshotButton
+                                                listingId={listingId}
+                                                onSuccess={(image) => setImages([...images, image])}
+                                            />
+                                        )}
+                                    </div>
                                     <ImageUpload
                                         value={images}
                                         onChange={setImages}
