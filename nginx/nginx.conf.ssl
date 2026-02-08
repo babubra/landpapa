@@ -104,9 +104,15 @@ http {
             proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
             proxy_set_header Upgrade $http_upgrade;
             proxy_set_header Connection "upgrade";
+            
+            # Security Headers
+            add_header X-Content-Type-Options "nosniff" always;
+            add_header X-Frame-Options "SAMEORIGIN" always;
+            add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+            add_header X-XSS-Protection "1; mode=block" always;
+            
+            # Debug headers
             add_header X-Proxy-Target "Frontend-Main-v2";
-            add_header X-Debug-Host $host;
-            add_header X-Nginx-Config-Version "v2-final-debug";
         }
     }
 
@@ -161,9 +167,15 @@ http {
             proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
             proxy_set_header Upgrade $http_upgrade;
             proxy_set_header Connection "upgrade";
+            
+            # Security Headers
+            add_header X-Content-Type-Options "nosniff" always;
+            add_header X-Frame-Options "SAMEORIGIN" always;
+            add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+            add_header X-XSS-Protection "1; mode=block" always;
+            
+            # Debug header
             add_header X-Proxy-Target "Admin-Main-v2";
-            add_header X-Debug-Host $host;
-            add_header X-Nginx-Config-Version "v2-final-debug";
         }
     }
 
