@@ -62,40 +62,40 @@ export default function DashboardPage() {
 
               <Link href="/listings">
                 <Card className="p-4 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
-                  <h3 className="font-semibold mb-1">📋 Объявления</h3>
+                  <h3 className="font-semibold mb-1 text-slate-900 dark:text-slate-100">📋 Объявления</h3>
                   <p className="text-sm text-muted-foreground">Управление объявлениями</p>
                 </Card>
               </Link>
 
               <Link href="/plots">
                 <Card className="p-4 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
-                  <h3 className="font-semibold mb-1">🗺️ Участки</h3>
+                  <h3 className="font-semibold mb-1 text-slate-900 dark:text-slate-100">🗺️ Участки</h3>
                   <p className="text-sm text-muted-foreground">Управление участками</p>
                 </Card>
               </Link>
 
               <Card className="p-4 bg-slate-50 dark:bg-slate-800">
-                <h3 className="font-semibold mb-1">📰 Новости</h3>
+                <h3 className="font-semibold mb-1 text-slate-900 dark:text-slate-100">📰 Новости</h3>
                 <p className="text-sm text-muted-foreground">Управление новостями</p>
               </Card>
 
               <Link href="/references">
                 <Card className="p-4 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
-                  <h3 className="font-semibold mb-1">📚 Справочники</h3>
+                  <h3 className="font-semibold mb-1 text-slate-900 dark:text-slate-100">📚 Справочники</h3>
                   <p className="text-sm text-muted-foreground">Районы, назначения</p>
                 </Card>
               </Link>
 
               <Link href="/realtors">
                 <Card className="p-4 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
-                  <h3 className="font-semibold mb-1">👥 Риэлторы</h3>
+                  <h3 className="font-semibold mb-1 text-slate-900 dark:text-slate-100">👥 Риэлторы</h3>
                   <p className="text-sm text-muted-foreground">Управление риэлторами</p>
                 </Card>
               </Link>
 
               <Link href="/pages">
                 <Card className="p-4 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
-                  <h3 className="font-semibold mb-1">📄 Страницы сайта</h3>
+                  <h3 className="font-semibold mb-1 text-slate-900 dark:text-slate-100">📄 Страницы сайта</h3>
                   <p className="text-sm text-muted-foreground">О нас, политика конф.</p>
                 </Card>
               </Link>
@@ -109,7 +109,7 @@ export default function DashboardPage() {
 
               <Link href="/settings">
                 <Card className="p-4 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
-                  <h3 className="font-semibold mb-1">⚙️ Настройки</h3>
+                  <h3 className="font-semibold mb-1 text-slate-900 dark:text-slate-100">⚙️ Настройки</h3>
                   <p className="text-sm text-muted-foreground">Настройки сайта</p>
                 </Card>
               </Link>
