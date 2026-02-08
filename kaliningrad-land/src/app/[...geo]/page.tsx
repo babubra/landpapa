@@ -345,13 +345,16 @@ export async function generateMetadata({ params, searchParams }: GeoPageProps): 
             if (!title) {
                 const titleTemplate = settings.seo_listing_title_template;
                 if (titleTemplate) {
-                    title = titleTemplate
+                    // Сначала обрабатываем условный синтаксис {ед./мн.}
+                    let processed = processConditionalSyntax(titleTemplate, plotsCount);
+                    title = processed
                         .replace(/\{title\}/g, listing.title || "Участок")
                         .replace(/\{price\}/g, priceStr)
                         .replace(/\{area\}/g, areaStr)
                         .replace(/\{location\}/g, locationStr)
                         .replace(/\{cadastral\}/g, cadastralStr)
-                        .replace(/\{purpose\}/g, purposeStr);
+                        .replace(/\{purpose\}/g, purposeStr)
+                        .replace(/\s+/g, " ").trim();
                 } else {
                     title = listing.title || "Участок";
                 }
@@ -362,13 +365,16 @@ export async function generateMetadata({ params, searchParams }: GeoPageProps): 
             if (!description) {
                 const descTemplate = settings.seo_listing_description_template;
                 if (descTemplate) {
-                    description = descTemplate
+                    // Сначала обрабатываем условный синтаксис {ед./мн.}
+                    let processed = processConditionalSyntax(descTemplate, plotsCount);
+                    description = processed
                         .replace(/\{title\}/g, listing.title || "Участок")
                         .replace(/\{price\}/g, priceStr)
                         .replace(/\{area\}/g, areaStr)
                         .replace(/\{location\}/g, locationStr)
                         .replace(/\{cadastral\}/g, cadastralStr)
-                        .replace(/\{purpose\}/g, purposeStr);
+                        .replace(/\{purpose\}/g, purposeStr)
+                        .replace(/\s+/g, " ").trim();
                 } else {
                     description = listing.description?.substring(0, 160);
                 }
@@ -385,7 +391,9 @@ export async function generateMetadata({ params, searchParams }: GeoPageProps): 
             }
 
             return {
-                title,
+                title: {
+                    absolute: title,  // Не добавлять суффикс из layout.tsx
+                },
                 description,
                 alternates: { canonical: canonicalPath },
                 openGraph: {
