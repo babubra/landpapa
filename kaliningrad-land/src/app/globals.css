@@ -103,59 +103,61 @@
   --sidebar-ring: #90b329;
 }
 
-.dark {
-  /* Основные цвета - тёмная тема */
-  --background: #0f172a;
-  --foreground: #f1f5f9;
+@media (prefers-color-scheme: dark) {
+  :root {
+    /* Основные цвета - тёмная тема */
+    --background: #0f172a;
+    --foreground: #f1f5f9;
 
-  /* Карточки */
-  --card: #1e293b;
-  --card-foreground: #f1f5f9;
+    /* Карточки */
+    --card: #1e293b;
+    --card-foreground: #f1f5f9;
 
-  /* Поповеры */
-  --popover: #1e293b;
-  --popover-foreground: #f1f5f9;
+    /* Поповеры */
+    --popover: #1e293b;
+    --popover-foreground: #f1f5f9;
 
-  /* Акцентный цвет - светлый оливковый для тёмной темы */
-  --primary: #a8c94a;
-  --primary-foreground: #1e293b;
+    /* Акцентный цвет - светлый оливковый для тёмной темы */
+    --primary: #a8c94a;
+    --primary-foreground: #1e293b;
 
-  /* Вторичные цвета */
-  --secondary: #334155;
-  --secondary-foreground: #f1f5f9;
+    /* Вторичные цвета */
+    --secondary: #334155;
+    --secondary-foreground: #f1f5f9;
 
-  /* Приглушённые цвета */
-  --muted: #334155;
-  --muted-foreground: #94a3b8;
+    /* Приглушённые цвета */
+    --muted: #334155;
+    --muted-foreground: #94a3b8;
 
-  /* Акцент */
-  --accent: #365314;
-  --accent-foreground: #ecfccb;
+    /* Акцент */
+    --accent: #365314;
+    --accent-foreground: #ecfccb;
 
-  /* Деструктивные действия */
-  --destructive: #dc2626;
+    /* Деструктивные действия */
+    --destructive: #dc2626;
 
-  /* Границы и инпуты */
-  --border: #334155;
-  --input: #334155;
-  --ring: #a8c94a;
+    /* Границы и инпуты */
+    --border: #334155;
+    --input: #334155;
+    --ring: #a8c94a;
 
-  /* Графики */
-  --chart-1: #a8c94a;
-  --chart-2: #4ade80;
-  --chart-3: #2dd4bf;
-  --chart-4: #22d3ee;
-  --chart-5: #60a5fa;
+    /* Графики */
+    --chart-1: #a8c94a;
+    --chart-2: #4ade80;
+    --chart-3: #2dd4bf;
+    --chart-4: #22d3ee;
+    --chart-5: #60a5fa;
 
-  /* Сайдбар */
-  --sidebar: #1e293b;
-  --sidebar-foreground: #f1f5f9;
-  --sidebar-primary: #a3e635;
-  --sidebar-primary-foreground: #1e293b;
-  --sidebar-accent: #365314;
-  --sidebar-accent-foreground: #ecfccb;
-  --sidebar-border: #334155;
-  --sidebar-ring: #a3e635;
+    /* Сайдбар */
+    --sidebar: #1e293b;
+    --sidebar-foreground: #f1f5f9;
+    --sidebar-primary: #a3e635;
+    --sidebar-primary-foreground: #1e293b;
+    --sidebar-accent: #365314;
+    --sidebar-accent-foreground: #ecfccb;
+    --sidebar-border: #334155;
+    --sidebar-ring: #a3e635;
+  }
 }
 
 @layer base {
