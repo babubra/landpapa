@@ -5,6 +5,7 @@ import { ListingSidebar, ListingInfoBlock, ListingPlotsBlock } from "@/component
 import { ListingMapClient } from "@/components/listing/ListingMapClient";
 import { Breadcrumbs, BreadcrumbItem } from "@/components/seo/Breadcrumbs";
 import { ListingProvider } from "@/context/ListingContext";
+import { usePlaceholderImage } from "@/contexts/SiteSettingsContext";
 
 interface Plot {
     id: number;
@@ -67,6 +68,9 @@ interface ListingContentProps {
  * Переиспользуется в /listing/[slug] и /[...geo] роутах.
  */
 export function ListingContent({ listing, breadcrumbs, h1 }: ListingContentProps) {
+    // Получаем placeholder из настроек сайта
+    const placeholderImage = usePlaceholderImage();
+
     // Формируем локацию
     const location = listing.settlement
         ? listing.settlement.district
@@ -101,6 +105,7 @@ export function ListingContent({ listing, breadcrumbs, h1 }: ListingContentProps
                             <ListingGallery
                                 images={listing.images}
                                 title={displayTitle}
+                                placeholderImage={placeholderImage}
                             />
 
                             {/* Sidebar Info для мобильных (над описанием) */}
