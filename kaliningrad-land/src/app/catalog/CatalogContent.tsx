@@ -6,6 +6,7 @@ import { ListingCard } from "@/components/catalog/ListingCard";
 import { CatalogFilters } from "@/components/catalog/CatalogFilters";
 import { MapBanner } from "@/components/catalog/MapBanner";
 import { Pagination } from "@/components/ui/pagination";
+import { usePlaceholderImage } from "@/contexts/SiteSettingsContext";
 import type { ListingsResponse, ListingData } from "@/types/listing";
 
 interface CatalogContentProps {
@@ -18,6 +19,7 @@ interface CatalogContentProps {
 
 export function CatalogContent({ initialData, locationId, baseUrl = "/catalog", locationDescription, h1Template }: CatalogContentProps) {
     const searchParams = useSearchParams();
+    const placeholderImage = usePlaceholderImage();
 
     // Инициализируем state данными с сервера
     const [listings, setListings] = useState<ListingData[]>(initialData.items);
@@ -137,7 +139,7 @@ export function CatalogContent({ initialData, locationId, baseUrl = "/catalog", 
                     <>
                         <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
                             {listings.map((listing) => (
-                                <ListingCard key={listing.id} listing={listing} h1Template={h1Template} />
+                                <ListingCard key={listing.id} listing={listing} h1Template={h1Template} placeholderImage={placeholderImage} />
                             ))}
                         </div>
 

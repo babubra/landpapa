@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { ListingCard } from "@/components/catalog/ListingCard";
+import { usePlaceholderImage } from "@/contexts/SiteSettingsContext";
 import type { ListingData } from "@/types/listing";
 
 async function getPopularListings(): Promise<ListingData[]> {
@@ -27,6 +28,7 @@ async function getPopularListings(): Promise<ListingData[]> {
 export function PopularPlotsSection() {
     const [listings, setListings] = useState<ListingData[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const placeholderImage = usePlaceholderImage();
 
     useEffect(() => {
         getPopularListings().then((data) => {
@@ -82,6 +84,7 @@ export function PopularPlotsSection() {
                         key={listing.id}
                         listing={listing}
                         variant="compact"
+                        placeholderImage={placeholderImage}
                     />
                 ))}
             </div>

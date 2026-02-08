@@ -32,12 +32,16 @@ export interface ListingCardProps {
     listing: ListingData;
     variant?: "default" | "compact";
     h1Template?: string | null;  // Шаблон для генерации названия по настройкам сайта
+    placeholderImage?: string;   // URL placeholder-изображения из настроек
 }
 
-export function ListingCard({ listing, variant = "default", h1Template }: ListingCardProps) {
+export function ListingCard({ listing, variant = "default", h1Template, placeholderImage }: ListingCardProps) {
     // Получаем URL изображения (поддержка обоих полей)
     const imgData = listing.image || listing.main_image;
     const imageUrl = imgData ? (imgData.thumbnail_url || imgData.url) : null;
+
+    // Используем placeholder из настроек или статический fallback
+    const placeholder = placeholderImage || DEFAULT_PLACEHOLDER;
 
     const locationText = (() => {
         if (listing.location) {
@@ -70,7 +74,7 @@ export function ListingCard({ listing, variant = "default", h1Template }: Listin
                 {/* Изображение */}
                 <div className="relative h-48 overflow-hidden bg-muted">
                     <Image
-                        src={getImageUrl(imageUrl, DEFAULT_PLACEHOLDER)}
+                        src={getImageUrl(imageUrl, placeholder)}
                         alt={getListingDisplayTitle(listing, h1Template)}
                         fill
                         className="object-cover group-hover:scale-105 transition-transform duration-300"
@@ -130,7 +134,7 @@ export function ListingCard({ listing, variant = "default", h1Template }: Listin
             {/* Изображение */}
             <div className="relative h-48 overflow-hidden bg-muted">
                 <Image
-                    src={getImageUrl(imageUrl, DEFAULT_PLACEHOLDER)}
+                    src={getImageUrl(imageUrl, placeholder)}
                     alt={getListingDisplayTitle(listing, h1Template)}
                     fill
                     className="object-cover group-hover:scale-105 transition-transform duration-300"
