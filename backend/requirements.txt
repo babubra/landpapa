@@ -18,3 +18,4 @@ unidecode>=1.4.0
 geoalchemy2
 pyproj
 greenlet
+playwright
