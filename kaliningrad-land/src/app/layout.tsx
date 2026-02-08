@@ -103,7 +103,7 @@ export default function RootLayout({
         <SiteNavigationSchema />
         <ThemeProvider
           attribute="class"
-          defaultTheme="light"
+          defaultTheme="system"
           enableSystem
           disableTransitionOnChange
         >

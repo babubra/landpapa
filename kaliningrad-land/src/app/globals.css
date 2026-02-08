@@ -103,8 +103,9 @@
   --sidebar-ring: #90b329;
 }
 
+/* Тёмная тема: автоматически по системным настройкам */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not(.light) {
     /* Основные цвета - тёмная тема */
     --background: #0f172a;
     --foreground: #f1f5f9;
@@ -158,6 +159,118 @@
     --sidebar-border: #334155;
     --sidebar-ring: #a3e635;
   }
+}
+
+/* Тёмная тема: принудительно через класс .dark */
+:root.dark {
+  /* Основные цвета - тёмная тема */
+  --background: #0f172a;
+  --foreground: #f1f5f9;
+
+  /* Карточки */
+  --card: #1e293b;
+  --card-foreground: #f1f5f9;
+
+  /* Поповеры */
+  --popover: #1e293b;
+  --popover-foreground: #f1f5f9;
+
+  /* Акцентный цвет - светлый оливковый для тёмной темы */
+  --primary: #a8c94a;
+  --primary-foreground: #1e293b;
+
+  /* Вторичные цвета */
+  --secondary: #334155;
+  --secondary-foreground: #f1f5f9;
+
+  /* Приглушённые цвета */
+  --muted: #334155;
+  --muted-foreground: #94a3b8;
+
+  /* Акцент */
+  --accent: #365314;
+  --accent-foreground: #ecfccb;
+
+  /* Деструктивные действия */
+  --destructive: #dc2626;
+
+  /* Границы и инпуты */
+  --border: #334155;
+  --input: #334155;
+  --ring: #a8c94a;
+
+  /* Графики */
+  --chart-1: #a8c94a;
+  --chart-2: #4ade80;
+  --chart-3: #2dd4bf;
+  --chart-4: #22d3ee;
+  --chart-5: #60a5fa;
+
+  /* Сайдбар */
+  --sidebar: #1e293b;
+  --sidebar-foreground: #f1f5f9;
+  --sidebar-primary: #a3e635;
+  --sidebar-primary-foreground: #1e293b;
+  --sidebar-accent: #365314;
+  --sidebar-accent-foreground: #ecfccb;
+  --sidebar-border: #334155;
+  --sidebar-ring: #a3e635;
+}
+
+/* Светлая тема: принудительно через класс .light (переопределяет prefers-color-scheme: dark) */
+:root.light {
+  /* Основные цвета - светлая тема */
+  --background: #ffffff;
+  --foreground: #1e293b;
+
+  /* Карточки */
+  --card: #ffffff;
+  --card-foreground: #1e293b;
+
+  /* Поповеры */
+  --popover: #ffffff;
+  --popover-foreground: #1e293b;
+
+  /* Акцентный цвет - оливково-зелёный */
+  --primary: #90b329;
+  --primary-foreground: #ffffff;
+
+  /* Вторичные цвета */
+  --secondary: #f1f5f9;
+  --secondary-foreground: #1e293b;
+
+  /* Приглушённые цвета */
+  --muted: #f1f5f9;
+  --muted-foreground: #64748b;
+
+  /* Акцент */
+  --accent: #ecfccb;
+  --accent-foreground: #365314;
+
+  /* Деструктивные действия */
+  --destructive: #ef4444;
+
+  /* Границы и инпуты */
+  --border: #e2e8f0;
+  --input: #e2e8f0;
+  --ring: #90b329;
+
+  /* Графики */
+  --chart-1: #90b329;
+  --chart-2: #22c55e;
+  --chart-3: #14b8a6;
+  --chart-4: #06b6d4;
+  --chart-5: #3b82f6;
+
+  /* Сайдбар */
+  --sidebar: #f8fafc;
+  --sidebar-foreground: #1e293b;
+  --sidebar-primary: #90b329;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #ecfccb;
+  --sidebar-accent-foreground: #365314;
+  --sidebar-border: #e2e8f0;
+  --sidebar-ring: #90b329;
 }
 
 @layer base {
