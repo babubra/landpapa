@@ -982,3 +982,100 @@ export async function updateLeadStatus(id: number, status: string): Promise<Lead
   }
   return response.json();
 }
+
+// === Admin Users ===
+
+export interface AdminUser {
+  id: number;
+  username: string;
+  email: string | null;
+  display_name: string | null;
+  telegram_id: number | null;
+  is_active: boolean;
+  created_at: string;
+  last_login: string | null;
+}
+
+export interface AdminUserCreate {
+  username: string;
+  password: string;
+  email?: string | null;
+  display_name?: string | null;
+  telegram_id?: number | null;
+  is_active?: boolean;
+}
+
+export interface AdminUserUpdate {
+  username?: string | null;
+  email?: string | null;
+  display_name?: string | null;
+  telegram_id?: number | null;
+  is_active?: boolean | null;
+}
+
+export interface AdminUsersResponse {
+  items: AdminUser[];
+  total: number;
+}
+
+export async function getAdminUsers(): Promise<AdminUsersResponse> {
+  const response = await fetchWithAuth("/api/admin/users/");
+  if (!response.ok) {
+    throw new Error("Ошибка загрузки пользователей");
+  }
+  return response.json();
+}
+
+export async function getAdminUser(id: number): Promise<AdminUser> {
+  const response = await fetchWithAuth(`/api/admin/users/${id}`);
+  if (!response.ok) {
+    throw new Error("Ошибка загрузки пользователя");
+  }
+  return response.json();
+}
+
+export async function createAdminUser(data: AdminUserCreate): Promise<AdminUser> {
+  const response = await fetchWithAuth("/api/admin/users/", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.detail || "Ошибка создания пользователя");
+  }
+  return response.json();
+}
+
+export async function updateAdminUser(id: number, data: AdminUserUpdate): Promise<AdminUser> {
+  const response = await fetchWithAuth(`/api/admin/users/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.detail || "Ошибка обновления пользователя");
+  }
+  return response.json();
+}
+
+export async function changeAdminUserPassword(id: number, newPassword: string): Promise<void> {
+  const response = await fetchWithAuth(`/api/admin/users/${id}/password`, {
+    method: "PATCH",
+    body: JSON.stringify({ new_password: newPassword }),
+  });
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.detail || "Ошибка смены пароля");
+  }
+}
+
+export async function deleteAdminUser(id: number): Promise<void> {
+  const response = await fetchWithAuth(`/api/admin/users/${id}`, {
+    method: "DELETE",
+  });
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.detail || "Ошибка удаления пользователя");
+  }
+}
+

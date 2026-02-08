@@ -113,6 +113,13 @@ export default function DashboardPage() {
                   <p className="text-sm text-muted-foreground">Настройки сайта</p>
                 </Card>
               </Link>
+
+              <Link href="/users">
+                <Card className="p-4 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer border-orange-200 dark:border-orange-800 ring-1 ring-orange-500/20">
+                  <h3 className="font-semibold mb-1 text-orange-700 dark:text-orange-400">🔐 Пользователи</h3>
+                  <p className="text-sm text-muted-foreground">Доступ к админке</p>
+                </Card>
+              </Link>
             </div>
           </CardContent>
         </Card>

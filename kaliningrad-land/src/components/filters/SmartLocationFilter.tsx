@@ -26,6 +26,7 @@ interface LocationSearchResult {
     settlement_type: string | null;
     parent_name: string | null;
     parent_slug: string | null;
+    parent_type: LocationType | null;
     listings_count: number;
     sort_order: number;
 }
@@ -38,6 +39,7 @@ export interface SmartSelectedLocation {
     type: LocationType;
     settlement_type?: string | null;
     parent_slug?: string | null;
+    parent_type?: LocationType | null;
 }
 
 interface SmartLocationFilterProps {
@@ -153,7 +155,7 @@ export function SmartLocationFilter({
                 children?: HierarchyItem[];
             }
 
-            const flatten = (items: HierarchyItem[], parentName?: string, parentSlug?: string) => {
+            const flatten = (items: HierarchyItem[], parentName?: string, parentSlug?: string, parentType?: LocationType) => {
                 for (const item of items) {
                     // Пропускаем регион
                     if (item.type !== "region") {
@@ -165,13 +167,19 @@ export function SmartLocationFilter({
                             settlement_type: item.settlement_type || null,
                             parent_name: parentName || null,
                             parent_slug: parentSlug || null,
+                            parent_type: parentType || null,
                             listings_count: item.listings_count,
                             sort_order: item.sort_order || 0,
                         });
                     }
 
                     if (item.children && item.children.length > 0) {
-                        flatten(item.children, item.type === "region" ? undefined : item.name, item.type === "region" ? undefined : item.slug);
+                        flatten(
+                            item.children,
+                            item.type === "region" ? undefined : item.name,
+                            item.type === "region" ? undefined : item.slug,
+                            item.type === "region" ? undefined : item.type
+                        );
                     }
                 }
             };
@@ -194,6 +202,7 @@ export function SmartLocationFilter({
             type: loc.type,
             settlement_type: loc.settlement_type,
             parent_slug: loc.parent_slug,
+            parent_type: loc.parent_type,
         };
 
         onChange(selected);
@@ -205,11 +214,11 @@ export function SmartLocationFilter({
         // Redirect на geo-URL если включено
         if (enableGeoRedirect) {
             let url = "";
-            if (loc.parent_slug && (loc.type === "settlement" || loc.type === "city")) {
-                // Населённый пункт или город с родителем
+            // Двухсегментный URL только если родитель — район (district)
+            if (loc.parent_slug && loc.parent_type === "district") {
                 url = `/${loc.parent_slug}/${loc.slug}`;
             } else {
-                // Район или город верхнего уровня
+                // Район, город регионального уровня, или локация с родителем-регионом
                 url = `/${loc.slug}`;
             }
             router.push(url);

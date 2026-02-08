@@ -92,9 +92,8 @@ export function SearchFilter() {
   const buildGeoPath = useCallback(() => {
     if (!selectedLocation) return "/catalog";
 
-    // Для settlement с parent_slug: /{parent_slug}/{slug}
-    // Для district/city: /{slug}
-    if (selectedLocation.parent_slug) {
+    // Двухсегментный URL только если родитель — район (district)
+    if (selectedLocation.parent_slug && selectedLocation.parent_type === "district") {
       return `/${selectedLocation.parent_slug}/${selectedLocation.slug}`;
     }
     return `/${selectedLocation.slug}`;

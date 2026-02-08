@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_async_db
 from app.models.admin_user import AdminUser
+from app.models.setting import Setting
 from app.auth import verify_password, hash_password, create_access_token, decode_access_token
 from app.utils.email import send_email
 from app.config import settings
@@ -194,3 +195,148 @@ async def reset_password(
     await db.commit()
 
     return {"detail": "Пароль успешно изменен."}
+
+
+# === Telegram авторизация ===
+
+class TelegramAuthData(BaseModel):
+    """Данные от Telegram Login Widget."""
+    id: int
+    first_name: str | None = None
+    last_name: str | None = None
+    username: str | None = None
+    photo_url: str | None = None
+    auth_date: int
+    hash: str
+
+
+def verify_telegram_auth(data: dict, bot_token: str) -> bool:
+    """Проверка подписи данных от Telegram Login Widget."""
+    import hashlib
+    import hmac
+    
+    check_hash = data.pop("hash", None)
+    if not check_hash:
+        return False
+    
+    # Сортируем и формируем строку для проверки
+    data_check_string = "\n".join(
+        f"{k}={v}" for k, v in sorted(data.items()) if v is not None
+    )
+    
+    # Создаём секретный ключ из токена бота
+    secret_key = hashlib.sha256(bot_token.encode()).digest()
+    
+    # Вычисляем HMAC
+    calculated_hash = hmac.new(
+        secret_key, 
+        data_check_string.encode(), 
+        hashlib.sha256
+    ).hexdigest()
+    
+    return hmac.compare_digest(calculated_hash, check_hash)
+
+
+@router.post("/telegram", response_model=Token)
+async def telegram_login(
+    data: TelegramAuthData,
+    db: AsyncSession = Depends(get_async_db),
+):
+    """Авторизация через Telegram Login Widget."""
+    import time
+    
+    # Получаем токен бота из БД (настройки сайта)
+    result = await db.execute(
+        select(Setting).where(Setting.key == "telegram_bot_token")
+    )
+    setting = result.scalar_one_or_none()
+    bot_token = setting.value if setting else None
+    
+    if not bot_token:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Telegram авторизация не настроена (укажите токен бота в настройках)",
+        )
+    
+    # Проверяем, что данные не устарели (не старше 1 дня)
+    if time.time() - data.auth_date > 86400:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Данные авторизации устарели",
+        )
+    
+    # Проверяем подпись
+    auth_data = data.model_dump()
+    if not verify_telegram_auth(auth_data.copy(), bot_token):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Неверная подпись данных Telegram",
+        )
+    
+    # Ищем пользователя по telegram_id
+    result = await db.execute(
+        select(AdminUser).where(AdminUser.telegram_id == data.id)
+    )
+    user = result.scalar_one_or_none()
+    
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="У вас нет доступа к админ-панели",
+        )
+    
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Пользователь деактивирован",
+        )
+    
+    # Обновляем время последнего входа
+    user.last_login = datetime.utcnow()
+    await db.commit()
+    
+    # Создаём токен
+    access_token = create_access_token(data={"sub": user.username})
+    
+    return Token(access_token=access_token)
+
+
+@router.post("/telegram-dev", response_model=Token)
+async def telegram_dev_login(
+    telegram_id: int,
+    db: AsyncSession = Depends(get_async_db),
+):
+    """Dev-режим: авторизация по telegram_id напрямую (только при DEBUG=true)."""
+    if not settings.debug:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Dev login отключён в production",
+        )
+    
+    # Ищем пользователя по telegram_id
+    result = await db.execute(
+        select(AdminUser).where(AdminUser.telegram_id == telegram_id)
+    )
+    user = result.scalar_one_or_none()
+    
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Пользователь с таким telegram_id не найден",
+        )
+    
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Пользователь деактивирован",
+        )
+    
+    # Обновляем время последнего входа
+    user.last_login = datetime.utcnow()
+    await db.commit()
+    
+    # Создаём токен
+    access_token = create_access_token(data={"sub": user.username})
+    
+    return Token(access_token=access_token)
+

@@ -3,7 +3,7 @@
 """
 
 from datetime import datetime
-from sqlalchemy import String, Boolean, DateTime
+from sqlalchemy import String, Boolean, DateTime, BigInteger
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import Base
@@ -23,6 +23,9 @@ class AdminUser(Base):
     
     # Статус
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    
+    # Telegram авторизация
+    telegram_id: Mapped[int | None] = mapped_column(BigInteger, unique=True, index=True, nullable=True)
     
     # Мета
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)

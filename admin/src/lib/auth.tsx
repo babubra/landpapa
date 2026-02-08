@@ -15,11 +15,24 @@ interface User {
     display_name: string | null;
 }
 
+// Данные от Telegram Login Widget
+export interface TelegramAuthData {
+    id: number;
+    first_name?: string;
+    last_name?: string;
+    username?: string;
+    photo_url?: string;
+    auth_date: number;
+    hash: string;
+}
+
 interface AuthContextType {
     user: User | null;
     token: string | null;
     isLoading: boolean;
     login: (username: string, password: string) => Promise<void>;
+    loginWithTelegram: (data: TelegramAuthData) => Promise<void>;
+    loginDev: (telegramId: number) => Promise<void>;
     logout: () => void;
 }
 
@@ -66,6 +79,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
     };
 
+    const handleAuthSuccess = async (accessToken: string) => {
+        localStorage.setItem("admin_token", accessToken);
+        setToken(accessToken);
+        await fetchUser(accessToken);
+        router.push("/");
+    };
+
     const login = async (username: string, password: string) => {
         const formData = new URLSearchParams();
         formData.append("username", username);
@@ -85,12 +105,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
 
         const data = await res.json();
-        const accessToken = data.access_token;
+        await handleAuthSuccess(data.access_token);
+    };
 
-        localStorage.setItem("admin_token", accessToken);
-        setToken(accessToken);
-        await fetchUser(accessToken);
-        router.push("/");
+    const loginWithTelegram = async (authData: TelegramAuthData) => {
+        const res = await fetch(`${API_URL}/api/auth/telegram`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify(authData),
+        });
+
+        if (!res.ok) {
+            const error = await res.json();
+            throw new Error(error.detail || "Ошибка авторизации через Telegram");
+        }
+
+        const data = await res.json();
+        await handleAuthSuccess(data.access_token);
+    };
+
+    const loginDev = async (telegramId: number) => {
+        const res = await fetch(`${API_URL}/api/auth/telegram-dev?telegram_id=${telegramId}`, {
+            method: "POST",
+        });
+
+        if (!res.ok) {
+            const error = await res.json();
+            throw new Error(error.detail || "Ошибка dev авторизации");
+        }
+
+        const data = await res.json();
+        await handleAuthSuccess(data.access_token);
     };
 
     const logout = () => {
@@ -101,7 +148,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
 
     return (
-        <AuthContext.Provider value={{ user, token, isLoading, login, logout }}>
+        <AuthContext.Provider value={{ user, token, isLoading, login, loginWithTelegram, loginDev, logout }}>
             {children}
         </AuthContext.Provider>
     );

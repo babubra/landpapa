@@ -512,6 +512,7 @@ class LocationSearchItem(BaseModel):
     settlement_type: str | None = None
     parent_name: str | None = None
     parent_slug: str | None = None
+    parent_type: str | None = None  # Тип родителя для формирования geo-URL
     listings_count: int = 0
     sort_order: int = 0
 
@@ -564,7 +565,7 @@ async def search_locations(
     result = await db.execute(query)
     locations = result.unique().scalars().all()
     
-    # Подсчёт объявлений для каждой локации
+    # Подсчёт объявлений для каждой локации (прямых)
     counts_result = await db.execute(
         select(Listing.location_id, func.count(Listing.id))
         .join(Plot, Listing.id == Plot.listing_id)
@@ -572,7 +573,36 @@ async def search_locations(
         .where(Plot.status == PlotStatus.active)
         .group_by(Listing.location_id)
     )
-    listings_count_map = dict(counts_result.all())
+    direct_counts = dict(counts_result.all())
+    
+    # Для районов/городов суммируем объявления из дочерних локаций
+    # Получаем все локации для построения дерева parent→children
+    all_locs_result = await db.execute(select(Location))
+    all_locs = all_locs_result.scalars().all()
+    
+    # Строим маппинг parent_id → [child_ids]
+    children_map: dict[int, list[int]] = {}
+    for loc in all_locs:
+        if loc.parent_id is not None:
+            children_map.setdefault(loc.parent_id, []).append(loc.id)
+    
+    # Рекурсивный подсчёт (свои + дочерние)
+    _total_cache: dict[int, int] = {}
+    def get_total_count(loc_id: int) -> int:
+        if loc_id in _total_cache:
+            return _total_cache[loc_id]
+        total = direct_counts.get(loc_id, 0)
+        for child_id in children_map.get(loc_id, []):
+            total += get_total_count(child_id)
+        _total_cache[loc_id] = total
+        return total
+    
+    # Строим итоговую карту с агрегированными counts
+    listings_count_map: dict[int, int] = {}
+    for loc in all_locs:
+        count = get_total_count(loc.id)
+        if count > 0:
+            listings_count_map[loc.id] = count
     
     # Приоритет типов
     type_priority = {
@@ -611,9 +641,11 @@ async def search_locations(
     for loc in sorted_locations:
         parent_name = None
         parent_slug = None
+        parent_type = None
         if loc.parent:
             parent_name = loc.parent.name
             parent_slug = loc.parent.slug
+            parent_type = loc.parent.type.value
         
         items.append(LocationSearchItem(
             id=loc.id,
@@ -623,6 +655,7 @@ async def search_locations(
             settlement_type=loc.settlement_type,
             parent_name=parent_name,
             parent_slug=parent_slug,
+            parent_type=parent_type,
             listings_count=listings_count_map.get(loc.id, 0),
             sort_order=loc.sort_order,
         ))
@@ -664,6 +697,7 @@ async def get_location_by_id(
         "settlement_type": location.settlement_type,
         "parent_slug": location.parent.slug if location.parent else None,
         "parent_name": location.parent.name if location.parent else None,
+        "parent_type": location.parent.type.value if location.parent else None,
     }
 
 

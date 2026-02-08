@@ -70,6 +70,7 @@ export function CatalogFilters({ onFiltersChange, baseUrl = "/catalog", location
                             type: data.type,
                             settlement_type: data.settlement_type,
                             parent_slug: data.parent_slug,
+                            parent_type: data.parent_type,
                         });
                     }
                 })
@@ -90,8 +91,8 @@ export function CatalogFilters({ onFiltersChange, baseUrl = "/catalog", location
                     .then(res => res.json())
                     .then(data => {
                         if (data.slug) {
-                            // Формируем гео-URL
-                            const geoUrl = data.parent_slug
+                            // Формируем гео-URL (двухсегментный только если родитель — район)
+                            const geoUrl = (data.parent_slug && data.parent_type === "district")
                                 ? `/${data.parent_slug}/${data.slug}`
                                 : `/${data.slug}`;
                             // Сохраняем остальные параметры

@@ -4,7 +4,7 @@ from fastapi.staticfiles import StaticFiles
 import os
 
 from app.config import settings
-from app.routers import news, listings, locations, references, auth, admin_plots, admin_settings, admin_listings, admin_geo, images, admin_references, admin_realtors, public_settings, leads, public_plots, admin_locations
+from app.routers import news, listings, locations, references, auth, admin_plots, admin_settings, admin_listings, admin_geo, images, admin_references, admin_realtors, public_settings, leads, public_plots, admin_locations, admin_users
 
 app = FastAPI(
     title="КалининградЗем API",
@@ -22,6 +22,7 @@ app.include_router(admin_references.router, prefix="/api/admin/references", tags
 app.include_router(admin_realtors.router, prefix="/api/admin/realtors", tags=["admin-realtors"])
 app.include_router(leads.router, prefix="/api/admin/leads", tags=["admin-leads"])
 app.include_router(admin_locations.router, prefix="/api/admin/locations", tags=["admin-locations"])
+app.include_router(admin_users.router, prefix="/api/admin/users", tags=["admin-users"])
 
 from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 
