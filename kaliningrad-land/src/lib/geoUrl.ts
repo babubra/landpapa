@@ -69,19 +69,16 @@ export interface ListingGeoInfo {
 
 
 
-// === Построение URL для листинга ===
-
 /**
  * Строит URL страницы листинга.
  * 
  * - С географией: /{location_slug}/{listing_slug} или /{parent_slug}/{location_slug}/{listing_slug}
- * 
- * @throws Error если у листинга нет привязанной локации
+ * - Без географии: /listing/{listing_slug} (fallback)
  */
 export function buildListingUrl(listing: ListingGeoInfo): string {
     if (!listing.location) {
-        // Локация обязательна для формирования URL
-        throw new Error(`Listing "${listing.slug}" не имеет привязанной локации. Невозможно построить URL.`);
+        // Fallback для листингов без локации — редирект на /listing/{slug}
+        return `/listing/${listing.slug}`;
     }
 
     // Если тип settlement - добавляем родителя (район)
