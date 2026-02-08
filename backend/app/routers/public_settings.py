@@ -63,6 +63,8 @@ PUBLIC_SETTING_KEYS = [
     "org_vk_url",
     "org_telegram_url",
     "org_max_url",
+    # Telegram авторизация
+    "telegram_bot_name",
 ]
 
 
@@ -115,6 +117,14 @@ class PublicSettingsResponse(BaseModel):
     org_vk_url: str | None = None
     org_telegram_url: str | None = None
     org_max_url: str | None = None
+    # Telegram авторизация
+    telegram_bot_name: str | None = None
+
+
+class SingleSettingResponse(BaseModel):
+    """Ответ для одиночной настройки."""
+    key: str
+    value: str | None = None
 
 
 @router.get("/public", response_model=PublicSettingsResponse)
@@ -133,3 +143,23 @@ async def get_public_settings(db: AsyncSession = Depends(get_async_db)):
         result_dict[setting.key] = setting.value if setting.value else None
     
     return PublicSettingsResponse(**result_dict)
+
+
+@router.get("/{key}", response_model=SingleSettingResponse)
+async def get_single_setting(key: str, db: AsyncSession = Depends(get_async_db)):
+    """
+    Получить одну публичную настройку по ключу.
+    Только для ключей из PUBLIC_SETTING_KEYS.
+    """
+    if key not in PUBLIC_SETTING_KEYS:
+        return SingleSettingResponse(key=key, value=None)
+    
+    result = await db.execute(
+        select(Setting).where(Setting.key == key)
+    )
+    setting = result.scalar_one_or_none()
+    
+    return SingleSettingResponse(
+        key=key,
+        value=setting.value if setting else None
+    )

@@ -247,7 +247,7 @@ async def telegram_login(
     
     # Получаем токен бота из БД (настройки сайта)
     result = await db.execute(
-        select(Setting).where(Setting.key == "telegram_bot_token")
+        select(Setting).where(Setting.key == "tg_bot_token")
     )
     setting = result.scalar_one_or_none()
     bot_token = setting.value if setting else None

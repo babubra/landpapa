@@ -102,6 +102,7 @@ export default function SettingsPage() {
             site_work_hours_weekend: "Режим работы (выходные)",
             tg_bot_token: "Telegram Bot Token",
             tg_chat_id: "Telegram Chat ID",
+            telegram_bot_name: "Имя бота (для авторизации)",
         };
         return labels[key] || key;
     };
@@ -122,6 +123,7 @@ export default function SettingsPage() {
             site_work_hours_weekend: "Сб: 10:00 – 16:00, Вс: выходной",
             tg_bot_token: "123456789:ABCDefGhI... (от @BotFather)",
             tg_chat_id: "-100123456789 или ID пользователя",
+            telegram_bot_name: "rkkland_bot (без @)",
         };
         return placeholders[key] || "";
     };
@@ -358,15 +360,16 @@ export default function SettingsPage() {
                         {/* Telegram Section */}
                         <div className="bg-card rounded-lg border p-6">
                             <h2 className="text-lg font-semibold mb-4">
-                                Уведомления Telegram
+                                Уведомления и авторизация Telegram
                             </h2>
                             <p className="text-sm text-muted-foreground mb-6">
-                                Настройки бота для получения мгновенных уведомлений о новых заявках.
+                                Настройки бота для получения уведомлений о заявках и авторизации в админ-панели.
                             </p>
 
                             <div className="space-y-4">
                                 {renderTextSetting("tg_bot_token")}
                                 {renderTextSetting("tg_chat_id")}
+                                {renderTextSetting("telegram_bot_name")}
                             </div>
                         </div>
 

@@ -14,8 +14,7 @@ import {
     CardTitle,
 } from "@/components/ui/card";
 
-// Имя бота для Telegram Login Widget
-const TELEGRAM_BOT_NAME = process.env.NEXT_PUBLIC_TELEGRAM_BOT_NAME || "";
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 // Определяем, находимся ли мы в dev-режиме
 const isDev = process.env.NODE_ENV === "development";
@@ -34,6 +33,25 @@ export default function LoginPage() {
     const [error, setError] = useState("");
     const [isLoading, setIsLoading] = useState(false);
     const [devTelegramId, setDevTelegramId] = useState("");
+    const [telegramBotName, setTelegramBotName] = useState<string | null>(null);
+
+    // Загружаем имя бота из API
+    useEffect(() => {
+        const fetchBotName = async () => {
+            try {
+                const res = await fetch(`${API_URL}/api/settings/telegram_bot_name`);
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.value) {
+                        setTelegramBotName(data.value);
+                    }
+                }
+            } catch (e) {
+                console.error("Ошибка загрузки имени бота:", e);
+            }
+        };
+        fetchBotName();
+    }, []);
 
     // Telegram callback handler
     const handleTelegramAuth = useCallback(async (telegramUser: TelegramAuthData) => {
@@ -54,10 +72,10 @@ export default function LoginPage() {
         window.onTelegramAuth = handleTelegramAuth;
 
         // Добавляем скрипт Telegram только если есть имя бота
-        if (TELEGRAM_BOT_NAME) {
+        if (telegramBotName) {
             const script = document.createElement("script");
             script.src = "https://telegram.org/js/telegram-widget.js?22";
-            script.setAttribute("data-telegram-login", TELEGRAM_BOT_NAME);
+            script.setAttribute("data-telegram-login", telegramBotName);
             script.setAttribute("data-size", "large");
             script.setAttribute("data-radius", "8");
             script.setAttribute("data-onauth", "onTelegramAuth(user)");
@@ -74,7 +92,7 @@ export default function LoginPage() {
         return () => {
             window.onTelegramAuth = undefined as unknown as typeof window.onTelegramAuth;
         };
-    }, [handleTelegramAuth]);
+    }, [handleTelegramAuth, telegramBotName]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -122,7 +140,7 @@ export default function LoginPage() {
                     )}
 
                     {/* Telegram Login Widget */}
-                    {TELEGRAM_BOT_NAME && (
+                    {telegramBotName && (
                         <>
                             <div className="flex flex-col items-center">
                                 <div id="telegram-login-container" className="min-h-[48px]" />
