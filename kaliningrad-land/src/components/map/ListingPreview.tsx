@@ -16,6 +16,7 @@ const DEFAULT_PLACEHOLDER = "/hero-bg.jpg";
 interface ListingPreviewProps {
     listing: ListingData;
     onClose: () => void;
+    h1Template?: string | null;
 }
 
 function formatPrice(price: number): string {
@@ -37,7 +38,7 @@ function formatPriceRange(min: number | null, max: number | null): string {
  * Вертикальная карточка превью объявления для боковой панели карты.
  * Фиксированная ширина 350px, вертикальный layout.
  */
-export function ListingPreview({ listing, onClose }: ListingPreviewProps) {
+export function ListingPreview({ listing, onClose, h1Template }: ListingPreviewProps) {
     const locationText = (() => {
         if (listing.location) {
             const locName = listing.location.settlement_type
@@ -86,7 +87,7 @@ export function ListingPreview({ listing, onClose }: ListingPreviewProps) {
                 <div className="relative w-full h-44 rounded-lg overflow-hidden">
                     <Image
                         src={getImageUrl(imageUrl, DEFAULT_PLACEHOLDER)}
-                        alt={getListingDisplayTitle(listing)}
+                        alt={getListingDisplayTitle(listing, h1Template)}
                         fill
                         className="object-cover"
                         unoptimized
@@ -102,7 +103,7 @@ export function ListingPreview({ listing, onClose }: ListingPreviewProps) {
             {/* Информация */}
             <div className="flex-1 p-4 flex flex-col overflow-y-auto">
                 <h3 className="font-semibold text-lg line-clamp-2 mb-2">
-                    {getListingDisplayTitle(listing)}
+                    {getListingDisplayTitle(listing, h1Template)}
                 </h3>
 
                 <div className="flex items-center gap-1 text-muted-foreground text-sm mb-3">

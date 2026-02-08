@@ -6,6 +6,7 @@ import { MapFilters } from "@/components/map/MapFilters";
 import { ListingsMapClient } from "@/components/map/ListingsMapClient";
 import { ListingPreview } from "@/components/map/ListingPreview";
 import { useIsMobile } from "@/hooks/useIsMobile";
+import { useSiteSettings } from "@/contexts/SiteSettingsContext";
 import type { ListingData } from "@/types/listing";
 import { PlotPoint, DEFAULT_MAP_CENTER, DEFAULT_MAP_ZOOM } from "@/types/map";
 
@@ -16,6 +17,8 @@ const FILTERS_HEIGHT = 56;
 export function MapPageContent() {
     const searchParams = useSearchParams();
     const isMobile = useIsMobile();
+    const { settings } = useSiteSettings();
+    const h1Template = settings?.seo_listing_h1_template || null;
 
     // Данные с API
     const [plots, setPlots] = useState<PlotPoint[]>([]);
@@ -117,6 +120,7 @@ export function MapPageContent() {
                     <div className="absolute left-0 top-0 bottom-0 z-[1000]">
                         <ListingPreview
                             listing={selectedListing}
+                            h1Template={h1Template}
                             onClose={() => {
                                 setSelectedListing(null);
                                 setSelectedListingSlug(null);
