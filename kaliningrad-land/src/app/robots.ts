@@ -14,7 +14,8 @@ export default function robots(): MetadataRoute.Robots {
                 // Карта с координатами и фильтрами
                 '/map?*',
 
-                // Каталог с фильтрами (кроме page и location_id)
+                // Каталог: пагинация и фильтры
+                '/catalog?*page*',
                 '/catalog?*price*',
                 '/catalog?*area*',
                 '/catalog?*sort*',

@@ -108,22 +108,22 @@ export async function generateMetadata({ searchParams }: MetadataProps): Promise
         }
     }
 
-    // Добавляем page к canonical для страниц > 1
-    if (pageNum > 1) {
-        canonicalPath = `${canonicalPath}?page=${pageNum}`;
-    }
+    // НЕ добавляем page к canonical — все страницы пагинации
+    // ссылаются на основную страницу каталога/локации
 
     // noindex для страниц с фильтрами (кроме page и location_id)
     const filterParams = Object.keys(params).filter(
         (key) => !["page", "location_id"].includes(key)
     );
     const hasFilters = filterParams.length > 0;
+    // noindex также для пагинации — страницы ?page=N не нужны в индексе
+    const shouldNoIndex = hasFilters || pageNum > 1;
 
     return {
         title,
         description,
-        // noindex для страниц с фильтрами — предотвращает индексацию мусорных URL
-        robots: hasFilters ? { index: false, follow: true } : undefined,
+        // noindex для страниц с фильтрами и пагинацией
+        robots: shouldNoIndex ? { index: false, follow: true } : undefined,
         alternates: {
             canonical: `${SITE_URL}${canonicalPath}`,
         },
