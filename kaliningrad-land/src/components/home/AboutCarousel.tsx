@@ -19,6 +19,9 @@ function FeatureCard({ image, title, description, benefits }: FeatureCardProps) 
                 alt={title}
                 fill
                 className="object-cover"
+                sizes="(max-width: 768px) 100vw, 50vw"
+                quality={50}
+                loading="lazy"
             />
 
             {/* Затемнение для читабельности */}
