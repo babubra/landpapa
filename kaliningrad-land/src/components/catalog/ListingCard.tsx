@@ -42,6 +42,7 @@ export function ListingCard({ listing, variant = "default", h1Template, placehol
 
     // Используем placeholder из настроек или статический fallback
     const placeholder = placeholderImage || DEFAULT_PLACEHOLDER;
+    const resolvedImageUrl = getImageUrl(imageUrl, placeholder);
 
     const locationText = (() => {
         if (listing.location) {
@@ -74,7 +75,7 @@ export function ListingCard({ listing, variant = "default", h1Template, placehol
                 {/* Изображение */}
                 <div className="relative h-48 overflow-hidden bg-muted">
                     <Image
-                        src={getImageUrl(imageUrl, placeholder)}
+                        src={resolvedImageUrl}
                         alt={getListingDisplayTitle(listing, h1Template)}
                         fill
                         className="object-cover group-hover:scale-105 transition-transform duration-300"
@@ -134,7 +135,7 @@ export function ListingCard({ listing, variant = "default", h1Template, placehol
             {/* Изображение */}
             <div className="relative h-48 overflow-hidden bg-muted">
                 <Image
-                    src={getImageUrl(imageUrl, placeholder)}
+                    src={resolvedImageUrl}
                     alt={getListingDisplayTitle(listing, h1Template)}
                     fill
                     className="object-cover group-hover:scale-105 transition-transform duration-300"

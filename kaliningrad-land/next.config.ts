@@ -12,6 +12,14 @@ const nextConfig: NextConfig = {
     root: path.resolve(__dirname),
   },
   images: {
+    localPatterns: [
+      {
+        pathname: "/uploads/**",
+      },
+      {
+        pathname: "/**",
+      },
+    ],
     remotePatterns: [
       {
         protocol: "http",

@@ -61,6 +61,7 @@ export function ListingPreview({ listing, onClose, h1Template }: ListingPreviewP
     // Получаем URL изображения (поддержка обоих полей)
     const imgData = listing.image || listing.main_image;
     const imageUrl = imgData ? (imgData.thumbnail_url || imgData.url) : null;
+    const resolvedImageUrl = getImageUrl(imageUrl, DEFAULT_PLACEHOLDER);
 
     // Строим гео-URL для листинга
     const listingUrl = buildListingUrl({
@@ -86,7 +87,7 @@ export function ListingPreview({ listing, onClose, h1Template }: ListingPreviewP
             <div className="p-4 pb-0">
                 <div className="relative w-full h-44 rounded-lg overflow-hidden">
                     <Image
-                        src={getImageUrl(imageUrl, DEFAULT_PLACEHOLDER)}
+                        src={resolvedImageUrl}
                         alt={getListingDisplayTitle(listing, h1Template)}
                         fill
                         className="object-cover"

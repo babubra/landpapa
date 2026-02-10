@@ -195,3 +195,12 @@ export function getImageUrl(url: string | null | undefined, fallback: string = "
     return relativePath;
 }
 
+/**
+ * Проверяет, является ли URL загруженным изображением (из /uploads/).
+ * Такие изображения не могут быть оптимизированы через Next.js Image Optimization
+ * в Docker-окружении, т.к. /_next/image не может получить их изнутри контейнера.
+ * Статические изображения из /public/ оптимизируются нормально.
+ */
+export function isUploadedImage(url: string): boolean {
+    return url.includes("/uploads/");
+}
