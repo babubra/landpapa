@@ -40,7 +40,7 @@ export function YandexMetrika() {
         <>
             <Script
                 id="yandex-metrika-init"
-                strategy="afterInteractive"
+                strategy="lazyOnload"
             >
                 {`
           (function(m,e,t,r,i,k,a){
