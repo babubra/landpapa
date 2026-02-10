@@ -20,7 +20,9 @@ export async function HeroSection() {
         fill
         className="object-cover"
         sizes="(max-width: 1024px) 100vw, 66vw"
+        quality={50}
         priority
+        fetchPriority="high"
       />
 
       {/* Градиентный оверлей */}
