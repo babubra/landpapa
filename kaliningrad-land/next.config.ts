@@ -12,8 +12,6 @@ const nextConfig: NextConfig = {
     root: path.resolve(__dirname),
   },
   images: {
-    formats: ['image/avif', 'image/webp'],
-    qualities: [50, 75],
     localPatterns: [
       {
         pathname: "/uploads/**",
