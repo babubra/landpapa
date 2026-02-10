@@ -62,7 +62,7 @@ export function ListingGallery({ images, title, placeholderImage = DEFAULT_PLACE
                     fill
                     className="object-cover transition-opacity duration-300"
                     priority
-                    unoptimized
+                    sizes="(max-width: 768px) 100vw, 66vw"
                 />
 
                 {/* Стрелки навигации */}
@@ -115,7 +115,7 @@ export function ListingGallery({ images, title, placeholderImage = DEFAULT_PLACE
                                 alt={`Миниатюра ${index + 1}`}
                                 fill
                                 className="object-cover"
-                                unoptimized
+                                sizes="80px"
                             />
                         </button>
                     ))}

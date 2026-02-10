@@ -78,7 +78,7 @@ export function ListingCard({ listing, variant = "default", h1Template, placehol
                         alt={getListingDisplayTitle(listing, h1Template)}
                         fill
                         className="object-cover group-hover:scale-105 transition-transform duration-300"
-                        unoptimized
+                        sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
                     />
                     {listing.plots_count > 1 && (
                         <div className="absolute top-3 left-3 bg-primary text-primary-foreground px-3 py-1 rounded-full text-sm font-medium">
@@ -138,7 +138,7 @@ export function ListingCard({ listing, variant = "default", h1Template, placehol
                     alt={getListingDisplayTitle(listing, h1Template)}
                     fill
                     className="object-cover group-hover:scale-105 transition-transform duration-300"
-                    unoptimized
+                    sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
                 />
                 {listing.is_featured && (
                     <div className="absolute top-3 left-3 bg-primary text-primary-foreground px-3 py-1 rounded-full text-sm font-medium">

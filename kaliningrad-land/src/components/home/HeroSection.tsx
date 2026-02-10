@@ -19,9 +19,8 @@ export async function HeroSection() {
         alt={heroTitle}
         fill
         className="object-cover"
-        sizes="100vw"
+        sizes="(max-width: 1024px) 100vw, 66vw"
         priority
-        unoptimized
       />
 
       {/* Градиентный оверлей */}

@@ -90,7 +90,7 @@ export function ListingPreview({ listing, onClose, h1Template }: ListingPreviewP
                         alt={getListingDisplayTitle(listing, h1Template)}
                         fill
                         className="object-cover"
-                        unoptimized
+                        sizes="350px"
                     />
                     {listing.is_featured && (
                         <div className="absolute top-2 left-2 bg-primary text-primary-foreground px-2 py-1 rounded text-xs font-medium">
