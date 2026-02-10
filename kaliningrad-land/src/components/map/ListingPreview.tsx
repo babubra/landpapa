@@ -17,6 +17,7 @@ interface ListingPreviewProps {
     listing: ListingData;
     onClose: () => void;
     h1Template?: string | null;
+    placeholderImage?: string;
 }
 
 function formatPrice(price: number): string {
@@ -38,7 +39,7 @@ function formatPriceRange(min: number | null, max: number | null): string {
  * Вертикальная карточка превью объявления для боковой панели карты.
  * Фиксированная ширина 350px, вертикальный layout.
  */
-export function ListingPreview({ listing, onClose, h1Template }: ListingPreviewProps) {
+export function ListingPreview({ listing, onClose, h1Template, placeholderImage }: ListingPreviewProps) {
     const locationText = (() => {
         if (listing.location) {
             const locName = listing.location.settlement_type
@@ -61,7 +62,8 @@ export function ListingPreview({ listing, onClose, h1Template }: ListingPreviewP
     // Получаем URL изображения (поддержка обоих полей)
     const imgData = listing.image || listing.main_image;
     const imageUrl = imgData ? (imgData.thumbnail_url || imgData.url) : null;
-    const resolvedImageUrl = getImageUrl(imageUrl, DEFAULT_PLACEHOLDER);
+    const placeholder = placeholderImage || DEFAULT_PLACEHOLDER;
+    const resolvedImageUrl = getImageUrl(imageUrl, placeholder);
 
     // Строим гео-URL для листинга
     const listingUrl = buildListingUrl({
