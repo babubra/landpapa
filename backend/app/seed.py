@@ -183,6 +183,11 @@ def seed_settings(db: Session):
             "description": "Таймаут для NSPD запросов в секундах"
         },
         {
+            "key": "nspd_user_agent",
+            "value": "",
+            "description": "User-Agent для запросов к NSPD. Пустое = Chrome 145. Пример: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36. Скопируйте из DevTools: Network → Headers → User-Agent"
+        },
+        {
             "key": "dadata_api_key",
             "value": "",
             "description": "API ключ для DaData (получить на dadata.ru)"

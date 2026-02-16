@@ -55,6 +55,49 @@ class CircuitState(enum.Enum):
     HALF_OPEN = "HALF_OPEN"
 
 
+# Дефолтный User-Agent (обновлять при смене версии Chrome)
+DEFAULT_USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
+
+
+def _build_nspd_headers(user_agent: str | None = None) -> dict[str, str]:
+    """Собрать заголовки для NSPD.
+    
+    User-Agent можно задать через настройку nspd_user_agent в админке.
+    Sec-Ch-Ua автоматически синхронизируется с версией Chrome из User-Agent.
+    """
+    ua = user_agent or DEFAULT_USER_AGENT
+    
+    # Извлекаем версию Chrome из User-Agent для Sec-Ch-Ua
+    import re
+    chrome_match = re.search(r'Chrome/(\d+)', ua)
+    chrome_ver = chrome_match.group(1) if chrome_match else "145"
+    
+    # Определяем платформу из User-Agent
+    if "Macintosh" in ua or "Mac OS" in ua:
+        platform = '"macOS"'
+    elif "Windows" in ua:
+        platform = '"Windows"'
+    elif "Linux" in ua:
+        platform = '"Linux"'
+    else:
+        platform = '"macOS"'
+    
+    return {
+        "User-Agent": ua,
+        "Accept": "*/*",
+        "Accept-Language": "ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7",
+        "Referer": "https://nspd.gov.ru/map?thematic=PKK&zoom=5&coordinate_x=7804891.637510094&coordinate_y=8181287.398947453&theme_id=1&baseLayerId=235&is_copy_url=true",
+        "Origin": "https://nspd.gov.ru",
+        "Sec-Ch-Ua": f'"Not:A-Brand";v="99", "Google Chrome";v="{chrome_ver}", "Chromium";v="{chrome_ver}"',
+        "Sec-Ch-Ua-Mobile": "?0",
+        "Sec-Ch-Ua-Platform": platform,
+        "Sec-Fetch-Dest": "empty",
+        "Sec-Fetch-Mode": "cors",
+        "Sec-Fetch-Site": "same-origin",
+        "Priority": "u=1, i",
+    }
+
+
 class NspdClient:
     """
     Асинхронный клиент для взаимодействия с геопорталом nspd.gov.ru.
@@ -67,6 +110,7 @@ class NspdClient:
         timeout: float = 10.0,
         cooldown_minutes: int = 5,
         proxy: Optional[str] = None,
+        user_agent: Optional[str] = None,
     ):
         self.base_url = "https://nspd.gov.ru"
         self._transformer = Transformer.from_crs(CRS_WEB_MERCATOR, CRS_WGS84, always_xy=True)
@@ -80,21 +124,7 @@ class NspdClient:
         
         self.client = httpx.AsyncClient(
             base_url=self.base_url,
-            headers={
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36",
-                "Accept": "*/*",
-                "Accept-Language": "ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7",
-                "Referer": "https://nspd.gov.ru/map?thematic=PKK&zoom=16&active_layers=36049",
-                "Origin": "https://nspd.gov.ru",
-                "Sec-Ch-Ua": '"Not(A:Brand";v="8", "Chromium";v="144", "Google Chrome";v="144"',
-                "Sec-Ch-Ua-Mobile": "?0",
-                "Sec-Ch-Ua-Platform": '"Windows"',
-                "Sec-Fetch-Dest": "empty",
-                "Sec-Fetch-Mode": "cors",
-                "Sec-Fetch-Site": "same-origin",
-                "DNT": "1",
-                "Priority": "u=1, i",
-            },
+            headers=_build_nspd_headers(user_agent),
             timeout=timeout,
             verify=False,
             proxy=proxy_url,
@@ -238,8 +268,12 @@ class NspdClient:
             await self.client.aclose()
 
 
-def _get_settings_from_db() -> tuple[Optional[str], float]:
-    """Получить настройки NSPD из базы данных."""
+def _get_settings_from_db() -> tuple[Optional[str], float, Optional[str]]:
+    """Получить настройки NSPD из базы данных.
+    
+    Returns:
+        (proxy, timeout, user_agent)
+    """
     try:
         from app.database import SessionLocal
         from app.models.setting import Setting
@@ -248,16 +282,18 @@ def _get_settings_from_db() -> tuple[Optional[str], float]:
         try:
             proxy_setting = db.query(Setting).filter(Setting.key == "nspd_proxy").first()
             timeout_setting = db.query(Setting).filter(Setting.key == "nspd_timeout").first()
+            ua_setting = db.query(Setting).filter(Setting.key == "nspd_user_agent").first()
             
             proxy = proxy_setting.value if proxy_setting and proxy_setting.value else None
             timeout = float(timeout_setting.value) if timeout_setting and timeout_setting.value else 10.0
+            user_agent = ua_setting.value if ua_setting and ua_setting.value else None
             
-            return proxy, timeout
+            return proxy, timeout, user_agent
         finally:
             db.close()
     except Exception as e:
         logger.warning(f"NSPD: Failed to load settings from DB: {e}")
-        return None, 10.0
+        return None, 10.0, None
 
 
 from typing import AsyncGenerator
@@ -268,9 +304,9 @@ async def get_nspd_client() -> AsyncGenerator[NspdClient, None]:
     Создаёт новый экземпляр для каждого запроса (или scope),
     и корректно закрывает соединение после использования.
     """
-    proxy, timeout = _get_settings_from_db()
-    # logger.info(f"NSPD: Creating client with proxy={proxy}, timeout={timeout}")
-    client = NspdClient(timeout=timeout, proxy=proxy)
+    proxy, timeout, user_agent = _get_settings_from_db()
+    # logger.info(f"NSPD: Creating client with proxy={proxy}, timeout={timeout}, ua={user_agent}")
+    client = NspdClient(timeout=timeout, proxy=proxy, user_agent=user_agent)
     try:
         yield client
     finally:

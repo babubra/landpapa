@@ -16,6 +16,7 @@ class Setting(Base):
     Примеры ключей:
     - nspd_proxy: прокси для NSPD клиента (format: user:pass@host:port)
     - nspd_timeout: таймаут для NSPD запросов в секундах
+    - nspd_user_agent: User-Agent для NSPD (пустое = дефолтный Chrome 145)
     """
     
     __tablename__ = "settings"

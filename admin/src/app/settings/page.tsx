@@ -90,6 +90,7 @@ export default function SettingsPage() {
         const labels: Record<string, string> = {
             nspd_proxy: "Прокси для NSPD",
             nspd_timeout: "Таймаут NSPD (сек)",
+            nspd_user_agent: "User-Agent для NSPD",
             dadata_api_key: "API ключ DaData",
             site_name: "Название бренда (у логотипа)",
             site_subtitle: "Подзаголовок (у логотипа)",
@@ -111,6 +112,7 @@ export default function SettingsPage() {
         const placeholders: Record<string, string> = {
             nspd_proxy: "user:pass@host:port",
             nspd_timeout: "10",
+            nspd_user_agent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36",
             dadata_api_key: "Введите API ключ от dadata.ru",
             site_name: "РКК Лэнд",
             site_subtitle: "Земельные участки",
@@ -385,6 +387,7 @@ export default function SettingsPage() {
                             <div className="space-y-4">
                                 {renderTextSetting("nspd_proxy")}
                                 {renderTextSetting("nspd_timeout")}
+                                {renderTextSetting("nspd_user_agent")}
                             </div>
                         </div>
 
