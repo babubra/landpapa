@@ -2,7 +2,7 @@ import { HeroSection } from "@/components/home/HeroSection";
 import { SearchFilter } from "@/components/home/SearchFilter";
 import { AboutCarousel } from "@/components/home/AboutCarousel";
 import { MaternityCapitalSection } from "@/components/home/MaternityCapitalSection";
-import { PopularPlotsSection } from "@/components/home/PopularPlotsSection";
+import { SeoBlocksSection } from "@/components/home/SeoBlocksSection";
 import { NewsSection } from "@/components/home/NewsSection";
 import { AboutTextSection } from "@/components/home/AboutTextSection";
 
@@ -82,8 +82,11 @@ export default async function Home() {
         <AboutCarousel />
       </section>
 
-      {/* Популярные участки */}
-      <PopularPlotsSection />
+      {/* SEO-блоки (серверный компонент, SSR) */}
+      <SeoBlocksSection
+        placeholderImage={settings.placeholder_image}
+        h1Template={settings.seo_listing_h1_template}
+      />
 
       {/* SEO-текст о компании */}
       <section className="py-6">

@@ -4,7 +4,7 @@ from fastapi.staticfiles import StaticFiles
 import os
 
 from app.config import settings
-from app.routers import news, listings, locations, references, auth, admin_plots, admin_settings, admin_listings, admin_geo, images, admin_references, admin_realtors, public_settings, leads, public_plots, admin_locations, admin_users
+from app.routers import news, listings, locations, references, auth, admin_plots, admin_settings, admin_listings, admin_geo, images, admin_references, admin_realtors, public_settings, leads, public_plots, admin_locations, admin_users, admin_seo_blocks, public_seo_blocks
 
 app = FastAPI(
     title="КалининградЗем API",
@@ -23,6 +23,7 @@ app.include_router(admin_realtors.router, prefix="/api/admin/realtors", tags=["a
 app.include_router(leads.router, prefix="/api/admin/leads", tags=["admin-leads"])
 app.include_router(admin_locations.router, prefix="/api/admin/locations", tags=["admin-locations"])
 app.include_router(admin_users.router, prefix="/api/admin/users", tags=["admin-users"])
+app.include_router(admin_seo_blocks.router, prefix="/api/admin/seo-blocks", tags=["admin-seo-blocks"])
 
 from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 
@@ -54,6 +55,7 @@ app.include_router(references.router, prefix="/api/references", tags=["reference
 app.include_router(public_settings.router, prefix="/api/settings", tags=["settings"])
 app.include_router(leads.router, prefix="/api/leads", tags=["leads"])
 app.include_router(public_plots.router, prefix="/api/public-plots", tags=["public-plots"])
+app.include_router(public_seo_blocks.router, prefix="/api/public", tags=["public-seo"])
 
 
 @app.get("/")

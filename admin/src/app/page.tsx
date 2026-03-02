@@ -120,6 +120,13 @@ export default function DashboardPage() {
                   <p className="text-sm text-muted-foreground">Доступ к админке</p>
                 </Card>
               </Link>
+
+              <Link href="/components">
+                <Card className="p-4 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer border-emerald-200 dark:border-emerald-800 ring-1 ring-emerald-500/20">
+                  <h3 className="font-semibold mb-1 text-emerald-700 dark:text-emerald-400">🧩 Настройка компонентов</h3>
+                  <p className="text-sm text-muted-foreground">Блоки на страницах</p>
+                </Card>
+              </Link>
             </div>
           </CardContent>
         </Card>

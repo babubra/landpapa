@@ -10,6 +10,7 @@ from app.models.plot import Plot, PlotStatus
 from app.models.admin_user import AdminUser
 from app.models.setting import Setting
 from app.models.lead import Lead
+from app.models.seo_block import SeoBlock
 
 __all__ = [
     "News",
@@ -27,4 +28,5 @@ __all__ = [
     "AdminUser",
     "Setting",
     "Lead",
+    "SeoBlock",
 ]

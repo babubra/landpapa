@@ -1079,3 +1079,106 @@ export async function deleteAdminUser(id: number): Promise<void> {
   }
 }
 
+// === SEO-блоки ===
+
+export interface SeoBlockLocationInfo {
+  id: number;
+  name: string;
+  type: string;
+}
+
+export interface SeoBlockItem {
+  id: number;
+  title: string;
+  subtitle: string | null;
+  description: string | null;
+  link_url: string;
+  location_id: number | null;
+  location: SeoBlockLocationInfo | null;
+  land_use_filter: string | null;
+  sort_order: number;
+  is_active: boolean;
+}
+
+export interface SeoBlockCreate {
+  title: string;
+  subtitle?: string | null;
+  description?: string | null;
+  link_url: string;
+  location_id?: number | null;
+  land_use_filter?: string | null;
+  sort_order?: number;
+  is_active?: boolean;
+}
+
+export interface SeoBlockUpdate {
+  title?: string;
+  subtitle?: string | null;
+  description?: string | null;
+  link_url?: string;
+  location_id?: number | null;
+  land_use_filter?: string | null;
+  sort_order?: number;
+  is_active?: boolean;
+}
+
+export async function getSeoBlocks(): Promise<SeoBlockItem[]> {
+  const response = await fetchWithAuth("/api/admin/seo-blocks/");
+  if (!response.ok) {
+    throw new Error("Ошибка загрузки SEO-блоков");
+  }
+  return response.json();
+}
+
+export async function createSeoBlock(data: SeoBlockCreate): Promise<SeoBlockItem> {
+  const response = await fetchWithAuth("/api/admin/seo-blocks/", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.detail || "Ошибка создания SEO-блока");
+  }
+  return response.json();
+}
+
+export async function updateSeoBlock(id: number, data: SeoBlockUpdate): Promise<SeoBlockItem> {
+  const response = await fetchWithAuth(`/api/admin/seo-blocks/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.detail || "Ошибка обновления SEO-блока");
+  }
+  return response.json();
+}
+
+export async function deleteSeoBlock(id: number): Promise<void> {
+  const response = await fetchWithAuth(`/api/admin/seo-blocks/${id}`, {
+    method: "DELETE",
+  });
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.detail || "Ошибка удаления SEO-блока");
+  }
+}
+
+// === Локации для формы ===
+
+export interface LocationTreeItem {
+  id: number;
+  name: string;
+  slug: string;
+  type: string;
+  children: LocationTreeItem[];
+}
+
+export async function getLocationsTree(): Promise<LocationTreeItem[]> {
+  const response = await fetchWithAuth("/api/admin/locations/tree");
+  if (!response.ok) {
+    throw new Error("Ошибка загрузки дерева локаций");
+  }
+  return response.json();
+}
+
