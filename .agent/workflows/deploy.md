@@ -29,7 +29,7 @@ cd /Users/fatau/TestProjects/lp2 && git push origin main
 
 ### 4. Запустить деплой на сервере
 ```bash
-ssh root@194.190.153.58 "cd ~/landpapa && ./deploy.sh"
+ssh root@5.42.115.118 "cd ~/landpapa && ./deploy.sh"
 ```
 Эта команда выполняет:
 - `git pull origin main`
