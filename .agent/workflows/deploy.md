@@ -6,30 +6,30 @@ description: Деплой изменений на продакшен серве�
 
 ## Предварительные условия
 - Все изменения должны быть закоммичены и запушены в `main`
-- Рабочая директория проекта: `/Users/fatau/TestProjects/lp2`
+- Рабочая директория проекта: `/Users/fatau/Projects/rkkland`
 
 ## Шаги
 
 ### 1. Проверить что нет незакоммиченных изменений
 // turbo
 ```bash
-cd /Users/fatau/TestProjects/lp2 && git status --short
+cd /Users/fatau/Projects/rkkland && git status --short
 ```
 Если есть незакоммиченные изменения — спросить пользователя, нужно ли их закоммитить или откатить.
 
 ### 2. Закоммитить изменения (если есть)
 ```bash
-cd /Users/fatau/TestProjects/lp2 && git add -A && git commit -m "<описание изменений>"
+cd /Users/fatau/Projects/rkkland && git add -A && git commit -m "<описание изменений>"
 ```
 
 ### 3. Запушить в main
 ```bash
-cd /Users/fatau/TestProjects/lp2 && git push origin main
+cd /Users/fatau/Projects/rkkland && git push origin main
 ```
 
 ### 4. Запустить деплой на сервере
 ```bash
-ssh root@194.190.153.58 "cd ~/landpapa && ./deploy.sh"
+ssh root@5.42.115.118 "cd ~/landpapa && ./deploy.sh"
 ```
 Эта команда выполняет:
 - `git pull origin main`

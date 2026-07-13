@@ -73,7 +73,23 @@ docker compose -f docker-compose.prod.yml image prune -f  # удалить ст�
 - **nginx**: Reverse Proxy (порт 80/443, входная точка)
 
 ## SSL (HTTPS)
-Для настройки SSL рекомендуется использовать Certbot.
-1. Установите certbot на хост-машину (или добавьте контейнер certbot).
-2. Отредактируйте `nginx/nginx.conf`, раскомментировав SSL настройки.
-3. Пробросьте папку сертификатов `/etc/letsencrypt` в контейнер nginx.
+Сертификаты Let's Encrypt хранятся в папке проекта `certbot/conf` (она проброшена в контейнер nginx как `/etc/letsencrypt`). Первичное получение — скриптом `./init-ssl.sh <email>`.
+
+### Автопродление (настроено на сервере 13.07.2026)
+Сертификаты выпущены хостовым certbot с нестандартным `--config-dir`, поэтому штатный systemd-таймер certbot по умолчанию их не видит. На сервере это исправлено:
+
+1. **Drop-in override** `/etc/systemd/system/certbot.service.d/override.conf`:
+   ```ini
+   [Service]
+   ExecStart=
+   ExecStart=/usr/bin/certbot -q renew --no-random-sleep-on-renew --config-dir /root/landpapa/certbot/conf --work-dir /root/landpapa/certbot/work --logs-dir /root/landpapa/certbot/logs
+   ```
+2. **Deploy-хук** `certbot/conf/renewal-hooks/deploy/reload-nginx.sh` — перезагружает nginx после успешного продления:
+   ```bash
+   #!/bin/bash
+   docker exec landpapa_nginx nginx -s reload
+   ```
+
+Таймер `certbot.timer` срабатывает дважды в день; продление происходит автоматически за ~30 дней до истечения. Проверить: `systemctl list-timers | grep certbot` и `certbot certificates --config-dir /root/landpapa/certbot/conf`.
+
+> ⚠️ При переезде на новый сервер эти два шага нужно повторить, иначе сертификат истечёт через 90 дней без продления.
