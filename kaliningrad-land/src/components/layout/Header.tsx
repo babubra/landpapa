@@ -13,6 +13,8 @@ import {
 } from "@/components/ui/sheet";
 import { getSiteSettings, SiteSettings, getImageUrl } from "@/lib/config";
 import { CallbackModal } from "@/components/modals/CallbackModal";
+import { useHashDialog } from "@/hooks/useHashDialog";
+import { LEAD_FORM_HASH, LEAD_SUCCESS_HASH } from "@/lib/landing";
 
 const navigation = [
     { name: "Каталог", href: "/catalog" },
@@ -24,7 +26,11 @@ const navigation = [
 export function Header() {
     const { theme, setTheme } = useTheme();
     const [isOpen, setIsOpen] = useState(false);
-    const [showCallback, setShowCallback] = useState(false);
+    // Форма заявки живёт на своём хеше — работает как отдельная посадочная страница
+    const [showCallback, setShowCallback] = useHashDialog(LEAD_FORM_HASH, {
+        title: "Подберите мне участок",
+        extraHashes: [LEAD_SUCCESS_HASH],
+    });
     const [settings, setSettings] = useState<SiteSettings | null>(null);
 
     useEffect(() => {

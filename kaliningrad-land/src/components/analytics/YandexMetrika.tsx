@@ -2,13 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
-import { METRIKA_ID } from "@/lib/metrika";
-
-declare global {
-    interface Window {
-        ym?: (id: number, action: string, ...args: unknown[]) => void;
-    }
-}
+import { METRIKA_ID, trackPageview } from "@/lib/metrika";
 
 /**
  * Отслеживание SPA-переходов для Яндекс.Метрики.
@@ -20,24 +14,26 @@ declare global {
 export function YandexMetrika() {
     const pathname = usePathname();
     const searchParams = useSearchParams();
-    const isInitialRender = useRef(true);
+    // Просмотр стартовой страницы уже отправлен при init счётчика — не дублируем
+    const lastTrackedUrl = useRef<string | null>(null);
 
     useEffect(() => {
-        // Просмотр стартовой страницы уже отправлен при init счётчика — не дублируем
-        if (isInitialRender.current) {
-            isInitialRender.current = false;
-            return;
-        }
-
-        if (typeof window.ym !== "function") {
-            return;
-        }
-
         const url = pathname + (searchParams?.toString() ? `?${searchParams.toString()}` : "");
 
-        window.ym(METRIKA_ID, "hit", url, {
-            title: document.title,
-        });
+        // Первый рендер только запоминает адрес, хит по нему уже отправил сам счётчик.
+        // Дальше сверяемся с последним отправленным: history.pushState (например, при
+        // открытии модалки на своём хеше) тоже дёргает роутер, но новой страницей не является
+        if (lastTrackedUrl.current === null) {
+            lastTrackedUrl.current = url;
+            return;
+        }
+
+        if (lastTrackedUrl.current === url) {
+            return;
+        }
+
+        lastTrackedUrl.current = url;
+        trackPageview(url, document.title);
     }, [pathname, searchParams]);
 
     return (

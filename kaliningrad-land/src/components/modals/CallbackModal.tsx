@@ -15,6 +15,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { LEAD_SUCCESS_HASH, trackHashPageview } from "@/lib/landing";
 
 const formSchema = z.object({
     name: z.string().min(2, "Имя должно быть не менее 2 символов"),
@@ -68,6 +69,12 @@ export function CallbackModal({
 
             setIsSuccess(true);
             reset();
+
+            // Экран «Заявка принята» — отдельная «страница»: адрес меняется на #zayavka-prinyata,
+            // и этот просмотр уходит в Метрику, чтобы по нему настраивалась цель
+            window.history.replaceState(null, "", LEAD_SUCCESS_HASH);
+            trackHashPageview(LEAD_SUCCESS_HASH, "Заявка принята");
+
             // Закрываем через 2 секунды после успеха
             setTimeout(() => {
                 onOpenChange(false);

@@ -5,6 +5,12 @@
  */
 export const METRIKA_ID = 106326739;
 
+declare global {
+    interface Window {
+        ym?: (id: number, action: string, ...args: unknown[]) => void;
+    }
+}
+
 /**
  * Официальный код счётчика.
  *
@@ -25,3 +31,17 @@ export const METRIKA_SNIPPET = `
 
 ym(${METRIKA_ID}, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", referrer: document.referrer, url: location.href, accurateTrackBounce:true, trackLinks:true});
 `;
+
+/**
+ * Отправить просмотр страницы в Метрику вручную.
+ *
+ * Используется для SPA-переходов и для модалок-«посадочных страниц»: Метрика засчитывает
+ * ровно тот URL, который передан здесь, поэтому по нему можно настраивать цели.
+ */
+export function trackPageview(url: string, title?: string) {
+    if (typeof window === "undefined" || typeof window.ym !== "function") {
+        return;
+    }
+
+    window.ym(METRIKA_ID, "hit", url, title ? { title } : undefined);
+}
