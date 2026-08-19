@@ -3,6 +3,7 @@ from sqlalchemy import String, Text, Boolean, DateTime
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import Base
+from app.utils.time import utcnow
 
 
 class Realtor(Base):
@@ -18,7 +19,7 @@ class Realtor(Base):
     phone: Mapped[str] = mapped_column(String(50))  # Телефон для публикации
     email: Mapped[str | None] = mapped_column(String(255), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
     
     def __repr__(self) -> str:
         return f"<Realtor(id={self.id}, name='{self.name}')>"

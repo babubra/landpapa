@@ -16,6 +16,7 @@ from app.models.setting import Setting
 from app.auth import verify_password, hash_password, create_access_token, decode_access_token
 from app.utils.email import send_email
 from app.config import settings
+from app.utils.time import utcnow
 
 
 router = APIRouter()
@@ -113,7 +114,7 @@ async def login(
         )
     
     # Обновляем время последнего входа
-    user.last_login = datetime.utcnow()
+    user.last_login = utcnow()
     await db.commit()
     
     # Создаём токен
@@ -292,7 +293,7 @@ async def telegram_login(
         )
     
     # Обновляем время последнего входа
-    user.last_login = datetime.utcnow()
+    user.last_login = utcnow()
     await db.commit()
     
     # Создаём токен
@@ -332,7 +333,7 @@ async def telegram_dev_login(
         )
     
     # Обновляем время последнего входа
-    user.last_login = datetime.utcnow()
+    user.last_login = utcnow()
     await db.commit()
     
     # Создаём токен

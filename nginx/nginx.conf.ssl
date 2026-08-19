@@ -9,6 +9,23 @@ http {
     server_tokens off;
     client_max_body_size 20M;
 
+    # Сжатие текстовых ответов. Next.js жмёт свою выдачу сам, но sitemap.xml
+    # и ответы бэкенда шли без сжатия
+    gzip on;
+    gzip_comp_level 5;
+    gzip_min_length 1024;
+    gzip_proxied any;
+    gzip_vary on;
+    gzip_types
+        text/plain
+        text/css
+        text/xml
+        application/xml
+        application/xml+rss
+        application/json
+        application/javascript
+        image/svg+xml;
+
     # Security Headers
     add_header X-Content-Type-Options "nosniff" always;
     add_header X-Frame-Options "SAMEORIGIN" always;
@@ -105,7 +122,10 @@ http {
             proxy_set_header Upgrade $http_upgrade;
             proxy_set_header Connection "upgrade";
             
-            # Security Headers
+            # Security Headers.
+            # HSTS дублируется здесь намеренно: nginx отбрасывает заголовки,
+            # унаследованные от server-блока, если в location объявлен свой add_header
+            add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
             add_header X-Content-Type-Options "nosniff" always;
             add_header X-Frame-Options "SAMEORIGIN" always;
             add_header Referrer-Policy "strict-origin-when-cross-origin" always;
@@ -168,7 +188,10 @@ http {
             proxy_set_header Upgrade $http_upgrade;
             proxy_set_header Connection "upgrade";
             
-            # Security Headers
+            # Security Headers.
+            # HSTS дублируется здесь намеренно: nginx отбрасывает заголовки,
+            # унаследованные от server-блока, если в location объявлен свой add_header
+            add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
             add_header X-Content-Type-Options "nosniff" always;
             add_header X-Frame-Options "SAMEORIGIN" always;
             add_header Referrer-Policy "strict-origin-when-cross-origin" always;
@@ -179,16 +202,13 @@ http {
         }
     }
 
-    # === Admin Panel Workaround (Port 8080) ===
+    # === Порт 8080: только редирект на HTTPS ===
+    # Раньше здесь админка отдавалась по обычному HTTP, и логин с паролем
+    # уходили открытым текстом
     server {
         listen 8080;
-        server_name admin.rkkland.ru; # Убрали rkkland.ru СОВСЕМ
+        server_name _;
 
-        location / {
-            set $upstream_admin landpapa_admin;
-            proxy_pass http://$upstream_admin:3000;
-            proxy_set_header Host $host;
-            add_header X-Proxy-Target "Admin-8080-v2";
-        }
+        return 301 https://admin.rkkland.ru$request_uri;
     }
 }

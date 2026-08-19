@@ -5,6 +5,7 @@ from geoalchemy2 import Geometry
 import enum
 
 from app.database import Base
+from app.utils.time import utcnow
 
 
 class PlotStatus(str, enum.Enum):
@@ -60,9 +61,9 @@ class Plot(Base):
     comment: Mapped[str | None] = mapped_column(Text, nullable=True)
     
     # Мета
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
+        DateTime, default=utcnow, onupdate=utcnow
     )
     
     # Связи

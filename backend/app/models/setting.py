@@ -7,6 +7,7 @@ from sqlalchemy import String, Text, DateTime
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import Base
+from app.utils.time import utcnow
 
 
 class Setting(Base):
@@ -26,7 +27,7 @@ class Setting(Base):
     description: Mapped[str | None] = mapped_column(String(500), nullable=True)
     
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
+        DateTime, default=utcnow, onupdate=utcnow
     )
     
     def __repr__(self) -> str:

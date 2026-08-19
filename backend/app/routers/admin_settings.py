@@ -19,6 +19,7 @@ from app.services.telegram import (
     mask_proxy_url,
     send_message,
 )
+from app.utils.time import utcnow
 
 
 router = APIRouter()
@@ -98,7 +99,7 @@ async def update_setting(
         db.add(setting)
     else:
         setting.value = data.value
-        setting.updated_at = datetime.utcnow()
+        setting.updated_at = utcnow()
     
     await db.commit()
     await db.refresh(setting)
@@ -156,7 +157,7 @@ async def check_proxy(
             if not proxy_url.startswith("http://") and not proxy_url.startswith("https://"):
                  proxy_url = f"http://{proxy_url}"
         
-        async with httpx.AsyncClient(proxy=proxy_url, timeout=10.0, verify=False) as client:
+        async with httpx.AsyncClient(proxy=proxy_url, timeout=10.0) as client:
             response = await client.get(data.test_url or "https://api.ipify.org?format=json")
             
             elapsed_ms = (time.time() - start_time) * 1000

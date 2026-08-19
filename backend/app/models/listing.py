@@ -3,6 +3,7 @@ from sqlalchemy import String, Text, Boolean, Integer, DateTime, ForeignKey, and
 from sqlalchemy.orm import Mapped, mapped_column, relationship, foreign
 
 from app.database import Base
+from app.utils.time import utcnow
 
 
 class Listing(Base):
@@ -39,9 +40,9 @@ class Listing(Base):
     meta_description: Mapped[str | None] = mapped_column(Text, nullable=True)
     
     # Мета
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
+        DateTime, default=utcnow, onupdate=utcnow
     )
     
     # Связи

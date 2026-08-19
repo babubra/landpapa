@@ -105,6 +105,7 @@ export function ShowListingModal({
                         src="/images/cadastral-showing.png"
                         alt="Кадастровый инженер показывает участок"
                         fill
+                        sizes="(max-width: 768px) 100vw, 400px"
                         className="object-cover"
                         priority
                     />

@@ -1,7 +1,23 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from starlette.responses import Response
+import mimetypes
 import os
+
+# Без этого .webp отдавался как application/octet-stream: мессенджеры не рисовали
+# превью по og:image, а браузер не кешировал картинку
+mimetypes.add_type("image/webp", ".webp")
+mimetypes.add_type("image/avif", ".avif")
+
+
+class CachedStaticFiles(StaticFiles):
+    """Статика с заголовком кеширования: загруженные картинки не меняются."""
+
+    def file_response(self, *args, **kwargs) -> Response:
+        response = super().file_response(*args, **kwargs)
+        response.headers.setdefault("Cache-Control", "public, max-age=2592000")
+        return response
 
 from app.config import settings
 from app.routers import news, listings, locations, references, auth, admin_plots, admin_settings, admin_listings, admin_geo, images, admin_references, admin_realtors, public_settings, leads, public_plots, admin_locations, admin_users
@@ -43,7 +59,7 @@ app.add_middleware(ProxyHeadersMiddleware, trusted_hosts="*")
 if not os.path.exists(settings.upload_dir):
     os.makedirs(settings.upload_dir)
 
-app.mount("/uploads", StaticFiles(directory=settings.upload_dir), name="uploads")
+app.mount("/uploads", CachedStaticFiles(directory=settings.upload_dir), name="uploads")
 
 # Публичные роутеры
 app.include_router(auth.router, prefix="/api/auth", tags=["auth"])

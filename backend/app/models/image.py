@@ -3,6 +3,7 @@ from sqlalchemy import String, Text, Boolean, Integer, DateTime, Index
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import Base
+from app.utils.time import utcnow
 
 
 class Image(Base):
@@ -42,7 +43,7 @@ class Image(Base):
     is_main: Mapped[bool] = mapped_column(Boolean, default=False)
     sort_order: Mapped[int] = mapped_column(Integer, default=0)
     
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
     
     def __repr__(self) -> str:
         return f"<Image(id={self.id}, entity='{self.entity_type}:{self.entity_id}')>"

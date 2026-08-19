@@ -13,9 +13,7 @@ import { SeoJsonLd } from "@/components/seo/SeoJsonLd";
 export default async function Home() {
   const settings = await getSiteSettings();
 
-  // Preload URL для Hero image — ускоряет LCP
   const heroImage = getImageUrl(settings.hero_image, "/hero-bg.jpg");
-  const heroPreloadUrl = `/_next/image?url=${encodeURIComponent(heroImage)}&w=640&q=50`;
 
   // Собираем ссылки на соцсети
   const sameAs = [
@@ -56,13 +54,6 @@ export default async function Home() {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      {/* Preload Hero image для ускорения LCP — браузер начнёт загрузку раньше */}
-      <link
-        rel="preload"
-        as="image"
-        href={heroPreloadUrl}
-        fetchPriority="high"
-      />
       <SeoJsonLd data={jsonLd} />
       {/* Hero (2/3) + Filter (1/3) layout */}
       <div className="grid gap-6 lg:grid-cols-3">

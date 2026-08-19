@@ -7,6 +7,7 @@ from sqlalchemy import String, Boolean, DateTime, BigInteger
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import Base
+from app.utils.time import utcnow
 
 
 class AdminUser(Base):
@@ -28,7 +29,7 @@ class AdminUser(Base):
     telegram_id: Mapped[int | None] = mapped_column(BigInteger, unique=True, index=True, nullable=True)
     
     # Мета
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
     last_login: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     def __repr__(self) -> str:

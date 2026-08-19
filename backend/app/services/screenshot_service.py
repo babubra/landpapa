@@ -15,6 +15,7 @@ from sqlalchemy import select
 from app.models.image import Image
 from app.models.listing import Listing
 from app.config import settings
+from app.utils.time import utcnow
 
 
 class ScreenshotService:
@@ -103,7 +104,7 @@ class ScreenshotService:
             alt=f"Карта участков объявления {listing.title}",
             is_main=False,  # Не делаем главным автоматически
             sort_order=999,  # В конец
-            created_at=datetime.utcnow(),
+            created_at=utcnow(),
         )
         
         self.db.add(image)

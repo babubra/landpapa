@@ -76,7 +76,12 @@ export function Breadcrumbs({ items, visuallyHidden = false }: BreadcrumbsProps)
                                         className="hover:text-primary transition-colors flex items-center gap-1"
                                     >
                                         {isFirst && <Home className="h-4 w-4" />}
-                                        <span className="hidden sm:inline">{item.name}</span>
+                                        {/* У «Главной» на узких экранах хватает иконки, а вот
+                                            промежуточные пункты прятать нельзя: оставались
+                                            пустые стрелки без названий */}
+                                        <span className={isFirst ? "hidden sm:inline" : "truncate max-w-[160px] sm:max-w-none"}>
+                                            {item.name}
+                                        </span>
                                     </Link>
                                 )}
                             </li>

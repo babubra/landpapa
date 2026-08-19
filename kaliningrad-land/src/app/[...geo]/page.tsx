@@ -390,6 +390,12 @@ export async function generateMetadata({ params, searchParams }: GeoPageProps): 
                 canonicalPath = `/${leafLocation.slug}/${listingSlug}`;
             }
 
+            // Картинка для превью при отправке ссылки в мессенджеры и соцсети
+            const ogImagePath = listing.main_image?.url || listing.image?.url || null;
+            const ogImageUrl = ogImagePath
+                ? (ogImagePath.startsWith("http") ? ogImagePath : `${SITE_URL}${ogImagePath}`)
+                : null;
+
             return {
                 title: {
                     absolute: title,  // Не добавлять суффикс из layout.tsx
@@ -401,6 +407,13 @@ export async function generateMetadata({ params, searchParams }: GeoPageProps): 
                     url: canonicalPath,
                     title,
                     description: description || undefined,
+                    images: ogImageUrl ? [{ url: ogImageUrl }] : undefined,
+                },
+                twitter: {
+                    card: ogImageUrl ? "summary_large_image" : "summary",
+                    title,
+                    description: description || undefined,
+                    images: ogImageUrl ? [ogImageUrl] : undefined,
                 },
             };
         }

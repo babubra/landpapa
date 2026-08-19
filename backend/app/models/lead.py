@@ -3,6 +3,7 @@ from sqlalchemy import String, Text, DateTime
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import Base
+from app.utils.time import utcnow
 
 
 class Lead(Base):
@@ -23,9 +24,9 @@ class Lead(Base):
     # Статус обработки
     status: Mapped[str] = mapped_column(String(20), default="new", index=True)  # new, processing, completed, rejected
     
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
+        DateTime, default=utcnow, onupdate=utcnow
     )
     
     def __repr__(self) -> str:

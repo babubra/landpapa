@@ -25,6 +25,7 @@ export function MapBanner({ locationId }: MapBannerProps) {
                     src="/images/map-banner.png"
                     alt="Посмотреть участки на карте"
                     fill
+                    sizes="(max-width: 768px) 100vw, 50vw"
                     className="object-cover transition-transform duration-300 group-hover:scale-105"
                     priority={false}
                 />

@@ -10,6 +10,7 @@ from argon2.exceptions import VerifyMismatchError
 from jose import jwt
 
 from app.config import settings
+from app.utils.time import utcnow
 
 
 # Password hashing
@@ -39,7 +40,7 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24  # 24 часа
 def create_access_token(data: dict[str, Any], expires_delta: timedelta | None = None) -> str:
     """Создать JWT токен."""
     to_encode = data.copy()
-    expire = datetime.utcnow() + (expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
+    expire = utcnow() + (expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
