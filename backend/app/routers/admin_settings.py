@@ -13,6 +13,12 @@ from app.database import get_async_db
 from app.models.setting import Setting
 from app.models.admin_user import AdminUser
 from app.routers.auth import get_current_user
+from app.services.telegram import (
+    build_proxy_url,
+    load_telegram_settings,
+    mask_proxy_url,
+    send_message,
+)
 
 
 router = APIRouter()
@@ -180,6 +186,42 @@ async def check_proxy(
             error=str(e),
             elapsed_ms=elapsed_ms
         )
+
+
+class CheckTelegramResponse(BaseModel):
+    """Результат тестовой отправки уведомления в Telegram."""
+    success: bool
+    error: str | None
+    proxy: str | None
+    elapsed_ms: float
+
+
+@router.post("/check-telegram", response_model=CheckTelegramResponse)
+async def check_telegram(
+    db: AsyncSession = Depends(get_async_db),
+    current_user: AdminUser = Depends(get_current_user),
+):
+    """
+    Отправить тестовое сообщение в Telegram текущими сохранёнными настройками.
+
+    Проверяются именно сохранённые значения, поэтому настройки нужно сначала сохранить.
+    """
+    import time
+
+    settings = await load_telegram_settings(db)
+    start_time = time.time()
+
+    success, error = await send_message(
+        "\u2705 Проверка связи: уведомления о заявках с сайта настроены.",
+        settings,
+    )
+
+    return CheckTelegramResponse(
+        success=success,
+        error=error,
+        proxy=mask_proxy_url(build_proxy_url(settings)),
+        elapsed_ms=(time.time() - start_time) * 1000,
+    )
 
 
 # def _invalidate_nspd_client():

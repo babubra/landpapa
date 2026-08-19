@@ -12,6 +12,8 @@ import { Loader2, Save, ArrowLeft, Settings as SettingsIcon } from "lucide-react
 import { ImageSettingUpload } from "@/components/settings/ImageSettingUpload";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { CheckProxyButton } from "@/components/settings/CheckProxyButton";
+import { CheckTelegramButton } from "@/components/settings/CheckTelegramButton";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export default function SettingsPage() {
     const { user, isLoading: authLoading } = useAuth();
@@ -104,6 +106,11 @@ export default function SettingsPage() {
             tg_bot_token: "Telegram Bot Token",
             tg_chat_id: "Telegram Chat ID",
             telegram_bot_name: "Имя бота (для авторизации)",
+            tg_proxy_type: "Тип прокси",
+            tg_proxy_host: "IP или хост прокси",
+            tg_proxy_port: "Порт прокси",
+            tg_proxy_user: "Логин прокси",
+            tg_proxy_password: "Пароль прокси",
         };
         return labels[key] || key;
     };
@@ -126,6 +133,10 @@ export default function SettingsPage() {
             tg_bot_token: "123456789:ABCDefGhI... (от @BotFather)",
             tg_chat_id: "-100123456789 или ID пользователя",
             telegram_bot_name: "rkkland_bot (без @)",
+            tg_proxy_host: "123.45.67.89",
+            tg_proxy_port: "1080",
+            tg_proxy_user: "если прокси без авторизации — оставьте пустым",
+            tg_proxy_password: "пароль от прокси",
         };
         return placeholders[key] || "";
     };
@@ -135,6 +146,45 @@ export default function SettingsPage() {
     const renderTextSetting = (key: string) => {
         const setting = settings.find((s) => s.key === key);
         if (!setting) return null;
+
+        if (key === "tg_proxy_type") {
+            return (
+                <div key={key} className="space-y-2">
+                    <Label htmlFor={key}>{getSettingLabel(key)}</Label>
+                    <div className="flex gap-2">
+                        <Select
+                            value={values[key] || "http"}
+                            onValueChange={(value) =>
+                                setValues((prev) => ({ ...prev, [key]: value }))
+                            }
+                        >
+                            <SelectTrigger id={key} className="flex-1">
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="http">HTTP</SelectItem>
+                                <SelectItem value="socks5">SOCKS5</SelectItem>
+                            </SelectContent>
+                        </Select>
+                        <Button
+                            onClick={() => handleSave(key)}
+                            disabled={saving === key}
+                        >
+                            {saving === key ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                                <Save className="h-4 w-4" />
+                            )}
+                        </Button>
+                    </div>
+                    {setting.description && (
+                        <p className="text-xs text-muted-foreground">
+                            {setting.description}
+                        </p>
+                    )}
+                </div>
+            );
+        }
 
         if (key === "nspd_proxy") {
             return (
@@ -189,7 +239,7 @@ export default function SettingsPage() {
                             }))
                         }
                         className="flex-1"
-                        type={key.includes("key") ? "password" : "text"}
+                        type={/key|token|password/.test(key) ? "password" : "text"}
                     />
                     <Button
                         onClick={() => handleSave(key)}
@@ -372,6 +422,26 @@ export default function SettingsPage() {
                                 {renderTextSetting("tg_bot_token")}
                                 {renderTextSetting("tg_chat_id")}
                                 {renderTextSetting("telegram_bot_name")}
+                            </div>
+
+                            <div className="mt-8 border-t pt-6">
+                                <div className="flex items-center justify-between gap-4 mb-2">
+                                    <h3 className="font-semibold">Прокси для Telegram</h3>
+                                    <CheckTelegramButton />
+                                </div>
+                                <p className="text-sm text-muted-foreground mb-6">
+                                    api.telegram.org недоступен с сервера напрямую, поэтому уведомления
+                                    о заявках отправляются через прокси вне РФ. Если хост оставить пустым,
+                                    отправка идёт напрямую. Сохраните поля и нажмите «Проверить отправку».
+                                </p>
+
+                                <div className="space-y-4">
+                                    {renderTextSetting("tg_proxy_type")}
+                                    {renderTextSetting("tg_proxy_host")}
+                                    {renderTextSetting("tg_proxy_port")}
+                                    {renderTextSetting("tg_proxy_user")}
+                                    {renderTextSetting("tg_proxy_password")}
+                                </div>
                             </div>
                         </div>
 

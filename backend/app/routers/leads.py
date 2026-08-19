@@ -6,48 +6,16 @@ API для работы с заявками (лидами).
 from fastapi import APIRouter, Depends, HTTPException, Request, Query
 from sqlalchemy import select, desc, func
 from sqlalchemy.ext.asyncio import AsyncSession
-import httpx
 import asyncio
 
 from app.database import get_async_db
 from app.models.lead import Lead
-from app.models.setting import Setting
 from app.schemas.lead import LeadCreate, LeadAdmin, LeadListResponse, LeadUpdate
 from app.models.admin_user import AdminUser
 from app.routers.auth import get_current_user
+from app.services.telegram import format_lead_message, load_telegram_settings, send_message
 
 router = APIRouter()
-
-
-async def send_telegram_notification(lead_data: dict, bot_token: str, chat_id: str):
-    """
-    Отправка уведомления в Telegram через Bot API.
-    """
-    message = (
-        f"🔔 *Новая заявка!*\n\n"
-        f"👤 *Имя:* {lead_data.get('name') or 'не указано'}\n"
-        f"📞 *Телефон:* `{lead_data.get('phone')}`\n"
-        f"💬 *Коммент:* {lead_data.get('comment') or '-'}\n"
-        f"🔗 *Источник:* {lead_data.get('source_url') or 'неизвестно'}"
-    )
-    
-    url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
-    payload = {
-        "chat_id": chat_id,
-        "text": message,
-        "parse_mode": "Markdown"
-    }
-    
-    async with httpx.AsyncClient() as client:
-        try:
-            response = await client.post(url, json=payload, timeout=10.0)
-            if response.status_code != 200:
-                print(f"Telegram API Error ({response.status_code}): {response.text}")
-            else:
-                print(f"Telegram notification sent successfully to chat {chat_id}")
-            response.raise_for_status()
-        except Exception as e:
-            print(f"Error sending TG notification: {e}")
 
 
 @router.post("/public", status_code=201)
@@ -85,28 +53,17 @@ async def create_public_lead(
     await db.commit()
     await db.refresh(new_lead)
 
-    # 4. Уведомление в Telegram (асинхронно)
-    result = await db.execute(
-        select(Setting).where(Setting.key.in_(["tg_bot_token", "tg_chat_id"]))
-    )
-    settings_list = result.scalars().all()
-    settings_dict = {s.key: s.value for s in settings_list}
-    
-    bot_token = settings_dict.get("tg_bot_token")
-    chat_id = settings_dict.get("tg_chat_id")
-    
-    if bot_token and chat_id:
+    # 4. Уведомление в Telegram (асинхронно, ошибки только логируются)
+    tg_settings = await load_telegram_settings(db)
+
+    if tg_settings.get("tg_bot_token") and tg_settings.get("tg_chat_id"):
         lead_dict = {
             "name": new_lead.name,
             "phone": new_lead.phone,
             "comment": new_lead.comment,
             "source_url": new_lead.source_url
         }
-        asyncio.create_task(send_telegram_notification(
-            lead_dict, 
-            bot_token, 
-            chat_id
-        ))
+        asyncio.create_task(send_message(format_lead_message(lead_dict), tg_settings))
 
     return {"status": "success", "id": new_lead.id}
 
