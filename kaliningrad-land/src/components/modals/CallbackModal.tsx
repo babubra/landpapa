@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -20,9 +20,8 @@ import { LEAD_SUCCESS_HASH, trackHashPageview } from "@/lib/landing";
 const formSchema = z.object({
     name: z.string().min(2, "Имя должно быть не менее 2 символов"),
     phone: z.string().min(10, "Введите корректный номер телефона"),
-    // Honeypot fields
-    subject_line: z.string().optional(),
-    reference_code: z.string().optional(),
+    // Ловушка для ботов: скрытый чекбокс (автозаполнение браузера чекбоксы не трогает)
+    subscribe_updates: z.boolean().optional(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -42,6 +41,14 @@ export function CallbackModal({
 }: CallbackModalProps) {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isSuccess, setIsSuccess] = useState(false);
+    // Время открытия формы: мгновенная отправка выдаёт бота
+    const openedAt = useRef(0);
+
+    useEffect(() => {
+        if (open) {
+            openedAt.current = Date.now();
+        }
+    }, [open]);
 
     const {
         register,
@@ -60,7 +67,10 @@ export function CallbackModal({
                 headers: {
                     "Content-Type": "application/json",
                 },
-                body: JSON.stringify(data),
+                body: JSON.stringify({
+                    ...data,
+                    form_time_ms: Date.now() - openedAt.current,
+                }),
             });
 
             if (!response.ok) {
@@ -102,12 +112,16 @@ export function CallbackModal({
 
                 {!isSuccess && (
                     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 pt-4">
-                        {/* Honeypot: поля-ловушки для ботов. Названия не похожи на имя/почту,
-                            иначе их заполняет автозаполнение браузера и заявка живого человека
-                            отбрасывается как спам */}
+                        {/* Ловушка для ботов: скрытый чекбокс. Текстовые поля здесь стояли раньше,
+                            но автозаполнение браузера заполняло их вместе с именем и телефоном,
+                            и заявка живого человека отбрасывалась как спам. Чекбоксы оно не трогает */}
                         <div className="sr-only" aria-hidden="true">
-                            <Input {...register("subject_line")} tabIndex={-1} autoComplete="off" data-lpignore="true" data-1p-ignore />
-                            <Input {...register("reference_code")} tabIndex={-1} autoComplete="off" data-lpignore="true" data-1p-ignore />
+                            <input
+                                type="checkbox"
+                                {...register("subscribe_updates")}
+                                tabIndex={-1}
+                                autoComplete="off"
+                            />
                         </div>
 
                         <div className="space-y-2">

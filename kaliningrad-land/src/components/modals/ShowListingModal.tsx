@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useForm } from "react-hook-form";
@@ -22,9 +22,8 @@ const formSchema = z.object({
     phone: z.string().min(10, "Введите корректный номер телефона"),
     // Контекст заявки — уходит в поле comment, которое видно в админке и в уведомлении
     comment: z.string().optional(),
-    // Honeypot fields
-    subject_line: z.string().optional(),
-    reference_code: z.string().optional(),
+    // Ловушка для ботов: скрытый чекбокс (автозаполнение браузера чекбоксы не трогает)
+    subscribe_updates: z.boolean().optional(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -42,6 +41,14 @@ export function ShowListingModal({
 }: ShowListingModalProps) {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isSuccess, setIsSuccess] = useState(false);
+    // Время открытия формы: мгновенная отправка выдаёт бота
+    const openedAt = useRef(0);
+
+    useEffect(() => {
+        if (open) {
+            openedAt.current = Date.now();
+        }
+    }, [open]);
 
     const {
         register,
@@ -63,7 +70,10 @@ export function ShowListingModal({
                 headers: {
                     "Content-Type": "application/json",
                 },
-                body: JSON.stringify(data),
+                body: JSON.stringify({
+                    ...data,
+                    form_time_ms: Date.now() - openedAt.current,
+                }),
             });
 
             if (!response.ok) {
@@ -124,12 +134,16 @@ export function ShowListingModal({
                     {!isSuccess && (
                         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
                             {/* Honeypot fields - hidden from users */}
-                            {/* Honeypot: поля-ловушки для ботов. Названия не похожи на имя/почту,
-                                иначе их заполняет автозаполнение браузера и заявка живого человека
-                                отбрасывается как спам */}
+                            {/* Ловушка для ботов: скрытый чекбокс. Текстовые поля здесь стояли раньше,
+                                но автозаполнение браузера заполняло их вместе с именем и телефоном,
+                                и заявка живого человека отбрасывалась как спам. Чекбоксы оно не трогает */}
                             <div className="sr-only" aria-hidden="true">
-                                <Input {...register("subject_line")} tabIndex={-1} autoComplete="off" data-lpignore="true" data-1p-ignore />
-                                <Input {...register("reference_code")} tabIndex={-1} autoComplete="off" data-lpignore="true" data-1p-ignore />
+                                <input
+                                    type="checkbox"
+                                    {...register("subscribe_updates")}
+                                    tabIndex={-1}
+                                    autoComplete="off"
+                                />
                                 <Input {...register("comment")} className="hidden" />
                             </div>
 

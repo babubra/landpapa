@@ -21,6 +21,9 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
+# Меньше этого времени форму заполняет только робот
+MIN_FORM_TIME_MS = 1500
+
 # Ссылки на фоновые отправки уведомлений: без них сборщик мусора может уничтожить
 # задачу до завершения запроса (asyncio держит на задачи только слабые ссылки)
 _notification_tasks: set[asyncio.Task] = set()
@@ -36,12 +39,21 @@ async def create_public_lead(
     Создание заявки с публичной части сайта.
     Включена защита Honeypot.
     """
-    # 1. Проверка Honeypot
-    if data.subject_line or data.reference_code:
-        # Это бот. Возвращаем 201, чтобы он думал, что всё успешно, но ничего не сохраняем.
-        # Пишем в лог: если сюда попадёт живой человек, это будет видно, а не потеряется молча.
+    # 1. Отсев ботов: скрытый чекбокс и мгновенная отправка.
+    # Ответ в обоих случаях как при успехе, чтобы бот не понял, что его отсеяли.
+    # Отсутствие form_time_ms не считаем поводом отбросить заявку: так отправляют
+    # старые открытые вкладки, и терять живого человека из-за этого нельзя.
+    spam_reason = None
+    if data.subscribe_updates:
+        spam_reason = "заполнена скрытая ловушка"
+    elif data.form_time_ms is not None and data.form_time_ms < MIN_FORM_TIME_MS:
+        spam_reason = f"форма заполнена за {data.form_time_ms} мс"
+
+    if spam_reason:
+        # Пишем в лог: если сюда попадёт живой человек, это будет видно, а не потеряется молча
         logger.warning(
-            "Заявка отброшена как спам (сработал honeypot). IP: %s, User-Agent: %s",
+            "Заявка отброшена как спам (%s). IP: %s, User-Agent: %s",
+            spam_reason,
             request.client.host if request.client else "неизвестен",
             request.headers.get("user-agent", "неизвестен"),
         )
