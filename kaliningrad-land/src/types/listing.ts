@@ -62,6 +62,7 @@ export interface ListingData {
     // Поддержка обоих имён поля изображения
     image?: ImageData | null;
     main_image?: ImageData | null;
+    images?: ImageData[] | null;  // Так их отдаёт API объявления
     coordinates?: number[][];
     // Мета-данные
     meta_title?: string | null;

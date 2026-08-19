@@ -391,7 +391,8 @@ export async function generateMetadata({ params, searchParams }: GeoPageProps): 
             }
 
             // Картинка для превью при отправке ссылки в мессенджеры и соцсети
-            const ogImagePath = listing.main_image?.url || listing.image?.url || null;
+            const ogImagePath =
+                listing.images?.[0]?.url || listing.main_image?.url || listing.image?.url || null;
             const ogImageUrl = ogImagePath
                 ? (ogImagePath.startsWith("http") ? ogImagePath : `${SITE_URL}${ogImagePath}`)
                 : null;
