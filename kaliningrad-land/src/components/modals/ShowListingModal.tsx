@@ -20,11 +20,11 @@ import { Label } from "@/components/ui/label";
 const formSchema = z.object({
     name: z.string().min(2, "Имя должно быть не менее 2 символов"),
     phone: z.string().min(10, "Введите корректный номер телефона"),
-    // Дополнительное поле для контекста заявки
-    message: z.string().optional(),
+    // Контекст заявки — уходит в поле comment, которое видно в админке и в уведомлении
+    comment: z.string().optional(),
     // Honeypot fields
-    email_confirm: z.string().optional(),
-    last_name: z.string().optional(),
+    subject_line: z.string().optional(),
+    reference_code: z.string().optional(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -51,7 +51,7 @@ export function ShowListingModal({
     } = useForm<FormValues>({
         resolver: zodResolver(formSchema),
         defaultValues: {
-            message: lotInfo ? `Хочу посмотреть участок: ${lotInfo}` : "Хочу посмотреть участок",
+            comment: lotInfo ? `Хочу посмотреть участок: ${lotInfo}` : "Хочу посмотреть участок",
         }
     });
 
@@ -124,10 +124,13 @@ export function ShowListingModal({
                     {!isSuccess && (
                         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
                             {/* Honeypot fields - hidden from users */}
+                            {/* Honeypot: поля-ловушки для ботов. Названия не похожи на имя/почту,
+                                иначе их заполняет автозаполнение браузера и заявка живого человека
+                                отбрасывается как спам */}
                             <div className="sr-only" aria-hidden="true">
-                                <Input {...register("email_confirm")} tabIndex={-1} autoComplete="off" />
-                                <Input {...register("last_name")} tabIndex={-1} autoComplete="off" />
-                                <Input {...register("message")} className="hidden" />
+                                <Input {...register("subject_line")} tabIndex={-1} autoComplete="off" data-lpignore="true" data-1p-ignore />
+                                <Input {...register("reference_code")} tabIndex={-1} autoComplete="off" data-lpignore="true" data-1p-ignore />
+                                <Input {...register("comment")} className="hidden" />
                             </div>
 
                             <div className="space-y-2">

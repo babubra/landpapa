@@ -3,6 +3,8 @@ API для работы с заявками (лидами).
 Асинхронная версия.
 """
 
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException, Request, Query
 from sqlalchemy import select, desc, func
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -14,6 +16,8 @@ from app.schemas.lead import LeadCreate, LeadAdmin, LeadListResponse, LeadUpdate
 from app.models.admin_user import AdminUser
 from app.routers.auth import get_current_user
 from app.services.telegram import format_lead_message, load_telegram_settings, send_message
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -33,8 +37,14 @@ async def create_public_lead(
     Включена защита Honeypot.
     """
     # 1. Проверка Honeypot
-    if data.email_confirm or data.last_name:
+    if data.subject_line or data.reference_code:
         # Это бот. Возвращаем 201, чтобы он думал, что всё успешно, но ничего не сохраняем.
+        # Пишем в лог: если сюда попадёт живой человек, это будет видно, а не потеряется молча.
+        logger.warning(
+            "Заявка отброшена как спам (сработал honeypot). IP: %s, User-Agent: %s",
+            request.client.host if request.client else "неизвестен",
+            request.headers.get("user-agent", "неизвестен"),
+        )
         return {"status": "success", "message": "Lead received (bot)"}
 
     # 2. Очистка телефона (убираем лишние символы)

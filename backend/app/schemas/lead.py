@@ -10,9 +10,16 @@ class LeadBase(BaseModel):
 
 class LeadCreate(LeadBase):
     """Схема для создания заявки с публичного сайта."""
-    # Поля для Honeypot (невидимые для человека)
-    email_confirm: str | None = Field(None, description="Honeypot field - must be empty")
-    last_name: str | None = Field(None, description="Another honeypot field")
+    # Honeypot: невидимые поля, которые заполняют только боты.
+    # Названия намеренно не похожи на имя, фамилию, email или телефон — иначе их
+    # заполняет автозаполнение браузера, и заявка живого человека считается спамом.
+    subject_line: str | None = Field(None, description="Honeypot field - must be empty")
+    reference_code: str | None = Field(None, description="Another honeypot field")
+
+    # Старые названия honeypot-полей: принимаем, но не проверяем, чтобы заявки
+    # из уже открытых у посетителей вкладок со старой версией сайта не терялись
+    email_confirm: str | None = Field(None, deprecated=True)
+    last_name: str | None = Field(None, deprecated=True)
 
 
 class LeadUpdate(BaseModel):
