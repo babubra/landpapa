@@ -7,6 +7,7 @@
 Если хост не заполнен, запрос уходит напрямую.
 """
 
+import asyncio
 import logging
 from urllib.parse import quote
 
@@ -31,6 +32,11 @@ TELEGRAM_SETTING_KEYS = [
 ALLOWED_PROXY_SCHEMES = ("http", "https", "socks5", "socks5h")
 
 REQUEST_TIMEOUT = 15.0
+
+# Уведомление отправляется в фоне, повторить его некому — поэтому пробуем несколько раз:
+# дешёвые прокси иногда рвут соединение, и одна осечка молча теряет заявку
+MAX_ATTEMPTS = 3
+RETRY_DELAYS = (1.0, 3.0)
 
 
 async def load_telegram_settings(db: AsyncSession) -> dict[str, str]:
@@ -121,29 +127,50 @@ async def send_message(text: str, settings: dict[str, str]) -> tuple[bool, str |
         return False, "Не заданы токен бота или Chat ID"
 
     proxy_url = build_proxy_url(settings)
+    proxy_label = mask_proxy_url(proxy_url) or "без прокси"
     url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
     payload = {"chat_id": chat_id, "text": text, "parse_mode": "Markdown"}
 
-    try:
-        async with httpx.AsyncClient(proxy=proxy_url, timeout=REQUEST_TIMEOUT) as client:
-            response = await client.post(url, json=payload)
-    except Exception as e:
-        # Частые причины: api.telegram.org заблокирован и прокси не задан, либо прокси не отвечает
-        logger.error(
-            "Telegram: запрос не выполнен (прокси: %s): %s: %s",
-            mask_proxy_url(proxy_url) or "без прокси",
-            type(e).__name__,
-            e,
-        )
-        return False, f"{type(e).__name__}: {e}"
+    last_error = "Неизвестная ошибка"
 
-    if response.status_code != 200:
-        logger.error("Telegram: API вернул %s: %s", response.status_code, response.text)
-        return False, f"HTTP {response.status_code}: {response.text[:300]}"
+    for attempt in range(1, MAX_ATTEMPTS + 1):
+        try:
+            async with httpx.AsyncClient(proxy=proxy_url, timeout=REQUEST_TIMEOUT) as client:
+                response = await client.post(url, json=payload)
+        except Exception as e:
+            # Частые причины: api.telegram.org заблокирован и прокси не задан, либо прокси оборвал соединение
+            last_error = f"{type(e).__name__}: {e}"
+        else:
+            if response.status_code == 200:
+                logger.info(
+                    "Telegram: уведомление отправлено в чат %s (прокси: %s, попытка %s)",
+                    chat_id,
+                    proxy_label,
+                    attempt,
+                )
+                return True, None
 
-    logger.info(
-        "Telegram: уведомление отправлено в чат %s (прокси: %s)",
-        chat_id,
-        mask_proxy_url(proxy_url) or "без прокси",
+            last_error = f"HTTP {response.status_code}: {response.text[:300]}"
+
+            # Ответ самого Telegram (неверный токен, бота убрали из чата) повторять бессмысленно
+            if response.status_code < 500:
+                logger.error("Telegram: API вернул %s: %s", response.status_code, response.text)
+                return False, last_error
+
+        if attempt < MAX_ATTEMPTS:
+            logger.warning(
+                "Telegram: попытка %s из %s не удалась (прокси: %s): %s",
+                attempt,
+                MAX_ATTEMPTS,
+                proxy_label,
+                last_error,
+            )
+            await asyncio.sleep(RETRY_DELAYS[attempt - 1])
+
+    logger.error(
+        "Telegram: уведомление не отправлено после %s попыток (прокси: %s): %s",
+        MAX_ATTEMPTS,
+        proxy_label,
+        last_error,
     )
-    return True, None
+    return False, last_error

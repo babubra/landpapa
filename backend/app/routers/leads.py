@@ -17,6 +17,10 @@ from app.services.telegram import format_lead_message, load_telegram_settings, s
 
 router = APIRouter()
 
+# Ссылки на фоновые отправки уведомлений: без них сборщик мусора может уничтожить
+# задачу до завершения запроса (asyncio держит на задачи только слабые ссылки)
+_notification_tasks: set[asyncio.Task] = set()
+
 
 @router.post("/public", status_code=201)
 async def create_public_lead(
@@ -63,7 +67,9 @@ async def create_public_lead(
             "comment": new_lead.comment,
             "source_url": new_lead.source_url
         }
-        asyncio.create_task(send_message(format_lead_message(lead_dict), tg_settings))
+        task = asyncio.create_task(send_message(format_lead_message(lead_dict), tg_settings))
+        _notification_tasks.add(task)
+        task.add_done_callback(_notification_tasks.discard)
 
     return {"status": "success", "id": new_lead.id}
 
