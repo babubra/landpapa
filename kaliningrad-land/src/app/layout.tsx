@@ -7,6 +7,7 @@ import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { SiteNavigationSchema } from "@/components/seo/SiteNavigationSchema";
 import { YandexMetrika } from "@/components/analytics/YandexMetrika";
+import { METRIKA_SNIPPET } from "@/lib/metrika";
 import { GoogleAnalytics } from "@/components/analytics/GoogleAnalytics";
 import "./globals.css";
 
@@ -90,10 +91,18 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ru" suppressHydrationWarning>
+      <head>
+        {/* Yandex.Metrika counter — inline-скрипт, чтобы код счётчика присутствовал
+            в серверной разметке: по исходному HTML Яндекс проверяет установку счётчика */}
+        <script
+          id="yandex-metrika"
+          dangerouslySetInnerHTML={{ __html: METRIKA_SNIPPET }}
+        />
+      </head>
       <body
         className={`${montserrat.variable} ${manrope.variable} antialiased font-sans`}
       >
-        {/* Yandex.Metrika counter для SPA */}
+        {/* Отслеживание SPA-переходов в Яндекс.Метрике + noscript-пиксель */}
         <Suspense fallback={null}>
           <YandexMetrika />
         </Suspense>
